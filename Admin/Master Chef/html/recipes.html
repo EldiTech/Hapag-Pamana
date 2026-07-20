@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Recipe Book</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../../Content%20Moderator/css/global.css" />
+  <link rel="stylesheet" href="../css/chef.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <!-- The recipe book — one costed recipe per dish, mirroring the
+         kitchen's costing spreadsheet: ingredients with qty / unit / pack
+         cost / pack size, a base portion count, and the computed total &
+         per-serving cost. Recipes named exactly like a menu dish are scaled
+         automatically on the Prep Board. -->
+    <div class="stat-grid" id="recipeStats"></div>
+
+    <section class="panel">
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Recipe</th>
+              <th>Portions</th>
+              <th>Ingredients</th>
+              <th>Total cost</th>
+              <th>Per serving</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="recipeRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../js/chef-common.js"></script>
+  <script src="../js/recipes.js"></script>
+</body>
+</html>

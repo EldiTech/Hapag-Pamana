@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "369246306524",
+    "project_id": "hapagpamana-39687",
+    "storage_bucket": "hapagpamana-39687.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:369246306524:android:f21dc358f5b63b8db97419",
+        "android_client_info": {
+          "package_name": "com.HapagPamana"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "369246306524-qco3l7mlh3ppl7g9nj0idagio5q5ilom.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbKQtqZLKDKF5QxC-BeNkIBtlzAdmC_Ho"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "369246306524-qco3l7mlh3ppl7g9nj0idagio5q5ilom.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

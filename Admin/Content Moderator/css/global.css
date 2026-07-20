@@ -1,0 +1,1257 @@
+/* ════════════════════════════════════════════════════════════════
+   HapagPamana · Content Moderator — GLOBAL stylesheet.
+   Art direction: "Heirloom Editorial" — an aged-paper Filipino heritage
+   menu / recipe-ledger turned into an admin tool. Deep-brown ink on warm
+   vellum, gold-leaf hairlines, a serif type stack (Cormorant Garamond / Spectral /
+   Cinzel) and printed-page ornaments (fleurons, ruled rows, leader lines).
+   One source of truth for every page: tokens, the shell (gilt book-spine
+   sidebar + chapter-header topbar) and all reusable components.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────── Design tokens ───────────────────────── */
+:root {
+  /* Paper & ink */
+  --paper:      #EFE3C6;   /* aged page (canvas)      */
+  --paper-2:    #F8F1DE;   /* raised card / panel     */
+  --paper-3:    #FFFBF0;   /* inputs & inner surfaces */
+  --vellum:     #E7D8B5;   /* table header / wells    */
+  --ink:        #33220F;   /* near-black brown text   */
+  --ink-soft:   #6A5331;
+  --ink-faint:  #927A4E;
+
+  --brown:      #432C0E;
+  --brown-deep: #2A1A08;
+  --olive:      #54582F;
+
+  --gold:       #A9823C;
+  --gold-deep:  #7B591F;
+  --gold-light: #C7A04A;
+  --gilt:       #DCB661;   /* bright leaf for dark spine */
+
+  --ok:         #5C7A33;   /* available / confirmed   */
+  --warn:       #98691B;   /* pending / contacted     */
+  --danger:     #8C3320;   /* destructive / wine      */
+
+  --hair:       rgba(67, 44, 14, 0.20);
+  --hair-soft:  rgba(67, 44, 14, 0.10);
+  --gold-hair:  rgba(169, 130, 60, 0.42);
+  --gold-hair2: rgba(169, 130, 60, 0.22);
+
+  --shadow-sm:  0 2px 12px -7px rgba(42, 26, 8, 0.45);
+  --shadow-md:  0 22px 48px -30px rgba(42, 26, 8, 0.55);
+  --shadow-lg:  0 40px 90px -38px rgba(26, 15, 5, 0.62);
+  --inset-top:  inset 0 1px 0 rgba(255, 251, 240, 0.6);
+
+  --display:  "Cormorant Garamond", Georgia, serif;  /* titles, names, prices */
+  --text:     "Spectral", Georgia, "Times New Roman", serif; /* body & UI text */
+  --engraved: "Cinzel", Georgia, serif;             /* engraved small-caps labels */
+
+  --r:    4px;     /* crisp printed corners */
+  --r-lg: 8px;
+  --side-w: 270px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Gold fleuron ornament (light surfaces) + gilt variant (dark spine). */
+  --fleur: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23A9823C'%3E%3Cpath d='M12 1.4c1.1 5.1 5.5 9.5 10.6 10.6C17.5 13.1 13.1 17.5 12 22.6 10.9 17.5 6.5 13.1 1.4 12 6.5 10.9 10.9 6.5 12 1.4Z'/%3E%3C/svg%3E");
+  --fleur-gilt: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23DCB661'%3E%3Cpath d='M12 1.4c1.1 5.1 5.5 9.5 10.6 10.6C17.5 13.1 13.1 17.5 12 22.6 10.9 17.5 6.5 13.1 1.4 12 6.5 10.9 10.9 6.5 12 1.4Z'/%3E%3C/svg%3E");
+  /* Faint paper grain, blended into the canvas. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.27 0 0 0 0 0.18 0 0 0 0 0.06 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+/* ───────────────────────── Base ───────────────────────── */
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--text);
+  font-size: 16px;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    var(--grain),
+    radial-gradient(135% 120% at 50% -10%, #F7EED6 0%, var(--paper) 46%, #E4D4B0 100%);
+  background-attachment: fixed;
+  background-blend-mode: multiply, normal;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  animation: pageFade 0.3s ease both;
+}
+:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+.ic { display: inline-flex; }
+.ic svg { width: 1em; height: 1em; }
+
+/* Reusable flourish: a centred gold fleuron between two faded rules. */
+.flourish { display: flex; align-items: center; gap: 12px; }
+.flourish::before, .flourish::after {
+  content: ""; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-hair), transparent);
+}
+.flourish > .mark { width: 14px; height: 14px; flex: none; background: var(--fleur) center/contain no-repeat; }
+
+/* ═════════════════════════════════════════════════════════════════
+   SHELL — app frame (built by shell.js)
+   ═════════════════════════════════════════════════════════════════ */
+.app { display: flex; min-height: 100dvh; }
+
+/* ───────────────────────── Sidebar — the gilt "book spine" ───────────────────────── */
+.sidebar {
+  position: sticky; top: 0; flex: none;
+  width: var(--side-w); height: 100dvh;
+  display: flex; flex-direction: column;
+  padding: 26px 18px 20px;
+  color: #EFE3C6;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.05), transparent 22%),
+    radial-gradient(120% 80% at 18% 0%, #5d3f1d 0%, var(--brown) 48%, var(--brown-deep) 100%);
+  border-right: 1px solid var(--brown-deep);
+  box-shadow: inset -3px 0 0 0 rgba(220, 182, 97, 0.5), inset -4px 0 0 0 rgba(0,0,0,0.25);
+}
+/* Sidebar brand — stacked lockup: large centred emblem, name + tagline below.
+   The logo is 96 px so the nipa hut, bamboo, sun, and leaf ring are all legible. */
+.side-brand {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 4px 4px 8px; text-align: center;
+}
+.side-logo {
+  width: 96px; height: 96px; flex: none;
+  display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle at 50% 36%, #FFFEFA, #F2E6C6);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 0 0 1.5px var(--gilt),
+    0 0 0 6px rgba(220, 182, 97, 0.18),
+    0 10px 24px -10px rgba(0, 0, 0, 0.65);
+}
+.side-logo img { width: 94%; height: 94%; object-fit: contain; filter: contrast(1.05) saturate(1.05); }
+.side-brand-text { display: flex; flex-direction: column; align-items: center; line-height: 1.2; gap: 3px; }
+.side-brand-text strong {
+  font-family: var(--display); font-size: 1.18rem; font-weight: 700;
+  color: #F4E9CE; letter-spacing: 0.3px;
+}
+.side-brand-text small {
+  font-family: var(--engraved); font-size: 0.52rem; letter-spacing: 2.6px;
+  text-transform: uppercase; color: var(--gilt);
+}
+.side-rule { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 4px 14px; }
+.side-rule::before, .side-rule::after {
+  content: ""; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(220, 182, 97, 0.5), transparent);
+}
+.side-rule > span { width: 13px; height: 13px; flex: none; background: var(--fleur-gilt) center/contain no-repeat; opacity: 0.9; }
+
+.side-nav { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; flex: 1; }
+.nav-item {
+  position: relative; display: flex; align-items: center; gap: 13px;
+  padding: 11px 14px; border-radius: var(--r);
+  color: rgba(239, 227, 198, 0.72);
+  text-decoration: none;
+  font-family: var(--engraved); font-size: 0.78rem; font-weight: 600; letter-spacing: 1.4px;
+  text-transform: uppercase;
+  transition: background 0.18s ease, color 0.18s ease, padding-left 0.18s var(--ease);
+}
+.nav-item .ic { font-size: 18px; opacity: 0.7; }
+.nav-item:hover { background: rgba(239, 227, 198, 0.07); color: #F4E9CE; }
+.nav-item.active {
+  background: linear-gradient(90deg, rgba(220, 182, 97, 0.16), rgba(220, 182, 97, 0.04));
+  color: #F8EECF;
+}
+.nav-item.active .ic { opacity: 1; color: var(--gilt); }
+.nav-item.active::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 60%; border-radius: 0 3px 3px 0; background: var(--gilt);
+  box-shadow: 0 0 8px rgba(220, 182, 97, 0.6);
+  animation: navIndicator 0.34s var(--ease) both;
+}
+.nav-item.active::after {
+  content: ""; width: 11px; height: 11px; margin-left: auto;
+  background: var(--fleur-gilt) center/contain no-repeat; opacity: 0.85;
+}
+.nav-item.active .nav-badge { margin-left: 10px; }
+.nav-badge {
+  margin-left: auto; min-width: 20px; height: 19px; padding: 0 6px;
+  display: grid; place-items: center; font-family: var(--engraved);
+  font-size: 0.64rem; font-weight: 700; border-radius: 999px;
+  background: var(--gilt); color: #3a2710;
+}
+
+.side-foot { display: flex; flex-direction: column; gap: 14px; }
+.side-export {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 11px; width: 100%;
+  font-family: var(--engraved); font-size: 0.7rem; font-weight: 600; letter-spacing: 1.4px;
+  text-transform: uppercase; color: #EFE3C6;
+  background: rgba(239, 227, 198, 0.06);
+  border: 1px solid rgba(220, 182, 97, 0.35); border-radius: var(--r);
+  cursor: pointer; transition: background 0.18s ease, border-color 0.18s ease;
+}
+.side-export:hover { background: rgba(220, 182, 97, 0.14); border-color: rgba(220, 182, 97, 0.6); }
+.side-export .ic { font-size: 16px; }
+.side-user {
+  display: flex; align-items: center; gap: 11px; padding: 11px 12px;
+  border-radius: var(--r); background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(220, 182, 97, 0.22); box-shadow: var(--inset-top);
+}
+.avatar {
+  width: 38px; height: 38px; flex: none; display: grid; place-items: center;
+  border-radius: 50%; background: radial-gradient(circle at 40% 30%, var(--gilt), #b88b34);
+  color: #3a2710; font-family: var(--display); font-weight: 700; font-size: 1rem;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+}
+.side-user-text { display: flex; flex-direction: column; line-height: 1.25; flex: 1; min-width: 0; }
+.side-user-text strong { font-family: var(--display); font-size: 0.92rem; color: #F4E9CE; }
+.side-user-text small { font-family: var(--engraved); font-size: 0.58rem; letter-spacing: 1px; text-transform: uppercase; color: rgba(220, 182, 97, 0.7); }
+.side-logout {
+  display: grid; place-items: center; width: 32px; height: 32px;
+  border-radius: var(--r); color: rgba(239, 227, 198, 0.65); font-size: 18px;
+  text-decoration: none; transition: background 0.15s ease, color 0.15s ease;
+}
+.side-logout:hover { background: rgba(220, 182, 97, 0.16); color: #F4E9CE; }
+
+.scrim {
+  position: fixed; inset: 0; z-index: 40; background: rgba(26, 15, 5, 0.5);
+  opacity: 0; visibility: hidden; transition: opacity 0.2s ease;
+}
+
+/* ───────────────────────── Main / topbar (chapter header) ───────────────────────── */
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: flex-end; gap: 18px; padding: 18px 30px 16px;
+  background: linear-gradient(180deg, rgba(248, 241, 222, 0.94), rgba(239, 227, 198, 0.86));
+  backdrop-filter: blur(7px);
+  border-bottom: 1px solid var(--hair);
+  transition: box-shadow 0.2s ease;
+}
+.topbar::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-hair), transparent);
+}
+.topbar.scrolled { box-shadow: 0 10px 22px -18px rgba(42, 26, 8, 0.6); }
+.menu-toggle {
+  display: none; width: 42px; height: 42px; flex: none; margin-bottom: 2px;
+  border: 1px solid var(--gold-hair); border-radius: var(--r);
+  background: var(--paper-3); color: var(--brown); font-size: 20px;
+  align-items: center; justify-content: center; cursor: pointer;
+}
+.topbar-title { flex: 1; min-width: 0; }
+.eyebrow {
+  display: block; font-family: var(--engraved); font-size: 0.58rem; font-weight: 600;
+  letter-spacing: 3px; text-transform: uppercase; color: var(--gold-deep); margin-bottom: 3px;
+}
+.topbar-title h1 {
+  margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.92rem;
+  line-height: 1.05; color: var(--ink); letter-spacing: 0.2px;
+}
+.topbar-title p { margin: 4px 0 0; font-family: var(--engraved); font-size: 0.62rem; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); }
+.topbar-actions { display: flex; align-items: center; gap: 12px; margin-bottom: 3px; }
+
+/* "Find in the menu" — an underlined editorial field, not a pill. */
+.search {
+  display: flex; align-items: center; gap: 8px; padding: 0 4px 6px; width: 220px;
+  color: var(--ink-soft); border-bottom: 1px solid var(--hair);
+  transition: border-color 0.18s ease;
+}
+.search:focus-within { border-color: var(--gold); }
+.search .ic { font-size: 17px; color: var(--gold-deep); }
+.search input {
+  border: none; background: none; outline: none; width: 100%;
+  font-family: var(--text); font-size: 0.92rem; color: var(--ink);
+}
+.search input::placeholder { font-style: italic; color: var(--ink-faint); }
+
+/* ───────────────────────── Buttons — engraved plates ───────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--engraved); font-size: 0.72rem; font-weight: 600; letter-spacing: 1.6px;
+  text-transform: uppercase; padding: 11px 20px; border-radius: var(--r);
+  border: 1px solid transparent; cursor: pointer; white-space: nowrap; text-decoration: none;
+  transition: transform 0.1s ease, background 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.btn .ic { font-size: 16px; }
+.btn:active { transform: translateY(1px); }
+.btn:disabled, .btn[disabled], .btn[aria-disabled="true"] {
+  opacity: 0.45; cursor: not-allowed; pointer-events: none; box-shadow: none; transform: none;
+}
+.btn-primary {
+  background: linear-gradient(180deg, #543819, var(--brown)); color: #F4E9CE;
+  box-shadow: inset 0 0 0 1px rgba(220, 182, 97, 0.5), var(--shadow-sm);
+}
+.btn-primary:hover { background: linear-gradient(180deg, #654421, #523715); box-shadow: inset 0 0 0 1px rgba(220, 182, 97, 0.75), var(--shadow-md); }
+.btn-ghost { background: var(--paper-3); color: var(--brown); border-color: var(--gold-hair); }
+.btn-ghost:hover { background: var(--paper-2); border-color: var(--gold); }
+.btn-danger { background: none; color: var(--danger); border-color: rgba(140, 51, 32, 0.4); }
+.btn-danger:hover { background: rgba(140, 51, 32, 0.08); border-color: var(--danger); }
+.btn-sm { padding: 8px 13px; font-size: 0.64rem; letter-spacing: 1.2px; }
+
+.icon-btn {
+  display: grid; place-items: center; width: 34px; height: 34px; flex: none;
+  border: 1px solid var(--gold-hair2); border-radius: var(--r);
+  background: var(--paper-3); color: var(--ink-soft); cursor: pointer; font-size: 16px;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.icon-btn:hover { background: var(--paper-2); color: var(--brown); border-color: var(--gold); }
+.icon-btn.danger:hover { background: rgba(140, 51, 32, 0.1); color: var(--danger); border-color: rgba(140, 51, 32, 0.4); }
+
+/* ───────────────────────── View / sections ───────────────────────── */
+.view { padding: 30px 34px 52px; outline: none; }
+.view-enter { animation: rise 0.42s var(--ease) both; }
+/* Leaving for another page: the view fades up while the gilt route bar shows
+   (set by shell.js on internal-link clicks), then the next page fades in. */
+.app.is-leaving .view { animation: viewLeave 0.24s var(--ease) both; }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 18px; }
+.section-head h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.32rem; color: var(--ink); }
+.section-head .sub { font-family: var(--engraved); font-size: 0.6rem; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-soft); margin-top: 3px; }
+
+.toolbar { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 18px; }
+.chip-sep { width: 1px; height: 20px; background: var(--gold-hair); }
+/* Category chips — little index tabs. */
+.chip-filter {
+  padding: 7px 14px; font-family: var(--engraved); font-size: 0.66rem; font-weight: 600; letter-spacing: 1.2px;
+  text-transform: uppercase; border-radius: var(--r); border: 1px solid var(--gold-hair2);
+  background: var(--paper-3); color: var(--ink-soft); cursor: pointer; transition: all 0.15s ease;
+}
+.chip-filter:hover { background: var(--paper-2); border-color: var(--gold); color: var(--brown); }
+.chip-filter.active {
+  background: linear-gradient(180deg, #543819, var(--brown)); color: #F4E9CE; border-color: var(--brown);
+  box-shadow: inset 0 0 0 1px rgba(220, 182, 97, 0.4);
+}
+
+/* Product-type tabs — menu "courses". */
+.seg {
+  display: inline-flex; gap: 4px; flex-wrap: wrap; align-items: flex-end;
+  margin-bottom: 20px; border-bottom: 1px solid var(--hair); padding: 0;
+  max-width: 100%;
+}
+.seg-btn {
+  position: relative; display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 18px 12px; border: none; background: none; cursor: pointer;
+  font-family: var(--display); font-size: 1.18rem; font-weight: 600; color: var(--ink-faint);
+  transition: color 0.18s ease;
+}
+.seg-btn:hover { color: var(--ink-soft); }
+.seg-btn.active { color: var(--ink); }
+.seg-btn.active::after {
+  content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+/* The gold rule grows in from the centre when the active course changes.
+   Pages flag the strip with .anim only on a real tab switch, so search and
+   filter re-renders never replay it. */
+.seg.anim .seg-btn.active::after { animation: underlineIn 0.3s var(--ease) both; }
+.seg-count {
+  min-width: 21px; height: 19px; padding: 0 6px; border-radius: 999px;
+  display: inline-grid; place-items: center; font-family: var(--engraved);
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.5px;
+  background: var(--vellum); color: var(--ink-soft); border: 1px solid var(--gold-hair2);
+}
+.seg-btn.active .seg-count { background: var(--gold-light); color: #3a2710; border-color: transparent; }
+
+/* ───────────────────────── Stat cards — ledger entries ───────────────────────── */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); gap: 18px; margin-bottom: 28px; }
+.stat {
+  position: relative; background: var(--paper-2); border: 1px solid var(--gold-hair);
+  border-radius: var(--r-lg); padding: 20px; box-shadow: var(--shadow-sm), var(--inset-top); overflow: hidden;
+}
+.stat::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: linear-gradient(90deg, var(--gold), transparent 70%); }
+.stat-top { display: flex; align-items: center; justify-content: space-between; }
+.stat-ic {
+  width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; font-size: 19px;
+  background: radial-gradient(circle at 40% 30%, #f6ecd2, var(--vellum)); color: var(--gold-deep);
+  border: 1px solid var(--gold-hair);
+}
+.stat-num { font-family: var(--display); font-size: 2.3rem; font-weight: 700; line-height: 1; margin: 16px 0 5px; color: var(--ink); }
+.stat-label { font-family: var(--engraved); font-size: 0.62rem; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
+
+/* ───────────────────────── Panels & grids ───────────────────────── */
+.panel {
+  position: relative; background: var(--paper-2); border: 1px solid var(--gold-hair);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-sm), var(--inset-top); overflow: hidden;
+}
+.panel-pad { padding: 22px; }
+.two-col { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; align-items: start; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 18px; }
+
+/* ───────────────────────── Data table — the bill of fare ───────────────────────── */
+.table-wrap { overflow-x: auto; }
+table.data { width: 100%; border-collapse: collapse; min-width: 640px; }
+table.data th {
+  text-align: left; font-family: var(--engraved); font-size: 0.62rem; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--ink-soft); font-weight: 700; padding: 15px 18px;
+  border-bottom: 1.5px solid var(--ink); background: var(--vellum);
+}
+table.data td { padding: 14px 18px; border-bottom: 1px dotted var(--gold-hair); font-family: var(--text); font-size: 0.92rem; vertical-align: middle; }
+table.data tr:last-child td { border-bottom: none; }
+table.data tbody tr { transition: background 0.12s ease; }
+table.data tbody tr:hover { background: rgba(169, 130, 60, 0.07); }
+.cell-name { display: flex; align-items: center; gap: 13px; }
+.cell-name strong { font-family: var(--display); font-weight: 600; font-size: 1.02rem; color: var(--ink); }
+.cell-name small { display: block; color: var(--ink-soft); font-weight: 400; font-size: 0.78rem; font-style: italic; margin-top: 1px; }
+.thumb {
+  width: 46px; height: 46px; flex: none; border-radius: var(--r); display: grid; place-items: center;
+  overflow: hidden; background: var(--vellum); color: var(--gold-deep);
+  font-family: var(--display); font-weight: 700; font-size: 1.1rem;
+  border: 1px solid var(--gold-hair); box-shadow: inset 0 0 0 2px rgba(255, 251, 240, 0.5);
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.row-actions { display: flex; gap: 8px; justify-content: flex-end; opacity: 0; transition: opacity 0.15s ease; }
+table.data tbody tr:hover .row-actions, table.data tbody tr:focus-within .row-actions { opacity: 1; }
+@media (hover: none) { .row-actions { opacity: 1; } }
+.price { font-family: var(--display); font-weight: 700; font-size: 1.05rem; color: var(--gold-deep); font-variant-numeric: tabular-nums; }
+
+/* ───────────────────────── Badges / pills ───────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: var(--r);
+  font-family: var(--engraved); font-size: 0.58rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  border: 1px solid transparent;
+}
+.badge-cat { background: rgba(84, 88, 47, 0.12); color: var(--olive); border-color: rgba(84, 88, 47, 0.22); }
+.badge-ok { background: rgba(92, 122, 51, 0.14); color: var(--ok); border-color: rgba(92, 122, 51, 0.3); }
+.badge-muted { background: rgba(67, 44, 14, 0.08); color: var(--ink-faint); border-color: var(--hair-soft); }
+.badge-gold { background: rgba(169, 130, 60, 0.16); color: var(--gold-deep); border-color: var(--gold-hair); }
+.badge-danger { background: rgba(140, 51, 32, 0.12); color: var(--danger); border-color: rgba(140, 51, 32, 0.3); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* Users page — banned rows sit under a faint wine wash; empty/notice rows. */
+table.data tbody tr.row-banned { background: rgba(140, 51, 32, 0.05); }
+table.data tbody tr.row-banned .cell-name strong { color: var(--ink-soft); }
+table.data td.table-empty { text-align: center; padding: 36px 18px; color: var(--ink-soft); font-style: italic; }
+
+/* ───────────────────────── Package / category cards — menu plates ───────────────────────── */
+.pkg-card, .cat-card {
+  position: relative; background: var(--paper-2); border: 1px solid var(--gold-hair);
+  border-radius: var(--r-lg); padding: 20px; box-shadow: var(--shadow-sm), var(--inset-top);
+  display: flex; flex-direction: column; gap: 11px;
+}
+/* Content cards (packages/categories) carry no gilt top-bar — that accent is
+   reserved for key surfaces (stat cards, modals) so content leads the grid. */
+.pkg-photo {
+  width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block;
+  border-radius: var(--r); border: 1px solid var(--gold-hair); background: var(--vellum);
+}
+.pkg-photo--empty { display: grid; place-items: center; font-size: 30px; color: var(--gold-hair); }
+.pkg-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.pkg-card h3 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.2rem; color: var(--ink); }
+.pkg-price { font-family: var(--display); font-weight: 700; font-size: 1.55rem; color: var(--gold-deep); }
+.pkg-price small { font-size: 0.68rem; font-weight: 600; color: var(--ink-soft); font-family: var(--engraved); letter-spacing: 0.8px; text-transform: uppercase; }
+.pkg-meta { font-family: var(--engraved); font-size: 0.6rem; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-soft); }
+.pkg-incl { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pkg-incl li { display: flex; align-items: center; gap: 9px; font-family: var(--text); font-size: 0.86rem; }
+.pkg-incl .ic { color: var(--gold); font-size: 15px; flex-shrink: 0; }
+.pkg-or {
+  display: inline-block; margin: 0 4px;
+  font-family: var(--engraved); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 1.6px; text-transform: uppercase;
+  color: var(--gold-deep); vertical-align: middle;
+}
+
+/* ── Standard Services block (package modal) ── */
+.std-services {
+  display: flex; flex-direction: column; gap: 7px;
+  padding: 14px 16px; border-radius: var(--r);
+  background: var(--vellum); border: 1px solid var(--gold-hair);
+}
+.std-service-item {
+  display: flex; align-items: flex-start; gap: 9px;
+  font-family: var(--text); font-size: 0.84rem; color: var(--ink-soft);
+}
+.std-service-item .ic { color: var(--gold); font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.pkg-std { opacity: 0.72; }
+
+/* Card preview shows a count, not the full list — the breakdown lives in View. */
+.pkg-incl-summary {
+  display: flex; align-items: center; gap: 9px; margin-top: 2px;
+  font-family: var(--text); font-size: 0.9rem; color: var(--ink-soft);
+}
+.pkg-incl-summary .ic { color: var(--gold); font-size: 16px; flex-shrink: 0; }
+.pkg-incl-summary strong { color: var(--ink); font-weight: 600; }
+/* Destructive action sits apart from View/Edit, on the right. */
+.card-foot .pkg-del { margin-left: auto; }
+
+/* ── Package detail (read-only "View" modal) ── */
+.pkg-view { display: flex; flex-direction: column; gap: 20px; }
+.pkg-view-top {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap;
+  padding-bottom: 16px; border-bottom: 1px dotted var(--gold-hair);
+}
+.pkg-view-sec h4 {
+  margin: 0 0 10px; font-family: var(--engraved); font-size: 0.66rem; font-weight: 600;
+  letter-spacing: 1.8px; text-transform: uppercase; color: var(--gold-deep);
+}
+.pkg-view-none { color: var(--ink-soft); font-family: var(--engraved); font-size: 0.64rem; letter-spacing: 1px; text-transform: uppercase; }
+
+/* ───────────────────────── Product cards — the plated grid ─────────────────────────
+   Four to a row on desktop ("4 × 4"), stepping down gracefully on smaller
+   screens. Each card leads with the dish image, then name + category + actions. */
+.prod-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.prod-card {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--paper-2); border: 1px solid var(--gold-hair);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-sm), var(--inset-top);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.prod-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md), var(--inset-top); }
+.prod-thumb {
+  position: relative; aspect-ratio: 4 / 3; background: var(--vellum);
+  display: grid; place-items: center; overflow: hidden;
+  border-bottom: 1px solid var(--gold-hair);
+}
+/* Grid thumbnails crop to fill (object-fit: cover) so every tile is framed
+   identically — no uneven letterbox bars. The full uncropped photo is shown in
+   the read-only View modal. The blurred bg layer is unused in the grid (it only
+   matters where the fg is letterboxed) but kept harmless behind the cover image. */
+.prod-thumb-bg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; filter: blur(18px) brightness(0.92); transform: scale(1.15);
+}
+.prod-thumb img.prod-thumb-fg { position: relative; width: 100%; height: 100%; object-fit: cover; display: block; }
+.prod-thumb-letter { font-family: var(--display); font-weight: 700; font-size: 2.6rem; color: var(--gold-hair); }
+/* Feature-on-Home toggle, live on every thumbnail. Off = hollow outline star
+   on a dark plate (tap to feature); on = solid gilt coin with a filled star —
+   the two states must be unmistakable at a glance. Saves without the editor. */
+.prod-feat {
+  position: absolute; top: 9px; left: 9px;
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(20,10,3,0.72); color: #d8cdbb; backdrop-filter: blur(4px);
+  border: 1px solid rgba(216,205,187,0.35); font-size: 13px;
+  padding: 0; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.prod-feat:hover { color: var(--gilt); border-color: rgba(220,182,97,0.6); transform: scale(1.12); }
+.prod-feat.is-on {
+  background: var(--gilt); color: #3a2710;
+  border-color: rgba(58,39,16,0.35);
+  box-shadow: 0 1px 6px rgba(20,10,3,0.35);
+}
+.prod-feat.is-on svg { fill: currentColor; }
+.prod-feat.is-on:hover { color: #3a2710; filter: brightness(1.06); }
+/* Just featured: the gilt coin stamps down with a fading gold-leaf ring. */
+.prod-feat.stamped { animation: stamp 0.4s var(--ease), stampRing 0.5s ease-out; }
+.prod-status {
+  position: absolute; top: 9px; right: 9px;
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: var(--r);
+  font-family: var(--engraved); font-size: 0.56rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+.prod-status--ok  { background: rgba(20,10,3,0.7); color: #cfe0b0; border: 1px solid rgba(92,122,51,0.5); }
+.prod-status--off { background: rgba(20,10,3,0.7); color: #d8cdbb; border: 1px solid var(--hair-soft); }
+.prod-body { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 6px; }
+.prod-name {
+  margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.12rem; color: var(--ink);
+  line-height: 1.25; overflow-wrap: anywhere;
+}
+.prod-body .badge-cat { align-self: flex-start; }
+/* The action row must never overflow the card (which clips under
+   overflow:hidden). The two text buttons share the row evenly and may shrink;
+   the delete icon keeps its fixed size and sits flush right. */
+.prod-card .card-foot { padding: 8px 16px 14px; gap: 8px; }
+.prod-card .card-foot .btn-sm {
+  flex: 1 1 0; min-width: 0; padding: 8px 6px; gap: 5px; letter-spacing: 0.6px;
+}
+.prod-card .prod-del { margin-left: 2px; }
+
+@media (max-width: 1100px) { .prod-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 760px)  { .prod-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 440px)  { .prod-grid { grid-template-columns: 1fr; } }
+
+/* ── Product detail (read-only "View" modal) ── */
+.prod-view { display: flex; flex-direction: column; gap: 18px; }
+.prod-view-media {
+  position: relative; border-radius: var(--r-lg); overflow: hidden;
+  background: var(--vellum); border: 1px solid var(--gold-hair);
+  display: grid; place-items: center; padding: 10px; min-height: 160px;
+}
+.prod-view-media .prod-thumb-bg { filter: blur(26px) brightness(0.9); }
+.prod-view-media img.prod-thumb-fg { position: relative; max-width: 100%; max-height: 60vh; width: auto; height: auto; object-fit: contain; }
+.prod-view-media .prod-thumb-letter { font-size: 3.4rem; }
+.prod-view-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.prod-view-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; margin: 0; }
+.prod-view-facts dt {
+  font-family: var(--engraved); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 3px;
+}
+.prod-view-facts dd { margin: 0; font-family: var(--text); font-size: 0.95rem; color: var(--ink); }
+
+/* ── Setups gallery ── */
+/* Four to a row on desktop ("4 × 4"), stepping down on smaller screens —
+   mirrors the product grid. */
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+@media (max-width: 1100px) { .setup-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 760px)  { .setup-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 440px)  { .setup-grid { grid-template-columns: 1fr; } }
+.setup-card {
+  position: relative; border-radius: var(--r-lg); overflow: hidden;
+  aspect-ratio: 4 / 3; background: var(--vellum);
+  border: 1px solid var(--gold-hair); box-shadow: var(--shadow-sm);
+}
+.setup-card img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform 0.35s ease;
+}
+.setup-card:hover img { transform: scale(1.04); }
+.setup-placeholder {
+  width: 100%; height: 100%; display: grid; place-items: center;
+  font-size: 36px; color: var(--gold-hair);
+}
+.setup-foot {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 28px 14px 12px;
+  background: linear-gradient(to top, rgba(20,10,3,0.88) 0%, transparent 100%);
+  pointer-events: none;
+}
+.setup-type {
+  font-family: var(--engraved); font-size: 0.56rem; font-weight: 700;
+  letter-spacing: 1.8px; text-transform: uppercase; color: var(--gilt);
+  margin-bottom: 3px;
+}
+.setup-title {
+  font-family: var(--display); font-size: 0.96rem; font-weight: 600;
+  color: #F4E9CE; line-height: 1.3;
+}
+.setup-actions {
+  position: absolute; top: 10px; right: 10px;
+  display: flex; gap: 5px;
+  opacity: 0; transform: translateY(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.setup-card:hover .setup-actions { opacity: 1; transform: none; }
+.setup-actions .icon-btn {
+  background: rgba(20,10,3,0.72); border: 1px solid rgba(220,182,97,0.25);
+  color: #F4E9CE; backdrop-filter: blur(4px);
+}
+.setup-actions .icon-btn:hover { background: rgba(20,10,3,0.92); }
+.setup-actions .icon-btn.danger:hover { background: #7a1515; }
+.setup-vis-btn { color: var(--gilt) !important; }
+.setup-card--hidden { opacity: 0.55; }
+.setup-dropzone {
+  grid-column: 1 / -1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 72px 40px;
+  border: 2px dashed var(--gold-hair); border-radius: var(--r-lg);
+  background: var(--paper-2); cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.setup-dropzone:hover, .setup-dropzone.drag-over {
+  border-color: var(--gold); background: var(--vellum);
+}
+.setup-dropzone-ic { font-size: 40px; color: var(--gold-hair); pointer-events: none; }
+.setup-dropzone:hover .setup-dropzone-ic, .setup-dropzone.drag-over .setup-dropzone-ic {
+  color: var(--gold);
+}
+.setup-dropzone-title {
+  font-family: var(--display); font-size: 1.15rem; font-weight: 600;
+  color: var(--ink-soft); margin: 0; pointer-events: none;
+}
+.setup-dropzone-sub {
+  font-family: var(--text); font-size: 0.84rem; font-style: italic;
+  color: var(--ink-faint); margin: 0 0 8px; pointer-events: none;
+}
+.setup-hidden-badge {
+  position: absolute; top: 10px; left: 10px;
+  padding: 3px 9px; border-radius: var(--r);
+  font-family: var(--engraved); font-size: 0.57rem; font-weight: 700;
+  letter-spacing: 1.4px; text-transform: uppercase;
+  background: rgba(20,10,3,0.72); color: rgba(220,182,97,0.8);
+  border: 1px solid rgba(220,182,97,0.3);
+}
+
+/* ── Inclusion builder (package modal) ── */
+.incl-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 2px; }
+.incl-add-row { margin-top: 8px; }
+.incl-row { display: flex; align-items: center; gap: 8px; }
+.incl-opts { display: flex; align-items: center; gap: 6px; flex: 1; flex-wrap: wrap; }
+.incl-opts .incl-opt { flex: 1; min-width: 100px; }
+.incl-or-badge {
+  flex-shrink: 0; padding: 2px 8px;
+  font-family: var(--engraved); font-size: 0.57rem; font-weight: 700;
+  letter-spacing: 1.8px; text-transform: uppercase; color: var(--gold-deep);
+  background: var(--gold-light); border: 1px solid var(--gold-hair);
+  border-radius: var(--r);
+}
+.card-foot { display: flex; gap: 9px; margin-top: auto; padding-top: 8px; }
+.cat-card { flex-direction: row; align-items: center; }
+.cat-card .cat-ic {
+  width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 40% 30%, #f6ecd2, var(--vellum)); color: var(--gold-deep);
+  font-size: 22px; border: 1px solid var(--gold-hair);
+}
+.cat-card .cat-meta { flex: 1; }
+.cat-card h3 { margin: 0; font-size: 1.02rem; font-family: var(--display); font-weight: 600; }
+.cat-card small { color: var(--ink-soft); font-family: var(--engraved); font-size: 0.62rem; letter-spacing: 0.8px; text-transform: uppercase; }
+
+/* Category groups — one section per product type. */
+.cat-group { margin-bottom: 34px; }
+.cat-group:last-child { margin-bottom: 0; }
+.cat-group-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.cat-group-title { margin: 0; display: flex; align-items: center; gap: 11px; font-family: var(--display); font-weight: 700; font-size: 1.3rem; color: var(--ink); }
+.cat-group-title::before { content: ""; width: 15px; height: 15px; background: var(--fleur) center/contain no-repeat; }
+.cat-group-count {
+  min-width: 23px; height: 21px; padding: 0 7px; border-radius: 999px; display: inline-grid; place-items: center;
+  font-family: var(--engraved); font-size: 0.64rem; font-weight: 700;
+  background: var(--vellum); color: var(--gold-deep); border: 1px solid var(--gold-hair);
+}
+.empty--soft { padding: 30px 20px; grid-column: 1 / -1; text-align: center; color: var(--ink-soft); }
+.empty--soft .ic { font-size: 28px; color: var(--gold-hair); }
+.empty--soft p { margin: 8px 0 0; font-family: var(--display); font-size: 1.05rem; font-style: italic; }
+.empty--soft .btn { margin-top: 16px; }
+
+/* ───────────────────────── Toggle switch ───────────────────────── */
+.switch { position: relative; display: inline-flex; align-items: center; gap: 11px; cursor: pointer; user-select: none; }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch .track {
+  width: 42px; height: 23px; border-radius: 999px; flex: none;
+  background: var(--vellum); border: 1px solid var(--hair); transition: background 0.18s ease, border-color 0.18s ease; position: relative;
+}
+.switch .track::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%;
+  background: #fffdf6; box-shadow: var(--shadow-sm); transition: transform 0.18s var(--ease);
+}
+.switch input:checked + .track { background: linear-gradient(180deg, var(--gold-light), var(--gold)); border-color: var(--gold-deep); }
+.switch input:checked + .track::after { transform: translateX(18px); }
+.switch input:focus-visible + .track { box-shadow: 0 0 0 3px rgba(169, 130, 60, 0.32); }
+.switch-label { font-family: var(--text); font-size: 0.9rem; font-weight: 500; }
+
+/* ───────────────────────── Settings rows ───────────────────────── */
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 0; border-bottom: 1px dotted var(--gold-hair); }
+.setting-row:last-child { border-bottom: none; }
+.setting-row .meta strong { display: block; font-family: var(--display); font-size: 1rem; font-weight: 600; }
+.setting-row .meta small { color: var(--ink-soft); font-size: 0.8rem; font-style: italic; }
+/* Settings — a bento board like the Overview's, so both composed pages share
+   one grid language. App features runs tall (8 wide × 2 rows); Regional and
+   Content data stack beside it; Allergens takes the full width below. */
+.settings-bento { max-width: 1160px; margin: 0 auto; }
+.settings-bento .rs-2 { grid-row: span 2; }
+/* Tile description — the italic explanatory line under a tile's engraved
+   label, tucked toward the head against the tile's own 15px gap. */
+.bento-desc { margin: -6px 0 0; font-family: var(--text); font-size: 0.85rem; font-style: italic; color: var(--ink-soft); }
+/* Inside a tile the rows' vertical padding doubles up with the tile gap and
+   the pinned foot; trim the first and last so the tile stays snug. */
+.settings-bento .setting-row:first-child { padding-top: 2px; }
+.settings-bento .setting-row:last-child { padding-bottom: 2px; }
+@media (max-width: 1080px) {
+  /* The overview fold (b-4 → span 2) suits its trio of tiles; here the two
+     side tiles pair up as halves instead, and the tall tile folds flat. */
+  .settings-bento .rs-2 { grid-row: auto; }
+}
+/* Banded so it can't outrank the ≤680px single-column fold below. */
+@media (max-width: 1080px) and (min-width: 681px) {
+  .settings-bento .b-4 { grid-column: span 3; }
+}
+
+/* Allergen taxonomy editor (Settings) — one row per allergen: heat swatch,
+   name, short label, risk-weight slider, delete. */
+.allergen-edit { justify-content: flex-start; padding: 13px 0; }
+.allergen-edit .a-label { flex: 1 1 130px; min-width: 0; }
+.allergen-edit .a-short { flex: none; }
+.allergen-swatch { flex: none; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--gold-hair); }
+.a-sev { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+.a-sev input[type="range"] { width: 104px; accent-color: var(--gold-deep); }
+.a-sev b { width: 36px; text-align: right; font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.a-sev--wide { display: flex; margin-top: 4px; }
+.a-sev--wide input[type="range"] { flex: 1; width: auto; }
+@media (max-width: 560px) { .allergen-edit { flex-wrap: wrap; } }
+
+/* ═════════════════════════════════════════════════════════════════
+   OVERVIEW — the bento board. A 12-column grid where each tile mirrors
+   one section of the app. Spans are chosen so every visual row sums to
+   12 (banner 12 · products 6 + packages 3 + categories 3 · setups 4 +
+   featured 4 + config 4), so the grid lines stay true. Token-driven, so
+   dark mode is inherited; medallions reuse .stat-ic for the same reason.
+   ═════════════════════════════════════════════════════════════════ */
+.bento { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; align-items: stretch; }
+.b-12 { grid-column: span 12; }
+.b-8  { grid-column: span 8;  }
+.b-6  { grid-column: span 6;  }
+.b-4  { grid-column: span 4;  }
+.b-3  { grid-column: span 3;  }
+
+.bento-tile {
+  position: relative; display: flex; flex-direction: column; gap: 15px;
+  background: var(--paper-2); border: 1px solid var(--gold-hair);
+  border-radius: var(--r-lg); padding: 22px;
+  box-shadow: var(--shadow-sm), var(--inset-top); overflow: hidden;
+}
+
+/* Tile header — medallion + small-caps label, optional big figure on the right. */
+.bento-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.label-grp { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.bento-label { font-family: var(--engraved); font-size: 0.66rem; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-soft); }
+.bento-figure { font-family: var(--display); font-weight: 700; font-size: 2.3rem; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* "Manage →" — pinned to the bottom so links align across a row's tiles. */
+.bento-link {
+  margin-top: auto; align-self: flex-start; padding-top: 4px;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--engraved); font-size: 0.6rem; font-weight: 600; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--gold-deep); text-decoration: none;
+  transition: color 0.18s ease;
+}
+.bento-link::after { content: "→"; transition: transform 0.2s var(--ease); }
+.bento-link:hover { color: var(--gold); }
+.bento-link:hover::after { transform: translateX(4px); }
+
+.bento-sub { font-family: var(--engraved); font-size: 0.64rem; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-soft); }
+.bento-meta { display: flex; flex-wrap: wrap; gap: 7px; }
+.bento-pricetag { display: flex; align-items: center; gap: 8px; font-family: var(--text); font-size: 0.9rem; color: var(--ink-soft); }
+.bento-pricetag .ic { color: var(--gold); font-size: 16px; }
+
+/* Banner — newspaper-masthead fact columns. A double gilt rule separates the
+   eyebrow label from the stat columns; no italic text anywhere in the banner. */
+.bento-banner {
+  flex-direction: row; align-items: center; justify-content: space-between;
+  gap: 24px; flex-wrap: wrap;
+  background: linear-gradient(120deg, var(--paper-2), var(--vellum));
+}
+.bento-banner::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 2px;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold), transparent 78%);
+}
+.banner-masthead { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 14px; }
+.banner-head-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+/* Double horizontal rule with a centre gem — old newspaper column separator. */
+.banner-rule { display: flex; align-items: center; gap: 9px; }
+.banner-rule > span:not(.banner-rule-gem) {
+  flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold-hair));
+}
+.banner-rule > span:last-child { background: linear-gradient(90deg, var(--gold-hair), transparent); }
+.banner-rule-gem {
+  width: 7px; height: 7px; flex: none; border-radius: 50%;
+  background: var(--gold); box-shadow: 0 0 0 2px var(--gold-hair2);
+}
+
+/* Fact columns — each is a large upright numeral + engraved small-caps label. */
+.banner-facts { display: flex; align-items: stretch; flex-wrap: wrap; gap: 0; }
+.bf-col {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 4px 18px; min-width: 0; text-align: center;
+}
+.bf-col:first-child { padding-left: 0; }
+.bf-num {
+  font-family: var(--display); font-weight: 700; font-size: 1.8rem;
+  line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+.bf-raw { font-size: 1.3rem; letter-spacing: 0; }
+.bf-lbl {
+  font-family: var(--engraved); font-size: 0.56rem; font-weight: 600;
+  letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-soft);
+  white-space: nowrap;
+}
+/* Vertical rule separating fact columns. */
+.bf-div {
+  width: 1px; align-self: stretch; margin: 4px 0; flex: none;
+  background: linear-gradient(180deg, transparent, var(--gold-hair), transparent);
+}
+.banner-actions { display: flex; gap: 10px; flex-wrap: wrap; align-self: flex-start; margin-top: 2px; }
+
+/* Products — per-type breakdown bars. */
+.bk-rows { display: flex; flex-direction: column; gap: 14px; }
+.bk-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 12px; }
+.bk-name { font-family: var(--text); font-size: 0.92rem; color: var(--ink); }
+.bk-val { font-family: var(--display); font-weight: 700; font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bk-bar { grid-column: 1 / -1; height: 7px; border-radius: 999px; background: var(--vellum); border: 1px solid var(--gold-hair2); overflow: hidden; }
+.bk-bar > span { display: block; width: 0; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--gold-deep), var(--gold-light)); transition: width 0.6s var(--ease); }
+
+/* Categories / config — labelled value rows on dotted leaders. */
+.bento-list, .cfg-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.bento-list li, .cfg-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px dotted var(--gold-hair); }
+.bento-list li:last-child, .cfg-list li:last-child { border-bottom: none; }
+.bento-list li { font-family: var(--text); font-size: 0.88rem; color: var(--ink-soft); }
+.bento-list strong { font-family: var(--display); font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cfg-k { font-family: var(--text); font-size: 0.9rem; color: var(--ink); }
+.cfg-val { font-family: var(--display); font-weight: 700; color: var(--gold-deep); }
+
+/* Setups — a thumbnail strip. */
+.bento-thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.bt { width: 52px; height: 52px; flex: none; border-radius: var(--r); overflow: hidden; display: grid; place-items: center; background: var(--vellum); border: 1px solid var(--gold-hair); }
+.bt img { width: 100%; height: 100%; object-fit: cover; }
+.bt-more { font-family: var(--engraved); font-weight: 700; font-size: 0.8rem; color: var(--gold-deep); }
+
+/* Featured — product-name chips. */
+.feat-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Soft in-tile empty state (no setups / nothing featured). */
+.bento-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px; text-align: center; border: 1px dashed var(--gold-hair2); border-radius: var(--r); color: var(--ink-faint); }
+.bento-empty .ic { font-size: 26px; color: var(--gold-hair); }
+.bento-empty p { margin: 0; font-family: var(--engraved); font-size: 0.62rem; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-faint); }
+
+.badge-warn { background: rgba(152, 105, 27, 0.16); color: var(--warn); border-color: rgba(152, 105, 27, 0.34); }
+
+/* Tablet: fold to a 6-column grid (products full-width; the rest pair up). */
+@media (max-width: 1080px) {
+  .bento { grid-template-columns: repeat(6, 1fr); }
+  .b-12, .b-8, .b-6 { grid-column: span 6; }
+  .b-4 { grid-column: span 2; }
+  .b-3 { grid-column: span 3; }
+}
+/* Phones: single column. */
+@media (max-width: 680px) {
+  .bento { grid-template-columns: 1fr; }
+  .b-12, .b-8, .b-6, .b-4, .b-3 { grid-column: span 1; }
+  .bento-banner { flex-direction: column; align-items: flex-start; }
+}
+
+/* ───────────────────────── Empty state ───────────────────────── */
+.empty { text-align: center; padding: 58px 20px; color: var(--ink-soft); }
+.empty .ic { font-size: 38px; color: var(--gold-hair); }
+.empty p { margin: 14px 0 16px; font-family: var(--display); font-size: 1.05rem; font-style: italic; }
+
+/* ───────────────────────── Modal — the edit card ───────────────────────── */
+.modal-root { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; }
+.modal-root::before { content: ""; position: absolute; inset: 0; background: rgba(26, 15, 5, 0.55); backdrop-filter: blur(2px); animation: fadeIn 0.2s ease both; }
+.modal {
+  position: relative; width: 100%; max-width: 540px; max-height: 90dvh; overflow: auto;
+  background: var(--paper-2); border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+  border: 1px solid var(--gold-hair); animation: pop 0.32s var(--ease) both;
+}
+.modal::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--gold-deep), var(--gold), var(--gold-deep)); border-radius: var(--r-lg) var(--r-lg) 0 0; }
+.modal-head {
+  position: sticky; top: 0; background: var(--paper-2); z-index: 1;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 22px 24px 15px; border-bottom: 1px solid var(--hair);
+}
+.modal-head h3 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.3rem; color: var(--ink); }
+.modal-head .ic { font-size: 18px; }
+.modal-body { padding: 22px 24px; }
+.modal-text { margin: 0; font-family: var(--text); font-size: 0.95rem; color: var(--ink-soft); line-height: 1.6; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 15px 24px 22px; position: sticky; bottom: 0; background: var(--paper-2); border-top: 1px solid var(--hair-soft); }
+/* Closing: the edit card drops away while the backdrop lifts — closeModal()
+   waits for this to finish before clearing the root. */
+.modal-root.closing { pointer-events: none; }
+.modal-root.closing::before { animation: fadeOut 0.18s ease both; }
+.modal-root.closing .modal { animation: popOut 0.18s ease both; }
+
+/* ───────────────────────── Forms ───────────────────────── */
+.field { margin-bottom: 17px; }
+.field--grow { flex: 1; }
+.field--emoji { max-width: 110px; }
+.field > label { display: block; margin-bottom: 7px; font-family: var(--engraved); font-size: 0.64rem; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-soft); }
+.field .req { color: var(--danger); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.control {
+  width: 100%; font-family: var(--text); font-size: 0.92rem; color: var(--ink);
+  background: var(--paper-3); border: 1px solid var(--gold-hair2); border-radius: var(--r);
+  padding: 12px 14px; outline: none; transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+textarea.control { resize: vertical; min-height: 86px; line-height: 1.5; }
+.control::placeholder { color: var(--ink-faint); font-style: italic; }
+.control:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(169, 130, 60, 0.16); }
+select.control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237B591F' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; }
+/* Hide the up/down spinner on number inputs — they clash with the editorial form styling. */
+.control[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+.control[type="number"]::-webkit-outer-spin-button,
+.control[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.control--center { text-align: center; }
+.control--xs { width: 84px; text-align: center; }
+.field-hint { font-family: var(--text); font-style: italic; font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; }
+.inline-toggles { display: flex; gap: 24px; flex-wrap: wrap; }
+.field-error { color: var(--danger); font-family: var(--text); font-size: 0.78rem; margin-top: 6px; font-weight: 600; font-style: italic; }
+.control.invalid { border-color: var(--danger); }
+.control:disabled { background: var(--vellum); color: var(--ink-soft); cursor: not-allowed; }
+
+/* Image uploader (product form) — a framed plate + actions. */
+.uploader { display: flex; align-items: center; gap: 15px; }
+.uploader-preview {
+  width: 90px; height: 90px; flex: none; border-radius: var(--r); overflow: hidden; display: grid; place-items: center;
+  background: var(--vellum); border: 1px solid var(--gold-hair); box-shadow: inset 0 0 0 2px rgba(255, 251, 240, 0.55);
+}
+.uploader-preview img { width: 100%; height: 100%; object-fit: cover; }
+.uploader-letter { font-family: var(--display); font-weight: 700; font-size: 2rem; color: var(--gold-deep); }
+.uploader-side { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.uploader-side .btn { width: 100%; justify-content: center; }
+
+/* Allergen picker (product form) — a wrapped grid of tickable allergens. */
+.allergen-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 14px; }
+.allergen-picker .chk {
+  display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none;
+  font-family: var(--text); font-size: 0.9rem; color: var(--ink);
+}
+.allergen-picker .chk input {
+  appearance: none; -webkit-appearance: none; flex: none; width: 18px; height: 18px;
+  border: 1px solid var(--gold-hair); border-radius: var(--r); background: var(--paper-3);
+  display: grid; place-items: center; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease;
+}
+.allergen-picker .chk input:checked { background: linear-gradient(180deg, var(--gold-light), var(--gold)); border-color: var(--gold-deep); }
+.allergen-picker .chk input:checked::after { content: ""; width: 5px; height: 9px; margin-top: -2px; border: solid #fffdf6; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.allergen-picker .chk input:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+@media (max-width: 560px) { .allergen-picker { grid-template-columns: repeat(2, 1fr); } }
+
+/* ───────────────────────── Allergen heatmap ─────────────────────────
+   Collection-view read-out: how often each allergen runs through the dishes
+   currently shown. Cell colour is set inline (prevalence × severity); the rest
+   of the chrome lives here. */
+.allergen-map {
+  background: var(--paper-2); border: 1px solid var(--gold-hair); border-radius: var(--r-lg);
+  padding: 16px 18px; margin-bottom: 20px; box-shadow: var(--shadow-sm), var(--inset-top);
+}
+.allergen-map-head { display: flex; align-items: center; gap: 11px; margin-bottom: 13px; }
+.allergen-map-head .ic { font-size: 18px; color: var(--gold-deep); }
+.allergen-map-head h3 { margin: 0; font-family: var(--engraved); font-size: 0.72rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold-deep); }
+.allergen-map-head p { margin: 2px 0 0; font-family: var(--text); font-style: italic; font-size: 0.82rem; color: var(--ink-soft); }
+.allergen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.allergen-cell {
+  display: flex; flex-direction: column; gap: 3px; padding: 9px 10px;
+  border-radius: var(--r); border: 1px solid transparent; min-width: 0;
+}
+.allergen-cell b { font-family: var(--text); font-weight: 600; font-size: 0.82rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.allergen-cell small { font-size: 0.68rem; font-weight: 600; opacity: 0.9; }
+.allergen-legend { display: flex; align-items: center; gap: 9px; margin-top: 13px; }
+.allergen-legend span { font-family: var(--engraved); font-size: 0.56rem; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); }
+.allergen-legend i { flex: 1; height: 6px; border-radius: 999px; background: linear-gradient(90deg, #E6D2A6, #AF854A, #9B3B2E); }
+
+/* Allergen tags — solid chips naming one dish's allergens (detail view). */
+.prod-view-allergens { margin-top: 18px; }
+.prod-view-allergens dt { font-family: var(--engraved); font-size: 0.6rem; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 7px; }
+.allergen-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+.allergen-tag { display: inline-flex; padding: 4px 11px; border-radius: 999px; font-family: var(--text); font-size: 0.82rem; font-weight: 600; }
+.allergen-none { font-family: var(--text); font-style: italic; font-size: 0.88rem; color: var(--ink-faint); }
+
+/* ───────────────────────── Toasts ───────────────────────── */
+.toast-wrap { position: fixed; right: 22px; bottom: 22px; z-index: 80; display: flex; flex-direction: column; gap: 10px; }
+.toast {
+  display: flex; align-items: center; gap: 10px; padding: 13px 17px; border-radius: var(--r);
+  background: linear-gradient(180deg, #543819, var(--brown)); color: #F4E9CE;
+  box-shadow: inset 0 0 0 1px rgba(220, 182, 97, 0.4), var(--shadow-lg);
+  font-family: var(--text); font-size: 0.88rem; font-weight: 500; animation: toastIn 0.3s var(--ease) both;
+}
+.toast.ok { background: linear-gradient(180deg, #5c7a33, #46601f); }
+.toast.warn { background: linear-gradient(180deg, #98691b, #714c10); }
+.toast.danger { background: linear-gradient(180deg, #8c3320, #6b2413); }
+.toast .ic { font-size: 17px; color: var(--gilt); }
+.toast.ok .ic, .toast.warn .ic, .toast.danger .ic { color: rgba(255, 251, 240, 0.9); }
+.toast.out { animation: toastOut 0.25s ease forwards; }
+
+/* ═════════════════════════════════════════════════════════════════
+   LOADING — skeleton shimmer + access indicators
+   ═════════════════════════════════════════════════════════════════ */
+.skeleton {
+  background: linear-gradient(90deg, var(--vellum) 25%, #F1E5C8 37%, var(--vellum) 63%);
+  background-size: 400% 100%; animation: shimmer 1.4s ease infinite; border-radius: var(--r);
+}
+.sk-line { height: 12px; width: 100%; }
+.sk-line.short { width: 55%; }
+.sk-stat { display: flex; flex-direction: column; gap: 12px; }
+.sk-stat .sk-ic { width: 42px; height: 42px; border-radius: 50%; }
+.sk-stat .sk-num { height: 30px; width: 60%; margin-top: 6px; }
+.sk-card { height: 174px; border-radius: var(--r-lg); }
+
+.auth-gate {
+  position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center;
+  /* Same brown curtain as the sign-in welcome veil, so the login → dashboard
+     hand-off is one continuous screen rather than an abrupt swap. */
+  background: radial-gradient(120% 120% at 50% 32%, #6b4a23 0%, #503413 48%, #281a0b 100%);
+  color: #EFE3C6; font-family: var(--text);
+}
+/* A logout / leaving curtain reuses .auth-gate but fades in over the page. */
+.leave-veil { animation: fadeIn 0.3s ease both; }
+.auth-gate .ag-card { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.auth-gate .ag-spin { width: 38px; height: 38px; border-radius: 50%; border: 3px solid rgba(220, 182, 97, 0.22); border-top-color: var(--gilt); animation: agspin 0.8s linear infinite; }
+.auth-gate p { margin: 0; font-family: var(--engraved); font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; color: rgba(220, 182, 97, 0.85); }
+.auth-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 9999; overflow: hidden; background: rgba(169, 130, 60, 0.18); }
+.auth-bar::before { content: ""; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, var(--gilt), transparent); animation: authSlide 1.1s var(--ease) infinite; }
+
+/* ───────────────────────── Entrance stagger ───────────────────────── */
+/* A card fading out just before a delete repaint removes it (HP.animateOut). */
+.item-leave { animation: itemLeave 0.24s ease both; }
+
+.stagger > * { animation: rise 0.45s var(--ease) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger > *:nth-child(3) { animation-delay: 0.10s; }
+.stagger > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger > *:nth-child(5) { animation-delay: 0.18s; }
+.stagger > *:nth-child(6) { animation-delay: 0.22s; }
+.stagger > *:nth-child(7) { animation-delay: 0.26s; }
+.stagger > *:nth-child(8) { animation-delay: 0.30s; }
+.stagger > *:nth-child(n+9) { animation-delay: 0.34s; }
+
+/* ───────────────────────── Motion ───────────────────────── */
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes viewLeave { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-10px); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; } }
+@keyframes popOut { to { opacity: 0; transform: translateY(10px) scale(0.97); } }
+@keyframes itemLeave { to { opacity: 0; transform: scale(0.95); } }
+@keyframes underlineIn { from { transform: scaleX(0); } }
+@keyframes stamp { 0% { transform: scale(0.6); } 45% { transform: scale(1.28); } 100% { transform: scale(1); } }
+@keyframes stampRing { from { box-shadow: 0 0 0 0 rgba(220, 182, 97, 0.55); } to { box-shadow: 0 0 0 16px rgba(220, 182, 97, 0); } }
+@keyframes pageFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+@keyframes shimmer { to { background-position: -100% 0; } }
+@keyframes agspin { to { transform: rotate(360deg); } }
+@keyframes authSlide { from { transform: translateX(-120%); } to { transform: translateX(320%); } }
+@keyframes navIndicator { from { transform: translateY(-50%) scaleY(0); opacity: 0; } to { transform: translateY(-50%) scaleY(1); opacity: 1; } }
+
+/* ───────────────────────── Cross-document view transitions ─────────────────
+   Progressive enhancement (Chromium 126+ / Safari 18.2+): page navigations run
+   as native view transitions — the pages cross-fade, the book-spine sidebar and
+   chapter topbar hold still, and the gilt nav indicator glides to the chosen
+   item. shell.js detects support and skips its manual leave choreography;
+   elsewhere these rules are ignored and the manual fallback runs as before. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+.sidebar { view-transition-name: side-rail; }
+.topbar  { view-transition-name: top-chrome; }
+.nav-item.active::before { view-transition-name: nav-dot; }
+::view-transition-group(nav-dot) { animation-duration: 0.3s; animation-timing-function: var(--ease); }
+/* Match the crossfade to the body's 0.3s pageFade so the hand-off is seamless. */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.3s; }
+/* While the indicator glides between items, skip its local grow-in. */
+html:active-view-transition .nav-item.active::before { animation: none; }
+
+/* ───────────────────────── Responsive ───────────────────────── */
+@media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .sidebar { position: fixed; left: 0; top: 0; z-index: 50; transform: translateX(-100%); transition: transform 0.28s var(--ease); box-shadow: var(--shadow-lg); }
+  .app.nav-open .sidebar { transform: none; }
+  .app.nav-open .scrim { opacity: 1; visibility: visible; }
+  .menu-toggle { display: inline-flex; }
+  .topbar { padding: 14px 18px 14px; }
+  .topbar-title h1 { font-size: 1.5rem; }
+  .view { padding: 22px 18px 46px; }
+  .search { width: 150px; }
+}
+@media (max-width: 560px) {
+  .search { display: none; }
+  .topbar-title p { display: none; }
+  .field-row { grid-template-columns: 1fr; }
+  .seg-btn { font-size: 1rem; padding: 8px 12px 11px; }
+}
+
+/* Phones: the products table reflows into stacked cards. */
+@media (max-width: 600px) {
+  table.data { min-width: 0; }
+  table.data thead { display: none; }
+  table.data, table.data tbody, table.data tr, table.data td { display: block; width: 100%; }
+  table.data tr { border: 1px solid var(--gold-hair); border-radius: var(--r); background: var(--paper-3); margin-bottom: 12px; padding: 6px 2px; }
+  table.data tbody tr:hover { background: var(--paper-3); }
+  table.data td { border: none; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  table.data td::before { content: attr(data-label); font-family: var(--engraved); font-size: 0.6rem; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-soft); font-weight: 700; flex: none; }
+  table.data td:first-child { justify-content: flex-start; }
+  table.data td:first-child::before { display: none; }
+  .row-actions { opacity: 1; justify-content: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   DARK MODE — "candlelit ledger". Same heritage palette read by lamplight:
+   espresso paper, cream ink, gold/status hues lifted so text keeps contrast
+   on dark. Components are token-driven, so most inherit automatically; the
+   handful of surfaces that hard-code light values (body gradient, topbar,
+   skeleton, inset highlights, the select chevron) are overridden below.
+   ═════════════════════════════════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:      #181109;   /* espresso canvas        */
+    --paper-2:    #241A0E;   /* raised card / panel     */
+    --paper-3:    #2B2012;   /* inputs & inner surfaces */
+    --vellum:     #332714;   /* table header / wells    */
+    --ink:        #F1E6C9;   /* warm cream text         */
+    --ink-soft:   #CBB88A;
+    --ink-faint:  #9C8A60;
+
+    --brown:      #3A2710;
+    --brown-deep: #1A1006;
+    --olive:      #9AA15C;
+
+    --gold:       #C9A24C;
+    --gold-deep:  #D9BB78;   /* lifted: gold TEXT must read on dark */
+    --gold-light: #E0C268;
+    --gilt:       #E8C877;
+
+    --ok:         #9FBE63;
+    --warn:       #D6A23C;
+    --danger:     #D9755B;
+
+    --hair:       rgba(220, 182, 97, 0.20);
+    --hair-soft:  rgba(220, 182, 97, 0.10);
+    --gold-hair:  rgba(220, 182, 97, 0.34);
+    --gold-hair2: rgba(220, 182, 97, 0.18);
+
+    --shadow-sm:  0 2px 12px -7px rgba(0, 0, 0, 0.6);
+    --shadow-md:  0 22px 48px -30px rgba(0, 0, 0, 0.7);
+    --shadow-lg:  0 40px 90px -38px rgba(0, 0, 0, 0.75);
+    --inset-top:  inset 0 1px 0 rgba(255, 244, 214, 0.06);
+  }
+
+  body {
+    background-color: var(--paper);
+    background-image:
+      var(--grain),
+      radial-gradient(135% 120% at 50% -10%, #2A1E10 0%, var(--paper) 50%, #100A04 100%);
+  }
+  .topbar { background: linear-gradient(180deg, rgba(36, 26, 14, 0.92), rgba(24, 17, 9, 0.86)); }
+  .skeleton { background: linear-gradient(90deg, var(--vellum) 25%, #43331B 37%, var(--vellum) 63%); }
+
+  /* Tone down the bright printed-edge highlights so they don't read as white rules. */
+  .thumb { box-shadow: inset 0 0 0 2px rgba(255, 244, 214, 0.08); }
+  .uploader-preview { box-shadow: inset 0 0 0 2px rgba(255, 244, 214, 0.08); }
+
+  /* Select chevron: lighter stroke so it shows on the dark input. */
+  select.control {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23D9BB78' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  }
+
+  /* Ghost buttons: the light mode puts dark ink on a light plate; on dark we
+     flip to a light label so it stays readable on the dark plate. */
+  .btn-ghost { color: var(--ink); }
+  .btn-ghost:hover { color: #FFF7E2; }
+
+  /* Icon medallions hard-code a light radial fill — on dark that reads as a
+     glossy white orb. Recast them as a muted bronze coin with a gilt glyph. */
+  .stat-ic,
+  .cat-card .cat-ic {
+    background: radial-gradient(circle at 40% 30%, #5A4424, var(--vellum));
+    color: var(--gilt);
+  }
+}
+
+/* ═══ Print: only the open modal (booking sheet / plan sheet / shopping list).
+   Scoped by the hp-print-modal body flag HP.printModal() sets, so a plain
+   Ctrl+P without a modal still prints the page normally. ═══ */
+@media print {
+  body.hp-print-modal { background: #fff; }
+  body.hp-print-modal .app,
+  body.hp-print-modal .toast-wrap,
+  body.hp-print-modal .auth-bar,
+  body.hp-print-modal .scrim { display: none !important; }
+  body.hp-print-modal .modal-root {
+    position: static !important; inset: auto !important; display: block !important;
+    padding: 0 !important; background: none !important; backdrop-filter: none !important;
+  }
+  body.hp-print-modal .modal {
+    width: 100% !important; max-width: none !important; max-height: none !important;
+    box-shadow: none !important; border: 0 !important; animation: none !important;
+  }
+  body.hp-print-modal .modal-body { max-height: none !important; overflow: visible !important; }
+  body.hp-print-modal .modal-foot,
+  body.hp-print-modal .modal-head .icon-btn { display: none !important; }
+}
+
+/* ═══ Product grid multi-select (bulk operations) ═══ */
+.prod-pick {
+  position: absolute; top: 8px; left: 8px; z-index: 2;
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border-radius: 50%; background: rgba(46, 30, 12, 0.55); cursor: pointer;
+}
+.prod-pick input { width: 15px; height: 15px; accent-color: var(--gilt); cursor: pointer; }
+.bulk-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px 14px; margin-bottom: 14px;
+  border: 1px solid var(--gold-hair); border-radius: 12px; background: var(--vellum);
+}
+.bulk-bar strong { font-size: 0.85rem; margin-right: 4px; }
+.bulk-bar .control--xs { max-width: 180px; }

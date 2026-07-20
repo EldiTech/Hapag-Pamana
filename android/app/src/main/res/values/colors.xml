@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand parchment cream used for the OS launch screen so the cold start
+         blends seamlessly into the in-app splash (matches the logo ground). -->
+    <color name="splash_bg">#F6EFDF</color>
+	<color name="ic_launcher_background">#F6EFDF</color>
+</resources>

@@ -1,0 +1,115 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // True when the caller is signed in with an active staff role from
+    // `roles` (users/{uid}.role). Three staff roles exist — content_moderator
+    // runs the menu dashboard, order_manager runs the Orders dashboard,
+    // master_chef runs the kitchen's prep board — and admin may do all three.
+    function hasRole(roles) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in roles
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active != false;
+    }
+    function isModerator()    { return hasRole(['content_moderator', 'admin']); }
+    function isOrderManager() { return hasRole(['order_manager', 'admin']); }
+    function isMasterChef()   { return hasRole(['master_chef', 'admin']); }
+
+    // Staff role records (the dashboards' access gates). Each staff member
+    // may read their own record; content moderators / admins may read them
+    // all. Role records are managed ONLY from the Firebase console
+    // (Authentication → add user, then a users/{uid} doc) — no browser flow
+    // writes them, so all writes are denied. Deactivate a member by setting
+    // active: false from the console.
+    match /users/{uid} {
+      allow read: if isModerator()
+        || (request.auth != null && request.auth.uid == uid);
+      allow write: if false;
+    }
+
+    // Customer profiles, keyed by the customer's own Firebase Auth uid. A
+    // signed-in customer may create and manage only their own document — but
+    // never the `banned`/`bannedAt` flags, which only the dashboard writes
+    // (User Management ban/unban; the app enforces the flag at login and
+    // live in the member shell). Moderators may read and edit every profile.
+    match /customers/{uid} {
+      allow read:   if isModerator()
+        || (request.auth != null && request.auth.uid == uid);
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if isModerator()
+        || (request.auth != null && request.auth.uid == uid
+            && !request.resource.data.diff(resource.data)
+                 .affectedKeys().hasAny(['banned', 'bannedAt']));
+      allow delete: if false;
+    }
+
+    // Phone-number uniqueness index: doc id is the number's digits, value is
+    // { uid }. A signed-in user may check a single number (get — not list, so
+    // numbers can't be enumerated) and claim an unclaimed one for themselves.
+    // No self-service update/delete means a claimed number can never be
+    // reassigned by its owner; only moderators may move the index when they
+    // edit a member's phone from the dashboard.
+    match /customer_phones/{phone} {
+      allow get:    if request.auth != null;
+      allow create: if isModerator()
+        || (request.auth != null
+            && request.resource.data.uid == request.auth.uid);
+      allow delete: if isModerator();
+      allow update: if false;
+    }
+
+    // Orders filed from the app: the catering wizard's bookings and the
+    // food-pack quotation requests. A signed-in customer may create an order
+    // under their own uid and read back only their own; order managers (and
+    // admins) see and manage all of them from the Orders dashboard. The
+    // master chef reads them too — the prep board streams the confirmed ones.
+    // New orders must arrive as `pending` — only an order manager may move
+    // them along the workflow, so nobody can file a pre-confirmed booking
+    // that skips approval and lands on the prep board. Creation also pins
+    // `createdAt` to the server clock (the app writes serverTimestamp(), so
+    // this only blocks forged dates that would game the newest-first stream)
+    // and forbids the staff-only bookkeeping fields — otherwise a customer
+    // could file a booking born trashed (`deleted`) or carrying a forged
+    // status history.
+    match /bookings/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && !request.resource.data.keys().hasAny(
+             ['deleted', 'deletedAt', 'deletedBy', 'history',
+              'statusUpdatedAt', 'updatedAt', 'updatedBy']);
+      allow read: if isOrderManager() || isMasterChef()
+        || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow update, delete: if isOrderManager();
+    }
+
+    // The Master Chef's ingredient plans, one per confirmed booking (the doc
+    // id IS the booking id). Written from the Master Chef dashboard; the
+    // Orders dashboard may DELETE a plan — it clears the spent plan when a
+    // booking completes, is declined, or is deleted, so the prep board's
+    // scoped stream never re-reads dead events.
+    match /prepPlans/{bookingId} {
+      allow read: if isMasterChef();
+      allow create, update: if isMasterChef();
+      allow delete: if isMasterChef() || isOrderManager();
+    }
+
+    // The Master Chef's recipe book: each dish's ingredients, base portions
+    // and costing (qty, unit, pack cost, pack size → cost per serving).
+    // Recipes named exactly like a menu dish are auto-scaled to each
+    // confirmed order's pax on the prep board.
+    match /recipes/{id} {
+      allow read, write: if isMasterChef();
+    }
+
+    // Menu content — public read, moderator write.
+    match /categories/{id} { allow read: if true; allow write: if isModerator(); }
+    match /products/{id}   { allow read: if true; allow write: if isModerator(); }
+    match /packages/{id}   { allow read: if true; allow write: if isModerator(); }
+    match /setups/{id}     { allow read: if true; allow write: if isModerator(); }
+    match /settings/{id}   { allow read: if true; allow write: if isModerator(); }
+  }
+}

@@ -1,0 +1,214 @@
+/* ════════════════════════════════════════════════════════════════
+   HapagPamana · Master Chef — page-specific styles.
+   Loaded AFTER the shared Heirloom Editorial stylesheet
+   (../../Content Moderator/css/global.css); only what the prep board and
+   the ingredient planner add on top lives here. Everything inherits the
+   shared tokens, so dark mode follows automatically.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Prep board (table) ─────────────────────────────────────────── */
+.chef-row { cursor: pointer; }
+.chef-menu { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.due-past { color: var(--danger); }
+
+/* Type badge — the little icon inside the chip (same as Orders). */
+.order-type .ic { display: inline-flex; }
+.order-type .ic svg { width: 12px; height: 12px; }
+.order-type--pack { background: rgba(169, 130, 60, 0.14); color: var(--gold-deep); border-color: var(--gold-hair2); }
+
+/* ── Ingredient planner (detail modal) ──────────────────────────── */
+/* The planner carries dish sections and input rows — a wider page. */
+.modal-root:has(.plan-sheet) .modal { max-width: 720px; }
+
+.plan-sheet-head {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  padding-bottom: 14px; margin-bottom: 12px;
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.plan-facts {
+  flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 7px 16px; margin-top: 4px;
+}
+.plan-fact {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--text); font-size: 0.85rem; color: var(--ink-soft);
+}
+.plan-fact .ic { display: inline-flex; color: var(--gold-deep); }
+.plan-fact .ic svg { width: 14px; height: 14px; }
+
+.plan-hint {
+  margin: 0 0 16px; font-family: var(--text); font-size: 0.88rem;
+  color: var(--ink-faint); line-height: 1.55; font-style: italic;
+}
+
+/* One ruled section per dish (plus “Whole event” for shared items). */
+.plan-sec {
+  margin-bottom: 12px; padding: 13px 14px; min-width: 0;
+  border: 1px solid var(--hair-soft); border-radius: var(--r-lg);
+  background: var(--paper-3);
+}
+.plan-sec-head { display: flex; align-items: center; gap: 11px; margin-bottom: 11px; }
+.plan-sec-txt { flex: 1; min-width: 0; }
+.plan-sec-txt small {
+  display: block; margin-bottom: 1px; font-family: var(--engraved); font-size: 0.54rem;
+  font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--gold-deep);
+}
+.plan-sec-txt strong {
+  display: block; font-family: var(--display); font-size: 1.05rem; font-weight: 700;
+  color: var(--ink); line-height: 1.25; overflow-wrap: anywhere;
+}
+
+/* Dish photo (or engraved letter tile / basket for shared items). */
+.dish-thumb {
+  flex: 0 0 44px; width: 44px; height: 44px; overflow: hidden;
+  display: grid; place-items: center;
+  border-radius: var(--r); border: 1px solid var(--gold-hair2);
+  background: var(--vellum); color: var(--gold-deep);
+  font-family: var(--display); font-weight: 700; font-size: 1.12rem;
+}
+.dish-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dish-thumb .ic { display: inline-flex; }
+.dish-thumb .ic svg { width: 20px; height: 20px; }
+.dish-pax {
+  flex: 0 0 auto; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  background: rgba(169, 130, 60, 0.14); border: 1px solid var(--gold-hair2);
+  font-family: var(--engraved); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.8px; color: var(--gold-deep);
+}
+
+/* Recipe note under a dish's header — how the amounts were derived. */
+.plan-recipe-note {
+  margin: -3px 0 10px; font-family: var(--text); font-size: 0.78rem;
+  font-style: italic; color: var(--ink-faint); line-height: 1.5;
+}
+.plan-recipe-note--none { color: var(--warn); }
+
+/* “Rescale” — re-apply the recipe over hand-tuned rows. */
+.plan-reload { margin-left: auto; }
+
+/* Ingredient rows — name, amount, unit, est. cost, remove. */
+.ing-rows { display: flex; flex-direction: column; gap: 7px; }
+.ing-row {
+  display: grid; grid-template-columns: 1fr 86px 100px 32px;
+  gap: 7px; align-items: center;
+}
+.ing-row--costed { grid-template-columns: 1fr 80px 88px 68px 32px; }
+.ing-row .control { padding: 8px 10px; font-size: 0.88rem; }
+.ing-row .ing-qty { text-align: right; }
+.ing-cost {
+  text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--display); font-size: 0.95rem; font-weight: 700; color: var(--gold-deep);
+}
+.ing-del { width: 30px; height: 30px; justify-self: center; }
+.ing-del svg { width: 14px; height: 14px; }
+.ing-del:hover { color: var(--danger); border-color: var(--danger); }
+
+.add-ing {
+  margin-top: 9px; padding: 6px 12px; font-size: 0.72rem;
+}
+.add-ing .ic { display: inline-flex; }
+.add-ing .ic svg { width: 13px; height: 13px; }
+
+/* The plan's running cost, totted up at the foot of the sheet. */
+.plan-total {
+  display: flex; align-items: baseline; justify-content: flex-end; gap: 10px;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gold-hair2);
+  font-family: var(--engraved); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-faint);
+}
+.plan-total strong {
+  font-family: var(--display); font-size: 1.35rem; font-weight: 700;
+  letter-spacing: 0; color: var(--ink);
+}
+
+/* ── Dish picker (New recipe → pick from the menu) ──────────────── */
+.dish-pick-search {
+  display: flex; align-items: center; gap: 9px; margin-bottom: 12px;
+  padding: 9px 13px; border: 1px solid var(--hair);
+  border-radius: var(--r-lg); background: var(--paper-3);
+}
+.dish-pick-search:focus-within { border-color: var(--gold); }
+.dish-pick-search .ic { display: inline-flex; color: var(--ink-faint); }
+.dish-pick-search .ic svg { width: 15px; height: 15px; }
+.dish-pick-search input {
+  flex: 1; min-width: 0; border: 0; background: transparent; outline: none;
+  font-family: var(--text); font-size: 0.92rem; color: var(--ink);
+}
+
+.dish-pick-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.dish-pick-row {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  padding: 8px 10px; cursor: pointer;
+  border: 1px solid var(--hair-soft); border-radius: var(--r-lg);
+  background: var(--paper-3); font-family: var(--text);
+  transition: border-color 0.15s ease;
+}
+.dish-pick-row:hover { border-color: var(--gold); }
+.dish-pick-txt { flex: 1; min-width: 0; }
+.dish-pick-txt strong {
+  display: block; font-family: var(--display); font-size: 1rem;
+  font-weight: 700; color: var(--ink); overflow-wrap: anywhere;
+}
+.dish-pick-txt small { font-size: 0.75rem; color: var(--ink-faint); }
+.dish-pick-empty {
+  margin: 0; padding: 16px 10px; text-align: center;
+  font-family: var(--text); font-size: 0.86rem; font-style: italic; color: var(--ink-faint);
+}
+
+/* ── Recipe editor (Recipe Book modal) ──────────────────────────── */
+.modal-root:has(.recipe-sheet) .modal { max-width: 760px; }
+
+.rcp-top { display: flex; gap: 14px; }
+.rcp-portions { width: 130px; flex: 0 0 auto; }
+
+/* Column headings over the ingredient rows — the costing sheet's header. */
+.rcp-head {
+  display: grid; grid-template-columns: 1fr 70px 84px 84px 84px 68px 32px;
+  gap: 7px; margin-bottom: 6px; padding: 0 2px;
+  font-family: var(--engraved); font-size: 0.52rem; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--ink-faint);
+}
+.rcp-head span:nth-child(2), .rcp-head span:nth-child(4),
+.rcp-head span:nth-child(5), .rcp-head span:nth-child(6) { text-align: right; }
+
+.rcp-row {
+  display: grid; grid-template-columns: 1fr 70px 84px 84px 84px 68px 32px;
+  gap: 7px; align-items: center;
+}
+.rcp-row .control { padding: 8px 10px; font-size: 0.88rem; }
+.rcp-row .rcp-qty, .rcp-row .rcp-pcost, .rcp-row .rcp-psize { text-align: right; }
+.rcp-cost {
+  text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--display); font-size: 0.95rem; font-weight: 700; color: var(--gold-deep);
+}
+
+/* Total cost · per serving — the sheet's bottom lines. */
+.rcp-totals {
+  display: flex; justify-content: flex-end; gap: 26px; flex-wrap: wrap;
+  margin: 14px 0 16px; padding-top: 12px; border-top: 1px solid var(--gold-hair2);
+  font-family: var(--engraved); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 1.3px; text-transform: uppercase; color: var(--ink-faint);
+}
+.rcp-totals span { display: inline-flex; align-items: baseline; gap: 9px; }
+.rcp-totals strong {
+  font-family: var(--display); font-size: 1.25rem; font-weight: 700;
+  letter-spacing: 0; color: var(--ink);
+}
+
+@media (max-width: 640px) {
+  .ing-row { grid-template-columns: 1fr 72px 86px 30px; }
+  .ing-row--costed { grid-template-columns: 1fr 68px 80px 60px 30px; }
+  .rcp-top { flex-direction: column; gap: 0; }
+  .rcp-head { display: none; }
+  .rcp-row { grid-template-columns: 1fr 62px 74px 74px 74px 58px 30px; }
+}
+
+/* ═══ Event-day check-off (per-dish "prepped" state) ═══ */
+.plan-sec-head .plan-done { margin-left: auto; }
+.plan-done-note { display: block; font-size: 0.72rem; color: var(--ink-soft); margin-top: 4px; }
+
+/* ═══ Shopping list print view ═══ */
+.shop-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.shop-table th, .shop-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gold-hair); vertical-align: top; }
+.shop-table th { font-family: var(--engraved); font-size: 0.62rem; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-soft); }
+.shop-table td:nth-child(2), .shop-table th:nth-child(2),
+.shop-table td:nth-child(4), .shop-table th:nth-child(4) { text-align: right; }

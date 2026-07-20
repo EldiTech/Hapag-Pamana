@@ -1,0 +1,193 @@
+/* ════════════════════════════════════════════════════════════════
+   HapagPamana · Orders — page-specific styles.
+   Loaded AFTER the shared Heirloom Editorial stylesheet
+   (../../Content Moderator/css/global.css); only what the order register
+   and the booking-sheet modal add on top lives here. Everything inherits
+   the shared tokens, so dark mode follows automatically.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Order register (table) ─────────────────────────────────────── */
+.order-row { cursor: pointer; }
+.order-fn { display: block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Type badge — the little icon inside the chip. */
+.order-type .ic { display: inline-flex; }
+.order-type .ic svg { width: 12px; height: 12px; }
+.order-type--pack { background: rgba(169, 130, 60, 0.14); color: var(--gold-deep); border-color: var(--gold-hair2); }
+
+/* ── Booking sheet (detail modal) ───────────────────────────────── */
+/* The sheet carries photos and a timeline — give it a wider page. */
+.modal-root:has(.order-sheet) .modal { max-width: 700px; }
+
+.order-sheet-head {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  padding-bottom: 14px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.order-received {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
+  font-family: var(--engraved); font-size: 0.6rem; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--ink-faint);
+}
+.order-received .ic { display: inline-flex; }
+.order-received .ic svg { width: 13px; height: 13px; }
+
+/* Each part of the order becomes a ruled ledger section. */
+.order-sec { margin-bottom: 20px; }
+.order-sec:last-child { margin-bottom: 4px; }
+.order-sec h4 {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 12px;
+  font-family: var(--engraved); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 1.6px; text-transform: uppercase; color: var(--gold-deep);
+}
+.order-sec h4::after { content: ""; flex: 1; height: 1px; background: var(--gold-hair2); }
+
+/* At a glance — the occasion's essentials as engraved tiles. */
+.order-hero { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+.hero-tile {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; min-width: 0;
+  background: var(--paper-3); border: 1px solid var(--gold-hair2);
+  border-radius: var(--r-lg); box-shadow: var(--inset-top);
+}
+.hero-tile--wide { grid-column: 1 / -1; }
+.hero-ic {
+  flex: 0 0 auto; display: grid; place-items: center; width: 30px; height: 30px;
+  border-radius: 50%; background: rgba(169, 130, 60, 0.12); color: var(--gold-deep);
+}
+.hero-ic .ic { display: inline-flex; }
+.hero-ic .ic svg { width: 15px; height: 15px; }
+.hero-txt { min-width: 0; }
+.hero-txt small {
+  display: block; margin-bottom: 2px; font-family: var(--engraved); font-size: 0.56rem;
+  font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-faint);
+}
+.hero-txt strong {
+  font-family: var(--display); font-size: 1.08rem; font-weight: 700;
+  color: var(--ink); line-height: 1.25; overflow-wrap: anywhere;
+}
+
+/* The client — who's asking, with tap-to-call / tap-to-write chips. */
+.order-client { display: flex; align-items: center; gap: 13px; }
+.client-ava {
+  flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: linear-gradient(160deg, var(--gold-light), var(--gold-deep));
+  color: #FFFBF0; font-family: var(--display); font-weight: 700; font-size: 1.2rem;
+}
+.client-txt { min-width: 0; }
+.client-txt strong {
+  display: block; font-family: var(--display); font-size: 1.14rem;
+  font-weight: 700; color: var(--ink);
+}
+.client-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+.contact-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px;
+  border: 1px solid var(--gold-hair2); border-radius: 999px; background: var(--paper-3);
+  font-family: var(--text); font-size: 0.83rem; color: var(--ink-soft); text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.contact-chip:hover { border-color: var(--gold); color: var(--gold-deep); }
+.contact-chip .ic { display: inline-flex; }
+.contact-chip .ic svg { width: 13px; height: 13px; }
+
+/* The day's schedule — one chronological rail from setup to pack-out. */
+.order-times { list-style: none; margin: 0; padding: 0; }
+.tl-row { display: flex; align-items: stretch; gap: 14px; }
+.tl-row time {
+  flex: 0 0 78px; padding: 7px 0; text-align: right; white-space: nowrap;
+  font-family: var(--display); font-size: 1.02rem; font-weight: 700; color: var(--ink);
+}
+.tl-rail { position: relative; flex: 0 0 11px; display: flex; justify-content: center; }
+.tl-rail::before {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 1px;
+  background: var(--gold-hair2);
+}
+.tl-row:first-child .tl-rail::before { top: 16px; }
+.tl-row:last-child .tl-rail::before { bottom: calc(100% - 16px); }
+.tl-dot {
+  position: relative; z-index: 1; margin-top: 12px; width: 9px; height: 9px;
+  border-radius: 50%; background: var(--gold);
+  border: 2px solid var(--paper-2); box-shadow: 0 0 0 1px var(--gold-hair);
+}
+.tl-txt { min-width: 0; padding: 7px 0; }
+.tl-txt strong {
+  display: block; font-family: var(--text); font-size: 0.92rem;
+  font-weight: 600; color: var(--ink);
+}
+.tl-txt small { font-family: var(--text); font-size: 0.78rem; color: var(--ink-faint); }
+
+/* Package & menu — the chosen package as a banner, each dish as a card
+   with its photo (or an engraved letter tile while it loads / when the
+   dish matches no product). */
+.order-pkg, .order-addons {
+  display: flex; align-items: flex-start; gap: 11px; padding: 11px 14px;
+  border: 1px solid var(--gold-hair2); border-radius: var(--r-lg);
+  background: rgba(169, 130, 60, 0.07);
+}
+.order-pkg { margin-bottom: 10px; }
+.order-addons { margin-top: 10px; background: transparent; }
+.order-pkg > .ic, .order-addons > .ic { display: inline-flex; margin-top: 2px; color: var(--gold-deep); }
+.order-pkg .ic svg, .order-addons .ic svg { width: 16px; height: 16px; }
+.order-pkg small, .order-addons small {
+  display: block; margin-bottom: 2px; font-family: var(--engraved); font-size: 0.54rem;
+  font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-faint);
+}
+.order-pkg strong, .order-addons strong {
+  font-family: var(--display); font-size: 1.04rem; font-weight: 700; color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.dish-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.dish-card {
+  display: flex; align-items: center; gap: 11px; padding: 8px 10px; min-width: 0;
+  border: 1px solid var(--hair-soft); border-radius: var(--r-lg); background: var(--paper-3);
+}
+.dish-thumb {
+  flex: 0 0 46px; width: 46px; height: 46px; overflow: hidden;
+  display: grid; place-items: center;
+  border-radius: var(--r); border: 1px solid var(--gold-hair2);
+  background: var(--vellum); color: var(--gold-deep);
+  font-family: var(--display); font-weight: 700; font-size: 1.15rem;
+}
+.dish-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dish-txt { flex: 1; min-width: 0; }
+.dish-txt small {
+  display: block; margin-bottom: 1px; font-family: var(--engraved); font-size: 0.54rem;
+  font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--gold-deep);
+}
+.dish-txt strong {
+  display: block; font-family: var(--text); font-size: 0.88rem; font-weight: 600;
+  color: var(--ink); line-height: 1.3; overflow-wrap: anywhere;
+}
+.dish-pax {
+  flex: 0 0 auto; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  background: rgba(169, 130, 60, 0.14); border: 1px solid var(--gold-hair2);
+  font-family: var(--engraved); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.8px; color: var(--gold-deep);
+}
+
+/* More details — label/value pairs for anything the app adds later. */
+.order-facts { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 22px; }
+.order-fact { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 3px 0; }
+.order-fact dt {
+  flex-shrink: 0; font-family: var(--engraved); font-size: 0.6rem; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--ink-faint);
+}
+.order-fact::before { content: none; }
+.order-fact dd {
+  margin: 0; min-width: 0; overflow-wrap: anywhere;
+  font-family: var(--text); font-size: 0.92rem; color: var(--ink);
+}
+/* Long values take the full row. */
+.order-fact:has(dd br),
+.order-facts .order-fact:only-child { grid-column: 1 / -1; }
+
+@media (max-width: 640px) {
+  .order-hero { grid-template-columns: 1fr 1fr; }
+  .dish-grid { grid-template-columns: 1fr; }
+  .order-facts { grid-template-columns: 1fr; }
+}
+
+/* Modal foot: Delete sits apart on the left; status actions on the right. */
+.order-del { margin-right: auto; }
+.order-del .ic svg { width: 14px; height: 14px; }
+.order-del:hover { color: var(--danger); border-color: var(--danger); }

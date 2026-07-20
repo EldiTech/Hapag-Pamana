@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Settings</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../css/global.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <!-- Settings bento — same 12-column board as the Overview, so the two
+         pages read as one system. App features runs tall on the left
+         (8 wide × 2 rows); Regional and Content data stack beside it;
+         the allergen taxonomy takes the full width below. -->
+    <div class="bento settings-bento">
+      <section class="bento-tile b-8 rs-2">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="eye"></span></span>
+            <span class="bento-label">App features</span>
+          </div>
+        </div>
+        <p class="bento-desc">What guests see in the HapagPamana app.</p>
+        <div id="settingsToggles"></div>
+      </section>
+
+      <section class="bento-tile b-4">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="peso"></span></span>
+            <span class="bento-label">Regional</span>
+          </div>
+        </div>
+        <div id="settingsRegional"></div>
+      </section>
+
+      <section class="bento-tile b-4">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="box"></span></span>
+            <span class="bento-label">Content data</span>
+          </div>
+        </div>
+        <p class="bento-desc">Import content from a JSON export (merged by id), or erase every product, package, category and setup photo and restore only the built-in category list.</p>
+        <div class="card-foot">
+          <button class="btn btn-ghost" id="importData"><span class="ic" data-icon="upload"></span>Import from JSON</button>
+          <button class="btn btn-danger" id="resetData"><span class="ic" data-icon="trash"></span>Erase all content</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+      </section>
+
+      <section class="bento-tile b-12">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="trash"></span></span>
+            <span class="bento-label">Trash</span>
+          </div>
+        </div>
+        <p class="bento-desc">Deleted products, categories, packages and setup photos wait here — restore them, or delete them forever.</p>
+        <div id="trashRows"></div>
+      </section>
+
+      <section class="bento-tile b-12">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="leaf"></span></span>
+            <span class="bento-label">Allergens</span>
+          </div>
+          <button class="btn btn-primary" id="allergenAdd"><span class="ic" data-icon="plus"></span>Add allergen</button>
+        </div>
+        <p class="bento-desc">The tags dishes can carry — powers the allergen chips and heatmaps in the app.</p>
+        <div id="allergenRows"></div>
+        <div class="card-foot">
+          <button class="btn btn-ghost" id="allergenDefaults"><span class="ic" data-icon="grid"></span>Restore default allergens</button>
+        </div>
+      </section>
+    </div>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../js/store.js"></script>
+  <script src="../js/settings.js"></script>
+</body>
+</html>

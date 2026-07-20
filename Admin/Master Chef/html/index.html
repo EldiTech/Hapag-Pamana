@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Master Chef</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <!-- The Master Chef dashboard shares the Heirloom Editorial design system
+       with the other staff portals — one stylesheet, three portals. -->
+  <link rel="stylesheet" href="../../Content%20Moderator/css/global.css" />
+  <link rel="stylesheet" href="../css/chef.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <!-- The prep board — every CONFIRMED order (accepted on the Orders
+         dashboard) streams in live for ingredient planning. A stat ledger up
+         top, then the board: plan-status tabs, type chips, search, and the
+         ingredient planner. The sidebar exports one aggregated shopping
+         list across every planned order. -->
+    <div class="stat-grid" id="chefStats"></div>
+
+    <div class="seg" id="planSeg" role="tablist" aria-label="Plan status"></div>
+    <div class="toolbar" id="typeChips"></div>
+
+    <section class="panel">
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Client</th>
+              <th>Type</th>
+              <th>Menu</th>
+              <th>Pax</th>
+              <th>Ingredient plan</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="orderRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../js/chef-common.js"></script>
+  <script src="../js/chef.js"></script>
+</body>
+</html>
