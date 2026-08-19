@@ -36,6 +36,7 @@ class AppTextField extends StatefulWidget {
     this.onTap,
     this.onChanged,
     this.autofillHints,
+    this.inputFormatters,
   });
 
   final String? label;
@@ -60,6 +61,10 @@ class AppTextField extends StatefulWidget {
   final VoidCallback? onTap;
   final ValueChanged<String>? onChanged;
   final Iterable<String>? autofillHints;
+
+  /// Keystroke-level guards (digits only, length caps, …) so a field can refuse
+  /// characters it will never accept rather than complain about them later.
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();
@@ -100,6 +105,7 @@ class _AppTextFieldState extends State<AppTextField>
       onTap: widget.onTap,
       onChanged: widget.onChanged,
       autofillHints: widget.autofillHints,
+      inputFormatters: widget.inputFormatters,
       decoration: InputDecoration(
         hintText: widget.hint,
         errorText: widget.errorText,

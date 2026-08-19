@@ -12,7 +12,7 @@
    so the customer's original answers are never touched and two managers
    racing on the same order can't double-apply a transition.
 
-   Reading/updating bookings requires the order_manager (or admin) role —
+   Reading/updating bookings requires the marketing_admin (or admin) role —
    see firestore.rules. */
 (function () {
   "use strict";
@@ -90,6 +90,7 @@
         loaded = true;
         renderAll();
         syncSheet(); // the open detail sheet follows its doc live
+        openDeepLinkedOrder();
       },
       (e) => {
         console.error("HapagPamana: couldn't load the orders —", e);
@@ -103,6 +104,21 @@
       });
   }
   window.addEventListener("beforeunload", () => { if (unsub) unsub(); });
+
+  /* Landing here from the booking calendar's day popover ("Open in Orders")
+     jumps straight to that order's sheet — the calendar links with
+     ?order=<id> rather than duplicating the booking sheet on its own page.
+     Only fires once: after that the sheet is just whatever the user has
+     open, deep link or not. */
+  let deepLinkOpened = false;
+  function openDeepLinkedOrder() {
+    if (deepLinkOpened) return;
+    const id = new URLSearchParams(location.search).get("order");
+    if (!id) return;
+    deepLinkOpened = true;
+    const o = orders.find((x) => x.id === id);
+    if (o) openSheet(o);
+  }
 
   /* ── New-pending-order notification ───────────────────────────────────────
      Each snapshot is diffed against the last known ids; genuinely new
@@ -147,6 +163,47 @@
   const statusOf = (o) => (STATUS_META[o.status] ? o.status : "pending");
   const typeOf = (o) => (String(o.bookingType || "").toLowerCase() === "food pack" ? "Food Pack" : "Catering");
 
+  /* ── The downpayment ──────────────────────────────────────────────────────
+     The app collects 50% of an order's total through PayMongo before the
+     client is told their date is held, and writes the result back onto the
+     booking. It matters here because confirming an order puts it on the
+     Master Chef's prep board — so an order that hasn't paid its downpayment
+     is one to chase, not to confirm.
+
+     `none` is the state of every order filed before the gate existed; those
+     were settled by hand, so they're shown as nothing at all rather than as
+     unpaid. `quote_needed` means the app had no package price to halve (a
+     booking started without picking a package) — the downpayment is yours to
+     arrange with the client directly. */
+  const PAYMENT_META = {
+    awaiting:     { label: "Unpaid",     badge: "badge-warn",   chase: true  },
+    paid:         { label: "Paid 50%",   badge: "badge-ok",     chase: false },
+    quote_needed: { label: "To quote",   badge: "badge-cat",    chase: false },
+  };
+  const paymentOf = (o) => String(o.paymentStatus || "none");
+  const paymentMeta = (o) => PAYMENT_META[paymentOf(o)] || null;
+  // True only for an order the gate asked to pay, which hasn't. This is what
+  // locks confirmation (see confirmOrder) — `quote_needed` and the pre-gate
+  // `none` never went through PayMongo, so there's nothing to wait for on them.
+  const isUnpaid = (o) => paymentOf(o) === "awaiting";
+  const isPaid = (o) => paymentOf(o) === "paid";
+  /* A downpayment the order manager took by hand — cash over the counter, a
+     bank transfer, a direct GCash — and recorded here (see recordPayment).
+     PayMongo never saw it, so the sheet says who did instead of showing a
+     payment reference that doesn't exist in the dashboard. */
+  const isOfflinePay = (o) => String(o.paymentSource || "") === "offline";
+  const takenByOf = (o) => String(o.paymentTakenByName || "").trim();
+  // The downpayment may still be collected on these; a trashed, completed or
+  // declined order is nobody's to take money for.
+  const mayRecordPayment = (o) =>
+    !o.deleted && !isPaid(o) && ["pending", "confirmed"].includes(statusOf(o));
+
+  const money = (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    return "₱" + Math.round(n).toLocaleString("en-PH");
+  };
+
   /* The booking sheet's vocabulary, mirroring the app's wizard steps. Only
      the fields the client actually filled in are shown (the repository drops
      blanks on submit). The catering wizard fills one dish per course; the
@@ -178,14 +235,87 @@
     "uid", "status", "createdAt", "statusUpdatedAt", "bookingType",
     "history", "updatedAt", "updatedBy", "deleted", "deletedAt", "deletedBy",
   ]);
+  /* Structured state other desks write onto the order — not facts about the
+     booking, and not text. "More details" prints values with HP.esc, which
+     stringifies an object to "[object Object]", so these have to be named
+     rather than left to fall through: the fulfilment record was doing exactly
+     that on the sheet. The Team Leader and Logistics desks render it properly
+     from their own rail (assets/hp-fulfilment.js). */
+  const INTERNAL_KEYS = new Set([
+    "fulfilment",
+  ]);
   // Every key the sheet already presents somewhere; anything else the app
   // adds later still shows up under "More details".
   const SHEET_KEYS = new Set([
     "kindOfFunction", "functionDate", "venue", "address", "pax",
     "clientName", "contactNumber", "email", "package", "menu", "menuAddOns",
+    // The downpayment, which has its own section (see paymentHTML). The two
+    // checkout keys are PayMongo plumbing the app uses to resume an abandoned
+    // payment — of no use on a booking sheet, so they're hidden rather than
+    // dumped into "More details".
+    "paymentStatus", "paymentTotal", "paymentDue", "paymentPaid", "paidAt",
+    // The total's breakdown — presented under it in paymentHTML.
+    "packageTotal", "addOnsTotal",
+    "paymentRef", "paymentMethod", "checkoutSessionId", "checkoutUrl",
+    // Written when a manager records a payment taken by hand (recordPayment);
+    // the sheet reads them in paymentHTML.
+    "paymentSource", "paymentTakenBy", "paymentTakenByName",
     ...COURSES.map(([k]) => k),
     ...TIMELINE.map(([k]) => k),
   ]);
+
+  /* Every course on an order, in the order the app asked for them.
+
+     The app used to fill a FIXED thirteen-course spread, which is what COURSES
+     above lists. It no longer does: the booking wizard now builds its questions
+     from the booked package's own inclusions, so a package including "Pasta ·
+     Pork · Dessert · Sandwich or Appetizer" writes `pasta`, `pork`, `dessert`
+     and `sandwichOrAppetizer` — keys COURSES has never heard of.
+
+     Reading only COURSES meant those dishes fell through to "More details",
+     where the kitchen does not look for food. An order would show one dish on
+     the sheet and the chef would cook one dish, while the client had ordered
+     four. This finds them instead: a string field that isn't bookkeeping, and
+     isn't already shown elsewhere on the sheet, is a course.
+
+     COURSES still leads, so the legacy keys keep their proper labels and their
+     familiar order (Appetizer before Soup before Salad …); anything beyond it
+     follows, labelled from the key itself the way the wizard wrote it. */
+  function courseKeys(o) {
+    const out = [];
+    const seen = new Set();
+    COURSES.forEach(([k, label]) => {
+      if (val(o, k)) { out.push({ key: k, label }); seen.add(k); }
+    });
+    Object.keys(o).sort().forEach((k) => {
+      if (seen.has(k) || k === "id") return;
+      if (META_KEYS.has(k) || SHEET_KEYS.has(k) || INTERNAL_KEYS.has(k)) return;
+      // Only a plain non-empty string names a dish. Objects are workflow state
+      // (see INTERNAL_KEYS) and numbers/booleans are never a course.
+      if (typeof o[k] !== "string" || !o[k].trim()) return;
+      out.push({ key: k, label: labelFor(k) });
+    });
+    return out;
+  }
+
+  /* A field key as the wizard wrote it, turned back into the words the client
+     saw: "sandwichOrAppetizer" → "Sandwich or Appetizer". The wizard builds
+     these keys by camel-casing the moderator's inclusion line, so splitting on
+     the case boundaries recovers it — with "or" kept lowercase, since that is
+     how the inclusion reads and how the client chose it. */
+  function labelFor(key) {
+    const words = String(key)
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .split(/\s+/)
+      .filter(Boolean);
+    return words
+      .map((w, i) => {
+        const lower = w.toLowerCase();
+        if (i > 0 && lower === "or") return "or";
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+      })
+      .join(" ");
+  }
 
   /* ── Small helpers ────────────────────────────────────────────────────── */
   const ts = (v) => (v && typeof v.toMillis === "function" ? v.toMillis() : 0);
@@ -219,6 +349,22 @@
   function statusBadge(o) {
     const m = STATUS_META[statusOf(o)];
     return `<span class="badge ${m.badge}"><span class="dot"></span>${m.label}</span>`;
+  }
+
+  /* The downpayment badge, shown under the status in the table. Silent on
+     orders that predate the gate — a blank is the honest answer there. */
+  function paymentBadge(o) {
+    const m = paymentMeta(o);
+    if (!m) return "";
+    const amount = m.chase ? money(o.paymentDue) : money(o.paymentPaid || o.paymentDue);
+    const taken = takenByOf(o);
+    return `<span class="badge ${m.badge}" title="${HP.esc(
+      m.chase ? "This order's downpayment hasn't been paid yet — it can't be confirmed until it has." :
+      isPaid(o) ? (isOfflinePay(o)
+        ? `Taken outside PayMongo and recorded here${taken ? " by " + taken : ""}.`
+        : "The client has paid the 50% downpayment through PayMongo.") :
+      "No package price to halve — arrange the downpayment with the client.")}">${
+      HP.esc(m.label)}${amount ? " · " + HP.esc(amount) : ""}</span>`;
   }
 
   // One-line description for the table: the function kind, or the first menu
@@ -407,13 +553,17 @@
         <td>${HP.esc(String(o.functionDate || "").trim() || "—")}</td>
         <td>${HP.esc(String(o.pax || "").trim() || "—")}</td>
         <td>${fmtDate(o.createdAt)}</td>
-        <td>${statusBadge(o)}</td>
+        <td>${statusBadge(o)}${
+          paymentBadge(o) ? `<div class="cell-pay">${paymentBadge(o)}</div>` : ""}</td>
         <td>
           <div class="row-actions">
             <button class="icon-btn" data-act="view" title="View the booking sheet" aria-label="View ${HP.esc(clientName(o))}'s order"><span class="ic">${HP.icon("eye")}</span></button>
-            ${statusOf(o) === "pending"
-              ? `<button class="icon-btn" data-act="confirm" title="Confirm this order" aria-label="Confirm ${HP.esc(clientName(o))}'s order"><span class="ic">${HP.icon("check")}</span></button>`
-              : ""}
+            ${statusOf(o) !== "pending" ? ""
+              : isUnpaid(o)
+                // Locked, and says so on hover — clicking explains why and
+                // offers to record a payment taken by hand.
+                ? `<button class="icon-btn is-locked" data-act="confirm" title="Locked — ${HP.esc(clientName(o))} hasn't paid the downpayment" aria-label="Confirm is locked — ${HP.esc(clientName(o))} hasn't paid the downpayment"><span class="ic">${HP.icon("ban")}</span></button>`
+                : `<button class="icon-btn" data-act="confirm" title="Confirm this order" aria-label="Confirm ${HP.esc(clientName(o))}'s order"><span class="ic">${HP.icon("check")}</span></button>`}
           </div>
         </td>
       </tr>`).join("") + olderRowHTML());
@@ -439,12 +589,128 @@
     else if (btn.dataset.act === "confirm") confirmOrder(o);
   }
 
-  // Confirming feeds the Master Chef's prep board — never one accidental
-  // click away.
+  /* Confirming feeds the Master Chef's prep board — never one accidental click
+     away, and never before the downpayment is in.
+
+     The downpayment is the gate: an order still `awaiting` can't be confirmed at
+     all, because confirming tells the kitchen to start planning for an event
+     nobody has paid to hold. The way through is the money, not an override — so
+     the block explains itself and offers the one legitimate answer, which is to
+     record a payment you took another way (recordPaymentModal). The same rule is
+     re-checked inside the transaction, against the order's live state, so this
+     can't be walked around with a stale row. */
   function confirmOrder(o) {
+    if (isUnpaid(o)) return paymentLockedModal(o);
     HP.confirmModal("Confirm order",
       `Confirm ${clientName(o)}'s ${typeOf(o).toLowerCase()} order? It goes straight onto the Master Chef's prep board.`,
       () => setStatus(o, "confirmed"), false);
+  }
+
+  // Why Confirm is locked, and the two ways it unlocks: the client pays in the
+  // app, or you record what you took by hand.
+  function paymentLockedModal(o) {
+    const due = money(o.paymentDue);
+    HP.openModal("The downpayment hasn't landed", `
+      <p class="modal-text">${HP.esc(clientName(o))} hasn't paid the ${
+        HP.esc(due || "50%")} downpayment, so this order can't be confirmed
+        onto the Master Chef's prep board yet.</p>
+      <p class="modal-text">The client can settle it themselves from Order
+        Tracking in the app. If you've already taken it in cash, by transfer or
+        over GCash, record it here and the order clears for confirmation.</p>`,
+      `<button class="btn btn-ghost" data-close>Close</button>
+       <button class="btn btn-primary" id="lkRecord"><span class="ic">${HP.icon("peso")}</span>Record a payment</button>`);
+    document.getElementById("lkRecord").addEventListener("click", () => {
+      HP.closeModal();
+      recordPaymentModal(o);
+    });
+  }
+
+  /* Records a downpayment the order manager took outside PayMongo. It writes the
+     same keys the app's PayMongo flow writes — so the client's Order Tracking
+     reads "Downpayment received" either way — plus `paymentSource: "offline"`
+     and who took it, which is what keeps the two apart on the sheet and in any
+     later reconciliation against the PayMongo dashboard. */
+  function recordPaymentModal(o) {
+    const due = Number(o.paymentDue) || 0;
+    const METHODS = ["Cash", "Bank transfer", "GCash (direct)", "Maya (direct)", "Cheque"];
+    HP.openModal(`Record a payment — ${clientName(o)}`, `
+      <p class="modal-text">Only once the money is actually in hand. This tells
+        the client's app their downpayment is received, and clears the order for
+        confirmation.</p>
+      <form id="payForm" novalidate>
+        <div class="field-row">
+          <div class="field"><label>Amount received (₱) <span class="req">*</span></label>
+            <input class="control" name="amount" type="number" min="1" step="1"
+              inputmode="numeric" value="${due > 0 ? Math.round(due) : ""}"
+              placeholder="e.g. 2500">
+            <div class="field-hint">${due > 0
+              ? `The 50% downpayment on this order is ${HP.esc(money(due))}.`
+              : "This order was filed without a priced package, so there's no figure to go by."}</div>
+            <div class="field-error" data-err="amount" hidden></div></div>
+          <div class="field"><label>Taken as <span class="req">*</span></label>
+            <select class="control" name="method">
+              ${METHODS.map((m) => `<option>${HP.esc(m)}</option>`).join("")}
+            </select>
+            <div class="field-hint">How the client handed it over.</div></div>
+        </div>
+        <div class="field"><label>Reference or note</label>
+          <input class="control" name="note" maxlength="120"
+            placeholder="e.g. receipt no. 0142">
+          <div class="field-hint">Your own reconciliation trail. The client sees
+            it as the payment's reference in the app.</div></div>
+      </form>`,
+      `<button class="btn btn-ghost" data-close>Cancel</button>
+       <button class="btn btn-primary" id="paySave"><span class="ic">${HP.icon("check")}</span>Record the payment</button>`);
+    document.getElementById("paySave").addEventListener("click", () => {
+      const f = document.getElementById("payForm");
+      const amount = Number(f.elements.amount.value);
+      if (!HP.setErr(f, "amount", Number.isFinite(amount) && amount > 0
+        ? "" : "Enter the amount you received.")) return;
+      recordPayment(o, {
+        amount: Math.round(amount),
+        method: f.elements.method.value,
+        note: f.elements.note.value.trim(),
+      });
+    });
+  }
+
+  async function recordPayment(o, { amount, method, note }) {
+    const btn = document.getElementById("paySave");
+    if (btn) btn.disabled = true;
+    const me = HP.FB && HP.FB.auth.currentUser ? HP.FB.auth.currentUser.uid : null;
+    // The same keys the app's PayMongo flow writes, so the client's Order
+    // Tracking reads this as a settled downpayment either way.
+    const paid = {
+      paymentStatus: "paid",
+      paymentPaid: amount,
+      paymentMethod: method,
+      ...(note ? { paymentRef: note } : {}),
+      paymentSource: "offline",
+      paymentTakenBy: me,
+      paymentTakenByName: HP.user.name || "",
+    };
+    const wasPending = statusOf(o) === "pending";
+    try {
+      await db.collection("bookings").doc(o.id).update({
+        ...paid,
+        paidAt: firebase.firestore.FieldValue.serverTimestamp(),
+        ...auditStamp(),
+      });
+      // Older, non-streamed rows update in place (the live window repaints from
+      // the snapshot). Only real values go into the local copy — a
+      // serverTimestamp() sentinel would read as a broken date until the
+      // snapshot lands, so the client clock stands in for it.
+      Object.assign(o, paid, { paidAt: firebase.firestore.Timestamp.now() });
+      mergeOrders();
+      renderAll();
+      HP.closeModal();
+      HP.toast(`${money(amount)} recorded for ${clientName(o)}${
+        wasPending ? " — the order can now be confirmed." : "."}`);
+    } catch (e) {
+      console.error("HapagPamana: couldn't record the payment —", e);
+      if (btn) btn.disabled = false;
+      HP.toast("Couldn't record the payment — check your connection and the Firestore rules.", "danger");
+    }
   }
 
   /* ── Status workflow ──────────────────────────────────────────────────── */
@@ -483,6 +749,10 @@
 
   async function setStatus(o, status) {
     const ref = db.collection("bookings").doc(o.id);
+    // The order as the transaction actually found it, kept for the
+    // recommendation tally below — that has to count what was really completed,
+    // not the possibly-stale row this click came from.
+    let committed = null;
     try {
       await db.runTransaction(async (tx) => {
         const snap = await tx.get(ref);
@@ -494,6 +764,12 @@
         if (!NEXT_STATUS[cur].includes(status)) {
           const err = new Error("stale transition"); err.code = "hp/stale"; err.current = cur; throw err;
         }
+        // The downpayment gate, judged on the order as it stands right now —
+        // not on the row this click came from, which may have been painted
+        // before the client's payment was reversed or the order re-filed.
+        if (status === "confirmed" && isUnpaid(snap.data())) {
+          const err = new Error("downpayment outstanding"); err.code = "hp/unpaid"; throw err;
+        }
         // update(), never a merge-set: a set() would resurrect a booking
         // another manager deleted between the sheet opening and this click.
         tx.update(ref, {
@@ -502,6 +778,10 @@
           history: firebase.firestore.FieldValue.arrayUnion(historyEntry(status)),
           ...auditStamp(),
         });
+        // Only set once the move is real. The `cur === status` return above
+        // leaves this null, which is what stops a second manager's duplicate
+        // click from counting the same order twice.
+        committed = snap.data();
       });
       // The snapshot listener repaints the live window; update in place (and
       // repaint) so older, non-streamed rows and the open modal follow too.
@@ -515,12 +795,23 @@
         db.collection("prepPlans").doc(o.id).delete()
           .catch((e) => console.warn("HapagPamana: couldn't clear the prep plan —", e));
       }
+      // A completed order is the one event the recommendation engine counts —
+      // see Admin/assets/hp-recommend.js for why this desk keeps that tally at
+      // all. Deliberately NOT awaited: the manager's click is finished, the
+      // status is written, and a statistic must never hold up the toast or fail
+      // a move that already succeeded. `committed` is null when the transaction
+      // made no move (a duplicate click), which is what keeps the count honest.
+      if (status === "completed" && committed && window.HPRec) {
+        HPRec.recordCompletion(db, committed);
+      }
       HP.toast(STATUS_TOAST[status](o), status === "declined" ? "warn" : "ok");
     } catch (e) {
       if (e && (e.code === "hp/gone" || e.code === "not-found")) {
         HP.toast(`${clientName(o)}'s order no longer exists — it was deleted in another session.`, "warn");
       } else if (e && e.code === "hp/stale") {
         HP.toast(`Couldn't apply that — ${clientName(o)}'s order is now ${STATUS_META[e.current].label.toLowerCase()} (changed in another session).`, "warn");
+      } else if (e && e.code === "hp/unpaid") {
+        HP.toast(`Couldn't confirm — ${clientName(o)}'s downpayment is outstanding as of right now.`, "warn");
       } else {
         console.error(e);
         HP.toast("Couldn't update the order — check the Firestore rules.", "danger");
@@ -652,12 +943,12 @@
         <div class="hero-txt"><small>${HP.esc(label)}</small><strong>${HP.esc(value)}</strong></div>
       </div>` : "");
     const pax = val(o, "pax");
-    const venue = [val(o, "venue"), val(o, "address")].filter(Boolean).join(" · ");
     const html =
       tile("calendar", "Date of function", val(o, "functionDate")) +
       tile("users", "Guests", pax && (/^\d+$/.test(pax) ? `${pax} pax` : pax)) +
       tile("party", "Kind of function", val(o, "kindOfFunction")) +
-      tile("pin", "Venue & address", venue, true);
+      tile("pin", "Venue", val(o, "venue"), true) +
+      tile("pin", "Address", val(o, "address"), true);
     return html ? `<div class="order-hero">${html}</div>` : "";
   }
 
@@ -721,8 +1012,8 @@
         cards.push(dishCard((m ? m[1] : line).trim(), "Menu", m ? `${m[2]} pax` : ""));
       });
     } else {
-      COURSES.forEach(([k, label]) => {
-        const v = val(o, k);
+      courseKeys(o).forEach(({ key, label }) => {
+        const v = val(o, key);
         if (v) cards.push(dishCard(v, label, ""));
       });
     }
@@ -739,10 +1030,66 @@
     </section>`;
   }
 
-  // Anything the app adds later still shows up, under "More details".
+  /* The order's money: what it comes to, what the 50% downpayment was, and
+     whether it landed. The figures are the ones the app stamped on the order
+     when it was filed, so this still reads true after the package's price has
+     moved on.
+
+     Nothing is drawn for an order filed before the gate existed — it carries no
+     figures, and an empty ledger would only raise questions. */
+  function paymentHTML(o) {
+    const m = paymentMeta(o);
+    if (!m) return "";
+    const total = money(o.paymentTotal);
+    const settled = money(o.paymentPaid || o.paymentDue);
+    const due = money(o.paymentDue);
+    const offline = isOfflinePay(o);
+    const facts = [];
+    if (total) facts.push(["Order total", total]);
+    // The total's two halves, when the app worked the order out from a priced
+    // package plus priced add-ons. Shown under the total so "why is this more
+    // than the package?" is answered on the sheet rather than by arithmetic.
+    if (total && money(o.addOnsTotal)) {
+      if (money(o.packageTotal)) facts.push(["· Package", money(o.packageTotal)]);
+      facts.push(["· Add-ons", money(o.addOnsTotal)]);
+    }
+    if (isPaid(o)) {
+      if (settled) facts.push([offline ? "Downpayment taken" : "Downpayment paid", settled]);
+      if (total && settled) facts.push(["Balance on the day",
+        money(Number(o.paymentTotal) - Number(o.paymentPaid || o.paymentDue))]);
+      if (ts(o.paidAt)) facts.push(["Settled", fmtDateTime(ts(o.paidAt))]);
+      if (val(o, "paymentMethod")) facts.push(["Paid with", val(o, "paymentMethod")]);
+      if (offline && takenByOf(o)) facts.push(["Recorded by", takenByOf(o)]);
+      // PayMongo's own payment id, or — on a payment taken by hand — whatever
+      // reference the manager wrote down. Labelled for which it is: calling a
+      // receipt number a "PayMongo ref" would send the next person hunting for
+      // it in a dashboard it was never in.
+      if (val(o, "paymentRef")) {
+        facts.push([offline ? "Reference" : "PayMongo ref", val(o, "paymentRef")]);
+      }
+    } else if (isUnpaid(o)) {
+      if (due) facts.push(["Downpayment due", due]);
+    }
+    return `<section class="order-sec">
+      <h4>The downpayment ${paymentBadge(o)}</h4>
+      ${m.chase ? `<p class="modal-text"><strong>This order can't be confirmed until the downpayment is in.</strong> The client can settle it themselves from Order Tracking in the app — or, if you've already taken it in cash or by transfer, use <em>Record payment</em> below.</p>` : ""}
+      ${paymentOf(o) === "quote_needed" ? `<p class="modal-text">This order was placed without a priced package, so the app had nothing to halve. Send the client a quotation and arrange the downpayment with them — then record it below.</p>` : ""}
+      ${offline ? `<p class="modal-text">Taken outside PayMongo and recorded here, so there's nothing to match against the PayMongo dashboard for this one.</p>` : ""}
+      ${facts.length ? `<dl class="order-facts">${facts.map(([k, v]) => `
+        <div class="order-fact"><dt>${HP.esc(k)}</dt><dd>${HP.esc(v)}</dd></div>`).join("")}</dl>` : ""}
+    </section>`;
+  }
+
+  /* Anything the app adds later still shows up, under "More details" — but a
+     course now belongs to the menu section above, and structured workflow
+     state belongs to neither (it would print as "[object Object]"). Both are
+     excluded here rather than at the source, so a genuinely new text field the
+     app starts writing is still surfaced rather than silently dropped. */
   function extrasHTML(o) {
+    const courses = new Set(courseKeys(o).map((c) => c.key));
     const rows = Object.keys(o)
-      .filter((k) => k !== "id" && !META_KEYS.has(k) && !SHEET_KEYS.has(k) && val(o, k))
+      .filter((k) => k !== "id" && !META_KEYS.has(k) && !SHEET_KEYS.has(k)
+        && !INTERNAL_KEYS.has(k) && !courses.has(k) && val(o, k))
       .sort()
       .map((k) => `
         <div class="order-fact">
@@ -759,14 +1106,80 @@
     return new Date(ms).toLocaleString("en-PH",
       { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   }
+  /* What the kitchen and logistics did to the order, as timeline entries.
+
+     The two desks keep their own record under `fulfilment` (the same one the
+     Team Leader and Logistics rails read — see assets/hp-fulfilment.js), so
+     until now the office could see an order confirmed and completed with no
+     account of the hours in between: who cooked it, when it was released, when
+     it actually reached the venue. Those are the questions asked when a client
+     rings about a late delivery, and the answers were a dashboard away.
+
+     Only movements that actually happened are listed. A release REQUEST and a
+     REFUSAL are milestones too — a refusal especially, since it is why an
+     order sat still — so both are named rather than folded into the stages. */
+  function fulfilmentEntries(o) {
+    const f = o && o.fulfilment;
+    if (!f || typeof f !== "object") return [];
+    // Labels come from the shared stage table when it is loaded, so the office
+    // and the two desks always call a stage by the same name.
+    const W = window.HPFul;
+    const labelOf = (k) => (W && W.labelOf ? W.labelOf(k) : String(k || "—"));
+    const out = [];
+    const at = (v) => (v && typeof v.toMillis === "function" ? v.toMillis() : Number(v) || 0);
+
+    (Array.isArray(f.history) ? f.history : []).forEach((h) => {
+      const ms = at(h.at);
+      if (!ms) return;
+      out.push({
+        label: labelOf(h.stage),
+        at: ms,
+        by: String(h.byName || ""),
+        note: String(h.note || ""),
+      });
+    });
+    if (at(f.requestedAt)) {
+      out.push({
+        label: "Release requested",
+        at: at(f.requestedAt),
+        by: String(f.requestedByName || ""),
+        note: String(f.requestNote || ""),
+      });
+    }
+    if (at(f.rejectedAt)) {
+      out.push({
+        label: "Release refused",
+        at: at(f.rejectedAt),
+        by: String(f.rejectedByName || ""),
+        note: String(f.rejectReason || ""),
+      });
+    }
+    return out;
+  }
+
   function historyHTML(o) {
     const moves = Array.isArray(o.history) ? o.history : [];
-    if (!moves.length && !o.deleted) return ""; // nothing beyond "received" — skip the section
+    const paidMs = ts(o.paidAt);
+    const ful = fulfilmentEntries(o);
+    // Nothing beyond "received" — skip the section.
+    if (!moves.length && !o.deleted && !paidMs && !ful.length) return "";
     const entries = [{ label: "Received", at: ts(o.createdAt), by: "" }];
     moves.forEach((h) => {
       const m = STATUS_META[h.status];
       entries.push({ label: m ? m.label : String(h.status || "—"), at: ts(h.at), by: String(h.byName || "") });
     });
+    // The downpayment belongs on the paper trail: whether it landed before or
+    // after the order was confirmed is exactly what this timeline is for.
+    if (paidMs) {
+      entries.push({
+        label: isOfflinePay(o) ? "Downpayment recorded" : "Downpayment paid",
+        at: paidMs,
+        by: isOfflinePay(o) ? takenByOf(o) : "PayMongo",
+      });
+    }
+    // The kitchen's and logistics' own milestones, woven in by time so the
+    // whole life of the order reads as one column.
+    ful.forEach((e) => entries.push(e));
     if (o.deleted) entries.push({ label: "Moved to Trash", at: ts(o.deletedAt), by: "" });
     entries.sort((a, b) => a.at - b.at);
     return `<section class="order-sec">
@@ -775,13 +1188,16 @@
         <li class="tl-row">
           <time>${HP.esc(fmtDateTime(e.at))}</time>
           <span class="tl-rail"><span class="tl-dot"></span></span>
-          <div class="tl-txt"><strong>${HP.esc(e.label)}</strong><small>${HP.esc(e.by ? `by ${e.by}` : "")}</small></div>
+          <div class="tl-txt"><strong>${HP.esc(e.label)}</strong><small>${
+            HP.esc(e.by ? `by ${e.by}` : "")}</small>${
+            e.note ? `<small class="tl-note">${HP.esc(e.note)}</small>` : ""}</div>
         </li>`).join("")}</ol>
     </section>`;
   }
 
   function sheetBody(o) {
-    return [heroHTML(o), clientHTML(o), timelineHTML(o), menuHTML(o), historyHTML(o), extrasHTML(o)]
+    return [heroHTML(o), clientHTML(o), paymentHTML(o), timelineHTML(o), menuHTML(o),
+            historyHTML(o), extrasHTML(o)]
       .filter(Boolean).join("") ||
       `<p class="modal-text">The client left the whole form blank — only the request itself was filed.</p>`;
   }
@@ -793,10 +1209,23 @@
       <button class="btn btn-primary" id="shRestoreTrash"><span class="ic">${HP.icon("undo")}</span>Restore order</button>`;
     const s = statusOf(o);
     const del = `<button class="btn btn-ghost order-del" id="shDelete" title="Delete this order"><span class="ic">${HP.icon("trash")}</span>Delete</button>`;
-    if (s === "pending") return `${print}${del}
+    // Offered wherever the downpayment could still be collected, so a payment
+    // taken at the counter can be recorded without hunting for the right screen.
+    const rec = mayRecordPayment(o)
+      ? `<button class="btn btn-ghost" id="shRecordPay" title="Record a downpayment you took by hand"><span class="ic">${HP.icon("peso")}</span>Record payment</button>`
+      : "";
+    if (s === "pending") {
+      // Locked rather than hidden: the manager should see that Confirm is the
+      // next step and why it isn't available. It still clicks — into the
+      // explanation, which carries the way forward.
+      const confirmBtn = isUnpaid(o)
+        ? `<button class="btn btn-primary is-locked" id="shConfirm" title="Locked — the downpayment hasn't landed"><span class="ic">${HP.icon("ban")}</span>Confirm order</button>`
+        : `<button class="btn btn-primary" id="shConfirm"><span class="ic">${HP.icon("check")}</span>Confirm order</button>`;
+      return `${print}${del}${rec}
       <button class="btn btn-danger" id="shDecline"><span class="ic">${HP.icon("ban")}</span>Decline</button>
-      <button class="btn btn-primary" id="shConfirm"><span class="ic">${HP.icon("check")}</span>Confirm order</button>`;
-    if (s === "confirmed") return `${print}${del}
+      ${confirmBtn}`;
+    }
+    if (s === "confirmed") return `${print}${del}${rec}
       <button class="btn btn-ghost" id="shPending"><span class="ic">${HP.icon("undo")}</span>Back to pending</button>
       <button class="btn btn-primary" id="shComplete"><span class="ic">${HP.icon("check")}</span>Mark completed</button>`;
     // Completed is final — no reopen: resurrecting a done order would put it
@@ -852,6 +1281,7 @@
       HP.closeModal();
     };
     wire("shConfirm", () => { HP.closeModal(); confirmOrder(o); });
+    wire("shRecordPay", () => { HP.closeModal(); recordPaymentModal(o); });
     wire("shComplete", move("completed"));
     wire("shDecline", () => {
       HP.closeModal();

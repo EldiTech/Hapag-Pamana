@@ -16,6 +16,7 @@ window.HP_DASHBOARD = {
       { key: "packages",   href: "packages.html",   icon: "box",   label: "Packages" },
       { key: "setups",     href: "setups.html",     icon: "photo", label: "Setups" },
       { key: "users",      href: "users.html",      icon: "users", label: "Users" },
+      { key: "allergens",  href: "allergens.html",  icon: "leaf",  label: "Allergens" },
       { key: "settings",   href: "settings.html",   icon: "gear",  label: "Settings" },
     ],
     // exportData lives on the content store (js/store.js) — resolve lazily.

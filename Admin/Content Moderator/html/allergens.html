@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Allergens</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../css/global.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <section class="bento-tile b-12">
+      <div class="bento-head">
+        <div class="label-grp">
+          <span class="stat-ic"><span class="ic" data-icon="leaf"></span></span>
+          <span class="bento-label">Allergens</span>
+        </div>
+        <button class="btn btn-primary" id="allergenAdd"><span class="ic" data-icon="plus"></span>Add allergen</button>
+      </div>
+      <p class="bento-desc">The tags dishes can carry — powers the allergen chips and heatmaps in the app.</p>
+      <div id="allergenRows"></div>
+      <div class="pager" id="allergenPager"></div>
+      <div class="card-foot">
+        <button class="btn btn-ghost" id="allergenDefaults"><span class="ic" data-icon="grid"></span>Restore default allergens</button>
+      </div>
+    </section>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../js/store.js"></script>
+  <script src="../js/allergens.js"></script>
+</body>
+</html>

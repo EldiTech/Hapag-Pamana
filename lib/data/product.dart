@@ -23,6 +23,8 @@ class Product {
     required this.available,
     required this.featured,
     this.allergens = const [],
+    this.addOnPrice,
+    this.orderCount = 0,
   });
 
   final String id;
@@ -37,6 +39,19 @@ class Product {
   /// [kAllergens]). Empty when the moderator hasn't tagged it yet.
   final List<String> allergens;
 
+  /// What one head of this dish costs as a booking add-on, when the moderator
+  /// has priced it apart from its category. Null — the normal case — means it
+  /// charges its category's rate instead (see [MenuCategory.price]); resolve
+  /// the two with [AddOnPricing.priceFor] rather than reading this directly.
+  final num? addOnPrice;
+
+  /// How many completed orders have included this dish — the popularity tally
+  /// the Orders dashboard bumps when a manager completes an order (see
+  /// `Admin/assets/hp-recommend.js`). 0 for a dish nobody has ordered yet, and
+  /// for every dish until the first order completes after that tally shipped:
+  /// there was no backfill, so this counts from then on, not from the beginning.
+  final int orderCount;
+
   factory Product.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? const {};
     return Product(
@@ -48,6 +63,15 @@ class Product {
       available: d['available'] != false, // default visible when unset
       featured: d['featured'] == true,
       allergens: parseAllergens(d['allergens']),
+      // Absent (the usual case) means "inherit the category's rate", so a
+      // missing or malformed value must stay null rather than collapse to 0 —
+      // a 0 here would advertise the dish as free.
+      addOnPrice: d['addOnPrice'] is num && (d['addOnPrice'] as num) >= 0
+          ? d['addOnPrice'] as num
+          : null,
+      orderCount: d['orderCount'] is num
+          ? (d['orderCount'] as num).toInt().clamp(0, 1 << 31)
+          : 0,
     );
   }
 

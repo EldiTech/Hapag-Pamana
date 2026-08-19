@@ -221,6 +221,35 @@ class CustomerRepository {
     );
   }
 
+  /// Reads the signed-in member's saved settings from the `preferences` map on
+  /// `customers/{uid}`, or null when signed out, the profile is missing, or the
+  /// member has never changed a setting. [MemberPreferences.fromMap] turns the
+  /// raw map into the typed set (and supplies the defaults for a null).
+  Future<Map<String, Object?>?> fetchPreferences() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return null;
+    final doc = await _db.collection('customers').doc(uid).get();
+    final raw = (doc.data() ?? const {})['preferences'];
+    return raw is Map ? raw.cast<String, Object?>() : null;
+  }
+
+  /// Writes [values] to `customers/{uid}.preferences`.
+  ///
+  /// Merges, so it never clobbers the profile fields beside it, and — like
+  /// [updatePhoto] — is permitted by the existing owner-update rule on
+  /// `customers/{uid}` (it touches neither `banned` nor `bannedAt`). The whole
+  /// map is replaced each time rather than patched key-by-key: the settings
+  /// screens always hold the complete set, so a full write is simpler and can't
+  /// leave a half-updated document behind.
+  Future<void> savePreferences(Map<String, Object?> values) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _db.collection('customers').doc(uid).set(
+      {'preferences': values},
+      SetOptions(merge: true),
+    );
+  }
+
   /// Reads the signed-in customer's `customers/{uid}` profile, or null when
   /// signed out / the doc is missing. Used by the Account screen.
   Future<Customer?> fetchCurrentCustomer() async {

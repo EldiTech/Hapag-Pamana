@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../brand.dart';
 import '../core/widgets/app_widgets.dart';
 import '../data/product.dart';
+import '../data/recommendation.dart';
+import '../data/recommendation_repository.dart';
 import '../widgets.dart';
 import 'detail_sheets.dart';
 
@@ -15,20 +17,44 @@ import 'detail_sheets.dart';
 /// Log In vs. the member's personalised greeting).
 
 /// One representative ("best selling") dish per category, sorted by category
-/// name. With no sales field in the schema, the representative is the
-/// category's featured item, falling back to the first encountered (the source
-/// list is already alphabetised by the repository).
+/// name. The representative is the category's most-ordered dish, falling back to
+/// its featured one and then to the first encountered (the source list is
+/// already alphabetised by the repository) — so a category whose tally is still
+/// empty behaves exactly as it did before [Product.orderCount] existed.
 List<(String, Product)> bestByCategory(List<Product> all) {
   final best = <String, Product>{};
   for (final p in all) {
     if (p.category.isEmpty) continue;
     final current = best[p.category];
-    if (current == null || (p.featured && !current.featured)) {
+    if (current == null ||
+        p.orderCount > current.orderCount ||
+        (p.orderCount == current.orderCount &&
+            p.featured &&
+            !current.featured)) {
       best[p.category] = p;
     }
   }
   return best.entries.map((e) => (e.key, e.value)).toList()
     ..sort((a, b) => a.$1.toLowerCase().compareTo(b.$1.toLowerCase()));
+}
+
+/// The dishes the most orders have actually included — the popularity tally the
+/// Orders dashboard keeps (see [Product.orderCount]).
+///
+/// Empty until at least [minOrders] orders have been counted for something: a
+/// "Most loved" strip topped by a dish ordered once is a claim the data doesn't
+/// support, and it's better to show nothing than to invent a favourite.
+List<Product> mostLoved(List<Product> all, {int take = 6, int minOrders = 2}) {
+  final ranked =
+      [
+        for (final p in all)
+          if (p.available && p.orderCount >= minOrders) p,
+      ]..sort((a, b) {
+        final byCount = b.orderCount.compareTo(a.orderCount);
+        if (byCount != 0) return byCount;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+  return ranked.take(take).toList();
 }
 
 // ════════════════════════════ Featured ════════════════════════════
@@ -337,8 +363,10 @@ class KitchenStrip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
         itemCount: picks.length,
         separatorBuilder: (_, _) => const SizedBox(width: 14),
-        itemBuilder: (context, i) =>
-            _DishCard(picks[i], onTap: () => showProductSheet(context, picks[i])),
+        itemBuilder: (context, i) => _DishCard(
+          picks[i],
+          onTap: () => showProductSheet(context, picks[i]),
+        ),
       ),
     );
   }
@@ -419,11 +447,7 @@ class _QuietNote extends StatelessWidget {
         children: [
           Icon(icon, size: 32, color: AppColors.brown.withValues(alpha: 0.3)),
           const SizedBox(height: AppSpacing.md),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.body,
-          ),
+          Text(text, textAlign: TextAlign.center, style: AppTextStyles.body),
           const SizedBox(height: 14),
           AppButton.secondary(label: 'OPEN THE MENU', onPressed: onBrowse),
         ],
@@ -507,6 +531,216 @@ class CateringInvite extends StatelessWidget {
               Icons.room_service_outlined,
               color: AppColors.cream,
               size: 26,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ════════════════════════════ For You ════════════════════════════
+/// The member's recommendation strip — the front end of the collaborative
+/// filtering engine, shown on the member home and again inside Gabay.
+///
+/// Member-only (a guest has no history and no profile to compute one from), but
+/// it lives here beside the other strips because Gabay draws the same cards and
+/// the two must not drift apart.
+///
+/// A recommendation is only worth as much as its provenance, so the strip always
+/// says where its picks came from — see [RecommendationSource.label]. The
+/// repository already guarantees a non-empty list where it can (featured dishes
+/// stand in when nothing else resolves), so the empty state here is the genuine
+/// one: a kitchen with nothing published at all.
+class ForYouStrip extends StatelessWidget {
+  const ForYouStrip({
+    super.key,
+    required this.loading,
+    required this.set,
+    required this.onOpenPackages,
+  });
+
+  final bool loading;
+  final RecommendationSet set;
+
+  /// Opens the Packages tab — where a recommended *package* is booked from.
+  /// Dishes open their own quick-look sheet instead.
+  final VoidCallback onOpenPackages;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return SizedBox(
+        height: 196,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+          itemCount: 3,
+          separatorBuilder: (_, _) => const SizedBox(width: 14),
+          itemBuilder: (_, i) => FadeSlideIn(
+            delay: Duration(milliseconds: 60 * i),
+            child: const RecommendedCard.skeleton(),
+          ),
+        ),
+      );
+    }
+
+    if (set.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 196,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+        itemCount: set.items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
+        itemBuilder: (context, i) {
+          final item = set.items[i];
+          return RecommendedCard(
+            item,
+            onTap: () => item.isPackage
+                ? onOpenPackages()
+                : showProductSheet(context, item.product!),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// One recommended item — the [_DishCard] shape, but able to carry a package as
+/// well as a dish, and sealed as a package when it is one, since the two are
+/// booked from different places.
+///
+/// Public because Gabay's own panel draws the same card: the home strip and the
+/// assistant must show one member the same picks in the same shape, or the
+/// "why was this recommended?" answer stops matching what they're looking at.
+class RecommendedCard extends StatelessWidget {
+  const RecommendedCard(this.item, {super.key, this.onTap}) : skeleton = false;
+  const RecommendedCard.skeleton({super.key})
+    : item = null,
+      skeleton = true,
+      onTap = null;
+
+  final RecommendedItem? item;
+  final bool skeleton;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      width: 150,
+      padding: const EdgeInsets.all(AppSpacing.sm + 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: AppRadius.smAll,
+              child: skeleton
+                  ? const PlaceholderBox(radius: AppRadius.sm)
+                  : Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        item!.isPackage
+                            ? PackageImage(item!.package!)
+                            : ProductImage(item!.product!),
+                        // A package and a dish are booked in different places,
+                        // so the card says which it is before it's tapped.
+                        if (item!.isPackage)
+                          const Positioned(
+                            top: 6,
+                            left: 6,
+                            child: _PackageSeal(),
+                          ),
+                      ],
+                    ),
+            ),
+          ),
+          const SizedBox(height: 11),
+          if (skeleton)
+            const SkeletonLine(height: 12)
+          else
+            Text(
+              item!.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.serif(size: 14, height: 1.2),
+            ),
+          const SizedBox(height: 6),
+          if (skeleton)
+            const SkeletonLine(width: 70, height: 10)
+          else
+            Text(
+              item!.subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.engraved(
+                size: 9,
+                color: AppColors.goldDeep,
+                spacing: 1.2,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The small "PACKAGE" seal on a recommended package's photo.
+class _PackageSeal extends StatelessWidget {
+  const _PackageSeal();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.brown.withValues(alpha: 0.86),
+        borderRadius: AppRadius.pillAll,
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.55)),
+      ),
+      child: Text(
+        'PACKAGE',
+        style: AppTextStyles.engraved(
+          size: 7.5,
+          color: AppColors.gold,
+          spacing: 1.2,
+        ),
+      ),
+    );
+  }
+}
+
+/// The provenance badge that rides beside the "For You" heading — "From orders
+/// like yours", "Based on your taste profile", "Featured by the kitchen".
+class RecommendationSourceBadge extends StatelessWidget {
+  const RecommendationSourceBadge(this.source, {super.key});
+
+  final RecommendationSource source;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withValues(alpha: 0.14),
+        borderRadius: AppRadius.pillAll,
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.auto_awesome, size: 11, color: AppColors.goldDeep),
+          const SizedBox(width: 5),
+          Text(
+            source.label,
+            style: AppTextStyles.sans(
+              size: 10,
+              weight: FontWeight.w600,
+              color: AppColors.goldDeep,
+              spacing: 0.3,
             ),
           ),
         ],

@@ -1,0 +1,88 @@
+/* HapagPamana · Catering Equipment — dashboard-specific styling.
+   Everything else (stat grid, badges, data table, .field/.control, modal,
+   .toolbar/.seg chips, .ck-head/.wf-sheet) comes from the shared
+   Content Moderator/css/global.css + Purchasing/css/purchasing.css +
+   assets/hp-workflow.css this dashboard already links. Only what's unique
+   to variants and the equipment checklist lives here. */
+
+/* ── Variant chips on the inventory table ─────────────────────────────── */
+.eq-variant-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Item form: category row + repeatable variant rows ───────────────── */
+.eq-form .field { margin-bottom: 15px; }
+.eq-cat-row { display: flex; gap: 8px; align-items: center; }
+.eq-cat-row .control { flex: 1; }
+
+.eq-variants { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.eq-variant-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 0.9fr 0.9fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.eq-variant-row .control { margin: 0; }
+@media (max-width: 640px) {
+  .eq-variant-row { grid-template-columns: 1fr 1fr; }
+  .eq-variant-row [data-remove] { justify-self: end; }
+}
+
+/* ── Movement modal (mirrors the Pantry's on-hand/preview/hint copy) ──── */
+.eq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.eq-onhand { margin: 4px 0 14px; color: var(--ink-soft); font-size: 0.92rem; }
+.eq-onhand strong { color: var(--ink); }
+.eq-hint { margin: 6px 0 0; color: var(--ink-faint); font-size: 0.84rem; }
+.eq-hint strong { color: var(--ink-soft); }
+.eq-preview { margin: 10px 0 0; font-size: 0.95rem; color: var(--ink-soft); }
+.eq-preview strong { color: var(--ink); }
+.eq-preview .eq-delta { color: var(--ink-faint); font-size: 0.9rem; }
+.eq-preview .is-over { color: var(--danger); }
+
+/* ── Movement history list ────────────────────────────────────────────── */
+.eq-log { list-style: none; margin: 0; padding: 0; }
+.eq-log-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.eq-log-row:last-child { border-bottom: 0; }
+.eq-log-delta { font-family: var(--display); font-weight: 700; font-size: 1.05rem; min-width: 64px; }
+.eq-log-delta.is-up { color: var(--ok); }
+.eq-log-delta.is-down { color: var(--brown); }
+.eq-log-main strong { display: block; color: var(--ink); }
+.eq-log-main small { display: block; color: var(--ink-faint); font-size: 0.82rem; }
+.eq-log-meta { text-align: right; }
+.eq-log-meta small { display: block; color: var(--ink-faint); font-size: 0.78rem; }
+
+/* ── Event checklist: item/variant/qty picker + tickable lines ───────── */
+.eq-picker {
+  display: grid;
+  grid-template-columns: 1.6fr 1.2fr 0.6fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.eq-picker .control { margin: 0; }
+@media (max-width: 640px) {
+  .eq-picker { grid-template-columns: 1fr 1fr; }
+}
+
+.eq-checklist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.eq-check-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--gold-hair2);
+  border-radius: var(--r);
+  background: var(--paper-3);
+  cursor: pointer;
+}
+.eq-check-line input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--gold); flex-shrink: 0; }
+.eq-check-main { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.eq-check-main strong { color: var(--ink); }
+.eq-check-main small { color: var(--ink-faint); font-size: 0.82rem; }
+.eq-check-line.is-checked { border-color: var(--ok); }
+.eq-check-line.is-checked .eq-check-main strong { color: var(--ink-soft); text-decoration: line-through; text-decoration-color: var(--ink-faint); }

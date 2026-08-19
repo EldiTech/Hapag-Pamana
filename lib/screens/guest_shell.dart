@@ -21,6 +21,10 @@ import 'menu_page.dart';
 /// maintenance mode replaces the whole shell with the closed notice. Tabs are
 /// addressed by stable logical ids (the [tabHome]…[tabAbout] constants) so
 /// deep links from Home keep working whichever tabs happen to be visible.
+///
+/// The nav bar also carries a Log In slot in the middle. It is not a tab — it
+/// pushes the login page and never becomes the selection — so it lives only in
+/// the bar's slot list, not in the tab list that drives the body.
 class GuestShell extends StatefulWidget {
   const GuestShell({super.key});
 
@@ -32,6 +36,10 @@ class GuestShell extends StatefulWidget {
 }
 
 class _GuestShellState extends State<GuestShell> {
+  /// Nav-bar slot that pushes login instead of selecting a tab. Negative so it
+  /// can never collide with a logical tab id.
+  static const int _loginSlot = -1;
+
   int _index = GuestShell.tabHome; // logical id of the active tab
 
   @override
@@ -86,7 +94,7 @@ class _GuestShellState extends State<GuestShell> {
         GuestShell.tabMenu => const MenuPage(),
         GuestShell.tabCatering => const CateringPage(),
         GuestShell.tabAbout => const AboutPage(),
-        _ => HomePage(onLogin: _openLogin, onNavigate: _go),
+        _ => HomePage(onNavigate: _go),
       };
 
   static const _destinations = {
@@ -110,7 +118,17 @@ class _GuestShellState extends State<GuestShell> {
       selectedIcon: Icon(Icons.info),
       label: 'About',
     ),
+    _loginSlot: NavigationDestination(
+      icon: Icon(Icons.person_outline),
+      label: 'Log In',
+    ),
   };
+
+  /// The visible tabs with the Log In slot dropped into the middle, so with the
+  /// full four tabs it sits dead centre and stays near-centre when a settings
+  /// switch hides one.
+  static List<int> _slots(List<int> ids) =>
+      [...ids]..insert((ids.length + 1) ~/ 2, _loginSlot);
 
   @override
   Widget build(BuildContext context) {
@@ -124,6 +142,7 @@ class _GuestShellState extends State<GuestShell> {
         // be around for one frame — display Home for it.
         final pos = ids.contains(_index) ? ids.indexOf(_index) : 0;
         final active = ids[pos];
+        final slots = _slots(ids);
         final showAppBar = active != GuestShell.tabHome;
 
         return Scaffold(
@@ -147,7 +166,6 @@ class _GuestShellState extends State<GuestShell> {
                   ? _ShellAppBar(
                       key: ValueKey<int>(active),
                       title: _titles[active]!,
-                      onLogin: _openLogin,
                     )
                   : const SizedBox.shrink(key: ValueKey('home-no-bar')),
             ),
@@ -182,9 +200,16 @@ class _GuestShellState extends State<GuestShell> {
             ],
           ),
           bottomNavigationBar: NavigationBar(
-            selectedIndex: pos,
-            onDestinationSelected: (i) => _go(ids[i]),
-            destinations: [for (final id in ids) _destinations[id]!],
+            selectedIndex: slots.indexOf(active),
+            onDestinationSelected: (i) {
+              final slot = slots[i];
+              if (slot == _loginSlot) {
+                _openLogin();
+                return;
+              }
+              _go(slot);
+            },
+            destinations: [for (final id in slots) _destinations[id]!],
           ),
         );
       },
@@ -193,10 +218,9 @@ class _GuestShellState extends State<GuestShell> {
 }
 
 class _ShellAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _ShellAppBar({super.key, required this.title, required this.onLogin});
+  const _ShellAppBar({super.key, required this.title});
 
   final String title;
-  final VoidCallback onLogin;
 
   @override
   Size get preferredSize => const Size.fromHeight(72);
@@ -228,33 +252,6 @@ class _ShellAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ],
-      ),
-      actions: [_LogInAction(onTap: onLogin)],
-    );
-  }
-}
-
-class _LogInAction extends StatelessWidget {
-  const _LogInAction({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: TextButton.icon(
-        onPressed: onTap,
-        icon: const Icon(Icons.person_outline, size: 18, color: AppColors.brown),
-        label: Text(
-          'Log In',
-          style: AppTextStyles.sans(
-            size: 12,
-            weight: FontWeight.w600,
-            color: AppColors.brown,
-            spacing: 0.5,
-          ),
-        ),
       ),
     );
   }

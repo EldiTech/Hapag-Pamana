@@ -4,29 +4,67 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // True when the caller is signed in with an active staff role from
-    // `roles` (users/{uid}.role). Three staff roles exist — content_moderator
-    // runs the menu dashboard, order_manager runs the Orders dashboard,
-    // master_chef runs the kitchen's prep board — and admin may do all three.
+    // `roles` (users/{uid}.role). Four staff roles exist — content_moderator
+    // runs the menu dashboard, marketing_admin runs the Orders dashboard,
+    // master_chef runs the kitchen's prep board, production_manager runs the
+    // costing board — and admin may do all four. owner may also do all of
+    // them (see isAdmin() below for the one place it doesn't).
+    //
+    // The superseded strings (order_manager → marketing_admin, finance →
+    // production_manager) are still accepted so records that have not been
+    // migrated keep working. Drop them once every users/{uid} is migrated.
     function hasRole(roles) {
       return request.auth != null
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in roles
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active != false;
     }
-    function isModerator()    { return hasRole(['content_moderator', 'admin']); }
-    function isOrderManager() { return hasRole(['order_manager', 'admin']); }
-    function isMasterChef()   { return hasRole(['master_chef', 'admin']); }
+    function isModerator()    { return hasRole(['content_moderator', 'admin', 'owner']); }
+    function isOrderManager() { return hasRole(['marketing_admin', 'order_manager', 'admin', 'owner']); }
+    function isMasterChef()   { return hasRole(['master_chef', 'admin', 'owner']); }
+    function isFinance()      { return hasRole(['production_manager', 'finance', 'admin', 'owner']); }
+    function isPurchasing()   { return hasRole(['purchasing_staff', 'admin', 'owner']); }
+    function isStockClerk()   { return hasRole(['stock_clerk', 'admin', 'owner']); }
+    function isTeamLeader()   { return hasRole(['team_leader', 'admin', 'owner']); }
+    function isLogistics()    { return hasRole(['logistics', 'admin', 'owner']); }
+    function isLayoutDesigner() { return hasRole(['layout_designer', 'admin', 'owner']); }
+    // Catering Equipment preps the gear a confirmed event needs — tables,
+    // chafing dishes, linens — and keeps its own inventory apart from the
+    // pantry's food stock. It reads the same confirmed bookings Team Leader
+    // and Logistics do, independently of their cook/dispatch rail.
+    function isCateringEquipment() { return hasRole(['catering_equipment', 'admin', 'owner']); }
+    // Account administration (minting/editing staff users/{uid} records):
+    // admin and owner both qualify. The self-demotion guard in the /users/{uid}
+    // update rule below keys off request.auth.uid, not off which of the two
+    // roles is calling, so letting both mint/edit accounts doesn't weaken it —
+    // neither role can touch its own role/active flag either way.
+    function isAdmin()        { return hasRole(['admin', 'owner']); }
 
     // Staff role records (the dashboards' access gates). Each staff member
-    // may read their own record; content moderators / admins may read them
-    // all. Role records are managed ONLY from the Firebase console
-    // (Authentication → add user, then a users/{uid} doc) — no browser flow
-    // writes them, so all writes are denied. Deactivate a member by setting
-    // active: false from the console.
+    // may read their own record; content moderators / admins may read them all.
+    //
+    // Role records are minted by admin or owner (Firebase Auth user + this
+    // document, in one step — see Owner ▸ Staff Accounts). The Firebase
+    // console remains a valid way to do it by hand — and is the only way to
+    // create the FIRST admin, since this rule requires one to already exist.
+    //
+    // Two guards keep the tool from being a way to seize or lose the keys:
+    //   · an admin/owner may not change their OWN role or active flag —
+    //     otherwise the last admin can demote themselves and nobody can
+    //     administer anything again (recoverable only from the console);
+    //   · nothing may be deleted. Deleting a role record while its Auth user
+    //     lives on leaves an account that signs in and then bounces with no
+    //     explanation. Retire a member with active: false instead, which the
+    //     guard already honours and which keeps the audit trail.
     match /users/{uid} {
       allow read: if isModerator()
         || (request.auth != null && request.auth.uid == uid);
-      allow write: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin()
+        && (request.auth.uid != uid
+            || !request.resource.data.diff(resource.data)
+                 .affectedKeys().hasAny(['role', 'active']));
+      allow delete: if false;
     }
 
     // Customer profiles, keyed by the customer's own Firebase Auth uid. A
@@ -34,6 +72,19 @@ service cloud.firestore {
     // never the `banned`/`bannedAt` flags, which only the dashboard writes
     // (User Management ban/unban; the app enforces the flag at login and
     // live in the member shell). Moderators may read and edit every profile.
+    //
+    // The owner's own writes are their name/contact fields, their `photo`, the
+    // `preferences` map the Settings screens keep (notifications, dietary
+    // preference, allergens to avoid, language — see MemberPreferences), and the
+    // `tasteProfile` the sign-up quiz collects. All of them ride the same update
+    // rule: anything but the ban flags and `recommendations`.
+    //
+    // `recommendations` is reserved for a server-side engine, like
+    // co_occurrences above. Nothing writes it today — the app computes its picks
+    // on the device and keeps them in memory — and no client may, so the field
+    // can never be forged into carrying picks a member wrote for themselves and
+    // Gabay then presents as the engine's own. The taste profile IS the member's
+    // to write: it's an input the engine weighs, not a result it produced.
     match /customers/{uid} {
       allow read:   if isModerator()
         || (request.auth != null && request.auth.uid == uid);
@@ -41,8 +92,33 @@ service cloud.firestore {
       allow update: if isModerator()
         || (request.auth != null && request.auth.uid == uid
             && !request.resource.data.diff(resource.data)
-                 .affectedKeys().hasAny(['banned', 'bannedAt']));
+                 .affectedKeys().hasAny(['banned', 'bannedAt',
+                                         'recommendations']));
       allow delete: if false;
+    }
+
+    // The recommendation engine's crowd signal: one document per PAIR of menu
+    // items that have been ordered together, keyed `sorted([a,b]).join('__')`,
+    // carrying how often that has happened.
+    //
+    // Written by the Orders dashboard when a manager marks an order completed
+    // (see Admin/assets/hp-recommend.js). That desk keeps the tally because it
+    // is the only party that may read every booking: a customer is scoped to
+    // their own orders by the `bookings` rule below, so no client could ever
+    // work out what is ordered *together* across the customer base.
+    //
+    // Any signed-in member may READ it, and that is safe by construction: a
+    // document holds two item ids and a number, and never records who ordered
+    // them. Nobody learns anything about another customer from the whole table.
+    //
+    // Only an order manager may WRITE it. A tally is only meaningful if it
+    // faithfully reflects real completed orders, and a customer who could
+    // increment a pair could promote whatever they liked into every other
+    // member's recommendations. That is the single rule this whole feature's
+    // integrity rests on.
+    match /co_occurrences/{pairKey} {
+      allow read:  if request.auth != null;
+      allow write: if isOrderManager();
     }
 
     // Phone-number uniqueness index: doc id is the number's digits, value is
@@ -64,7 +140,8 @@ service cloud.firestore {
     // food-pack quotation requests. A signed-in customer may create an order
     // under their own uid and read back only their own; order managers (and
     // admins) see and manage all of them from the Orders dashboard. The
-    // master chef reads them too — the prep board streams the confirmed ones.
+    // master chef reads them too — the prep board streams the confirmed ones,
+    // and finance reads them to cost the planned ones.
     // New orders must arrive as `pending` — only an order manager may move
     // them along the workflow, so nobody can file a pre-confirmed booking
     // that skips approval and lands on the prep board. Creation also pins
@@ -73,17 +150,89 @@ service cloud.firestore {
     // and forbids the staff-only bookkeeping fields — otherwise a customer
     // could file a booking born trashed (`deleted`) or carrying a forged
     // status history.
+    // A customer may also record their own downpayment — and nothing else. The
+    // app collects 50% of the order through PayMongo, then writes the result
+    // back here, so the owner needs an update path; `hasOnly` keeps it to the
+    // payment keys, which is what stops it becoming a way to move `status`,
+    // rewrite the menu or edit an order the kitchen is already cooking for.
+    // Without this clause the app confirms a payment with PayMongo and is then
+    // refused when it writes the result down: the client is charged and the
+    // order still reads unpaid.
+    //
+    // The offline-payment keys the Orders dashboard writes (`paymentSource`,
+    // `paymentTakenBy`, `paymentTakenByName`) are deliberately NOT in the list —
+    // a payment taken by hand is the order manager's word, never the client's.
+    //
+    // This trusts the app's word that PayMongo said "paid". It has to, while the
+    // checkout call lives in the client (see lib/data/paymongo_config.dart) —
+    // there's no server here to verify a webhook. Moving that call to a Cloud
+    // Function is what would let this rule drop the customer clause entirely and
+    // leave payment writes to the backend.
+    //
+    // "Continue later" drafts (see lib/data/booking_repository.dart saveDraft)
+    // are the one status a customer may file AND go on editing themselves: a
+    // draft was never sent to the team, so it isn't the Orders dashboard's to
+    // guard yet. isOwnDraft() covers create, update and delete for it — the
+    // customer clauses below stay for the `pending` case a real booking files
+    // as.
+    function isOwnDraft() {
+      return request.auth != null
+        && resource.data.uid == request.auth.uid
+        && resource.data.status == 'draft';
+    }
     match /bookings/{id} {
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status in ['pending', 'draft']
         && request.resource.data.createdAt == request.time
         && !request.resource.data.keys().hasAny(
              ['deleted', 'deletedAt', 'deletedBy', 'history',
               'statusUpdatedAt', 'updatedAt', 'updatedBy']);
-      allow read: if isOrderManager() || isMasterChef()
+      allow read: if isOrderManager() || isMasterChef() || isFinance()
+        || isTeamLeader() || isLogistics() || isLayoutDesigner()
+        || isCateringEquipment()
         || (request.auth != null && resource.data.uid == request.auth.uid);
-      allow update, delete: if isOrderManager();
+      // The service floor tracks the food's journey on the booking itself
+      // (see Admin/assets/hp-fulfilment.js): the team leader cooks and packs
+      // and asks for release, logistics releases and confirms delivery. Both
+      // may write `fulfilment` AND NOTHING ELSE — hasOnly pins every other
+      // key, so neither desk can move `status`, touch a payment, or edit the
+      // menu the kitchen is cooking from. Which of the two may set which
+      // stage is enforced in the dashboards (HPFul.DRIVES); the split that
+      // matters here is that no other field is reachable from either desk.
+      //
+      // A draft's own update clause allows every field except `uid` (the
+      // owner can't be reassigned) and `status` (it may only ever stay
+      // 'draft' — turning a draft into a real order goes through create(),
+      // via BookingRepository.submit(), never through this update path).
+      allow update: if isOrderManager()
+        || ((isTeamLeader() || isLogistics())
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['fulfilment', 'equipmentPickup']))
+        // The floor plan the room is set up to (Admin/Layout Designer). It
+        // rides the booking so the crew reads the same record the desk drew —
+        // and `hasOnly` pins every other key, so the drawing desk can never
+        // move the order's status, its payment or the menu.
+        || (isLayoutDesigner()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['layout']))
+        // The gear checklist for the event, written by Catering Equipment.
+        // `equipmentPickup` is shared with the service floor above because
+        // collecting the gear back in is a floor job — both desks touch that
+        // one field, and `hasOnly` still pins everything else.
+        || (isCateringEquipment()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['equipmentPrep', 'equipmentPickup']))
+        || (request.auth != null
+            && resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['paymentStatus', 'paymentPaid', 'paidAt',
+                           'paymentRef', 'paymentMethod',
+                           'checkoutSessionId', 'checkoutUrl']))
+        || (isOwnDraft()
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.status == 'draft');
+      allow delete: if isOrderManager() || isOwnDraft();
     }
 
     // The Master Chef's ingredient plans, one per confirmed booking (the doc
@@ -91,10 +240,92 @@ service cloud.firestore {
     // Orders dashboard may DELETE a plan — it clears the spent plan when a
     // booking completes, is declined, or is deleted, so the prep board's
     // scoped stream never re-reads dead events.
+    // Finance reads them too — the costing board starts from the ingredients
+    // the master chef listed, and may only cost a plan the kitchen marked
+    // ready. Nothing outside the kitchen may change an amount.
+    // The stock clerk reads them as well: the pantry's "issue to kitchen"
+    // screen shows an order's dishes and the ingredients about to leave the
+    // shelf, and those amounts ARE this plan. The clerk may also stamp that
+    // an order has been issued — but only those three fields. The guard below
+    // pins every other key to its current value, so a desk outside the
+    // kitchen still cannot change a planned amount, which is the rule the
+    // comment above promises.
     match /prepPlans/{bookingId} {
-      allow read: if isMasterChef();
-      allow create, update: if isMasterChef();
+      allow read: if isMasterChef() || isFinance() || isStockClerk();
+      allow create: if isMasterChef();
+      allow update: if isMasterChef()
+        || (isStockClerk()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['issuedAt', 'issuedAtLocal', 'issuedByName']));
       allow delete: if isMasterChef() || isOrderManager();
+    }
+
+    // The Finance officer's costings, one per booking (the doc id IS the
+    // booking id). The ingredient cost is carried over from the kitchen's
+    // ready prep plan; finance adds the other costs (labour, transport,
+    // rentals…), the markup and the quoted price. The doc keeps its own
+    // snapshot of the totals, so an approved costing stays readable after the
+    // event — when the order completes and its prep plan is cleared.
+    //
+    // DELETE IS DENIED, deliberately: a released requisition slip is the
+    // evidence that money was authorised, and evidence a role can erase isn't
+    // evidence. The dashboard never needs it — correcting a released slip goes
+    // through "Re-open", which voids the requisition and keeps the record of it
+    // (`voidedRequisition`) instead of destroying the document. Clearing test
+    // data is a console job.
+    // Purchasing and the stock clerk READ costings but never write them: the
+    // released requisition is the authority a purchase run is cut from (its
+    // slip number, its amount, the lines it paid for), and the buyer's board
+    // is a list of those slips. Costing itself stays finance's alone — the
+    // desks downstream record what a run actually cost on the procurement
+    // document, never by editing the authority they were given.
+    match /costings/{bookingId} {
+      allow read: if isFinance() || isPurchasing() || isStockClerk();
+      allow create, update: if isFinance();
+      allow delete: if false;
+    }
+
+    // A purchase run — one per requisition Finance released, keyed by the
+    // costing it was cut from. It carries its own snapshot of the authorised
+    // lines, the buyer's checklist, the stock clerk's quality check and the
+    // receipt photos, so the run stays the thing that was actually approved
+    // even if the kitchen revises the plan afterwards.
+    //
+    // Three desks share the document as it moves along (see the `stage` field
+    // and Admin/assets/hp-procurement.js): purchasing buys, the stock clerk
+    // receives and liquidates, and the production manager files the result.
+    // Each may read the whole run — a checklist you cannot see the history of
+    // is not a checklist — and the stage decides whose turn it is to write.
+    // Deleting is refused outright: a purchase run is the paper trail for
+    // money that has already left the house.
+    match /procurements/{costingId} {
+      allow read: if isPurchasing() || isStockClerk() || isFinance();
+      allow create, update: if isPurchasing() || isStockClerk() || isFinance();
+      allow delete: if false;
+    }
+
+    // The pantry — what is on the shelf right now (see Admin/assets/hp-pantry.js).
+    // The stock clerk keeps it; finance and the master chef may look, because
+    // "can the kitchen cook this?" and "what did the store actually hold?" are
+    // their questions too. Deleting is refused: an item that has ever moved is
+    // referenced by ledger entries, and a count whose item vanished cannot be
+    // audited. Retire an item by taking it to zero instead.
+    match /pantry/{id} {
+      allow read: if isStockClerk() || isFinance() || isMasterChef();
+      allow create, update: if isStockClerk();
+      allow delete: if false;
+    }
+
+    // The store ledger — one entry per movement, append-only BY RULE.
+    // The pantry count is only trustworthy because this list explains how it
+    // got there, so entries may be created and never touched again: no edit,
+    // no delete, not even by an admin through the console's client SDK. A
+    // correction is a new entry that says what the recount found, which is how
+    // a paper stores book works and why it can be audited at all.
+    match /pantryLog/{id} {
+      allow read: if isStockClerk() || isFinance() || isMasterChef();
+      allow create: if isStockClerk();
+      allow update, delete: if false;
     }
 
     // The Master Chef's recipe book: each dish's ingredients, base portions
@@ -105,11 +336,81 @@ service cloud.firestore {
       allow read, write: if isMasterChef();
     }
 
+    // The petty cash float — the house's ingredient money (Admin/assets/hp-cash.js).
+    // It lives under settings/ but is NOT menu content, so it is matched ahead
+    // of the settings rule below: a more specific match wins, and the moderator
+    // who owns the menu has no business moving the cash.
+    //
+    // Finance owns the box: they open it, top it up, correct it after a
+    // recount, and releasing a requisition deducts from it. The stock clerk
+    // writes it too — filing a liquidation returns the buyer's change — which
+    // is the one movement neither desk could make alone. Purchasing may read
+    // it (a buyer should see what the float can cover) but never write.
+    match /settings/pettyCash {
+      allow read: if isFinance() || isStockClerk() || isPurchasing();
+      allow write: if isFinance() || isStockClerk();
+    }
+
+    // The float's ledger — append-only BY RULE, exactly like the store's.
+    // The balance is the running total of these entries, so an entry that
+    // could be edited or deleted would make the balance unaccountable. A
+    // correction is a NEW entry saying what the recount found.
+    match /pettyCashLog/{id} {
+      allow read: if isFinance() || isStockClerk() || isPurchasing();
+      allow create: if isFinance() || isStockClerk();
+      allow update, delete: if false;
+    }
+
+    // Catering Equipment's own inventory (Admin/Catering Equipment): the gear
+    // categories, the items and their variants, and the movement ledger.
+    // Private to that desk (+ admin/owner) — the pantry's stock rules let
+    // finance and the kitchen look in because they cost and cook from it;
+    // nobody outside this desk has a reason to read a linen count.
+    //
+    // The ledger is append-only BY RULE, the same shape as pantryLog and
+    // pettyCashLog above and for the same reason: a count is only trustworthy
+    // while its history explains it, so a correction is a NEW entry saying
+    // what the recount found, never an edit of what was written before.
+    match /equipmentCategories/{id} { allow read, write: if isCateringEquipment(); }
+    match /equipmentItems/{id}      { allow read, write: if isCateringEquipment(); }
+    match /equipmentLog/{id} {
+      allow read: if isCateringEquipment();
+      allow create: if isCateringEquipment();
+      allow update, delete: if false;
+    }
+
     // Menu content — public read, moderator write.
+    //
+    // Products and packages carry one exception: `orderCount` (and its
+    // `orderCountAt` stamp), the popularity tally the Orders dashboard bumps
+    // when an order completes — see Admin/assets/hp-recommend.js. An order
+    // manager may write those two keys AND NOTHING ELSE; `hasOnly` pins every
+    // other field, so the desk that counts orders can never rename a dish,
+    // reprice a package or hide either from the app. The menu itself stays the
+    // moderator's alone.
+    function isOrderCountBump() {
+      return isOrderManager()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['orderCount', 'orderCountAt']);
+    }
     match /categories/{id} { allow read: if true; allow write: if isModerator(); }
-    match /products/{id}   { allow read: if true; allow write: if isModerator(); }
-    match /packages/{id}   { allow read: if true; allow write: if isModerator(); }
+    match /products/{id} {
+      allow read: if true;
+      allow write: if isModerator();
+      allow update: if isOrderCountBump();
+    }
+    match /packages/{id} {
+      allow read: if true;
+      allow write: if isModerator();
+      allow update: if isOrderCountBump();
+    }
     match /setups/{id}     { allow read: if true; allow write: if isModerator(); }
-    match /settings/{id}   { allow read: if true; allow write: if isModerator(); }
+    // Public read, moderator write — EXCEPT the petty cash float, which has
+    // its own rule above. Rules are a permissive union: without this guard a
+    // moderator would still match here and be able to rewrite the balance.
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isModerator() && id != 'pettyCash';
+    }
   }
 }

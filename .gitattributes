@@ -1,0 +1,36 @@
+# Normalize line endings on the way into the repo.
+#
+# This machine has core.autocrlf=true, so without this file every text file
+# would be stored with CRLF and each one would read as wholly rewritten on any
+# non-Windows checkout. `text=auto eol=lf` stores LF and still checks out CRLF
+# locally, so nothing changes in your editor.
+* text=auto eol=lf
+
+# Files that must keep CRLF to run on Windows.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binaries — never touched, never diffed as text.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.ttf  binary
+*.otf  binary
+*.woff binary
+*.woff2 binary
+*.fbx  binary
+*.glb  binary
+*.apk  binary
+*.aab  binary
+*.ipa  binary
+*.jar  binary
+*.keystore binary
+*.jks  binary
+*.xlsx binary
+*.pdf  binary
+
+# Generated lockfiles: real content, but collapse them in diffs and don't let
+# them dominate a PR's language stats.
+pubspec.lock linguist-generated=true

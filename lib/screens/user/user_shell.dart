@@ -6,6 +6,7 @@ import '../../brand.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/app_settings.dart';
 import '../../data/customer_repository.dart';
+import '../../data/member_preferences.dart';
 import '../../widgets.dart';
 import '../banned_notice.dart';
 import '../guest_shell.dart';
@@ -56,6 +57,11 @@ class _UserShellState extends State<UserShell> {
   void initState() {
     super.initState();
     AppSettingsScope.notifier.addListener(_onSettings);
+    // Fetch this member's own settings once, for the whole session: the
+    // Settings screens read and write them, the Menu flags dishes against the
+    // allergens they avoid, and the app's language follows the one they chose.
+    // Fire-and-forget — a failed read leaves the defaults in force.
+    MemberPreferencesScope.load();
     // Live ban watch: the moment customers/{uid}.banned turns true, sign out
     // and swap the shell for the suspended notice. Errors are ignored — the
     // forced sign-out itself drops read permission on the profile doc.
@@ -64,6 +70,7 @@ class _UserShellState extends State<UserShell> {
         if (!banned || _banned || !mounted) return;
         setState(() => _banned = true);
         CustomerRepository().signOut();
+        MemberPreferencesScope.reset();
       },
       onError: (_) {},
     );
@@ -102,6 +109,9 @@ class _UserShellState extends State<UserShell> {
 
   Future<void> _logout() async {
     await CustomerRepository().signOut();
+    // One member's choices must never colour the guest side or the next account
+    // to sign in — including the language the app is running in.
+    MemberPreferencesScope.reset();
     if (!mounted) return;
     // Clear the whole stack back to a fresh guest shell.
     Navigator.of(context).pushAndRemoveUntil(
@@ -120,7 +130,9 @@ class _UserShellState extends State<UserShell> {
 
   Widget _pageFor(int id) => switch (id) {
         UserShell.tabMenu => const UserMenuPage(),
-        UserShell.tabGabay => const UserGabayPage(),
+        // Gabay takes the navigator so a recommended package can hand off to
+        // the Packages tab, where it's actually booked.
+        UserShell.tabGabay => UserGabayPage(onNavigate: _go),
         UserShell.tabPackages => const UserCateringPage(),
         UserShell.tabAccount => AccountPage(onLogout: _logout),
         _ => UserHomePage(onNavigate: _go),

@@ -1,0 +1,190 @@
+/* HapagPamana · Layout Viewer — mobile-facing 3D preview.
+   Not the admin shell: no sidebar, no topbar, no editor chrome. Just the
+   tokens layout.css's .ld-3d-* rules read, plus enough page structure to
+   host the 3D view and the "Walk the room" entry point. Values copied from
+   Admin/Content Moderator/css/global.css's :root — the same palette
+   scene3d.js reads live off these custom properties. */
+:root {
+  --paper:      #EFE3C6;
+  --paper-2:    #F8F1DE;
+  --paper-3:    #FFFBF0;
+  --vellum:     #E7D8B5;
+  --ink:        #33220F;
+  --ink-soft:   #6A5331;
+  --ink-faint:  #927A4E;
+
+  --brown:      #432C0E;
+  --brown-deep: #2A1A08;
+  --olive:      #54582F;
+
+  --gold:       #A9823C;
+  --gold-deep:  #7B591F;
+  --gold-light: #C7A04A;
+  --gilt:       #DCB661;
+
+  --ok:         #5C7A33;
+  --warn:       #98691B;
+  --danger:     #8C3320;
+
+  --hair:       rgba(67, 44, 14, 0.20);
+  --hair-soft:  rgba(67, 44, 14, 0.10);
+  --gold-hair:  rgba(169, 130, 60, 0.42);
+  --gold-hair2: rgba(169, 130, 60, 0.22);
+
+  --shadow-sm:  0 2px 12px -7px rgba(42, 26, 8, 0.45);
+  --shadow-md:  0 22px 48px -30px rgba(42, 26, 8, 0.55);
+  --shadow-lg:  0 40px 90px -38px rgba(26, 15, 5, 0.62);
+
+  --display:  "Cormorant Garamond", Georgia, serif;
+  --text:     "Spectral", Georgia, "Times New Roman", serif;
+  --engraved: "Cinzel", Georgia, serif;
+
+  --r:    4px;
+  --r-lg: 8px;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--text);
+  color: var(--ink);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+}
+
+.lv-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--hair);
+  background: var(--paper-2);
+  flex: 0 0 auto;
+}
+.lv-head h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.lv-head small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+/* Floor plan / 3D switch. Two stages share one wrapper; only one is ever
+   un-hidden (see viewer.js show()). */
+.lv-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--hair);
+}
+.lv-tab {
+  flex: 1;
+  appearance: none;
+  border: 1px solid var(--gold-hair2);
+  border-radius: var(--r-lg);
+  padding: 8px 10px;
+  background: transparent;
+  font-family: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.lv-tab.is-on {
+  background: var(--paper-3);
+  border-color: var(--gold-hair);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+.lv-tab:disabled { opacity: 0.45; }
+
+.lv-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The 2D stage. The .ld-canvas inside carries the desk's own grid and piece
+   styling from the copied layout.css; this only has to centre it and let a
+   plan larger than the phone scroll rather than spill. */
+.lv-stage2d {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  background: var(--paper);
+  -webkit-overflow-scrolling: touch;
+}
+.lv-stage2d[hidden] { display: none; }
+.lv-canvas-wrap {
+  min-width: 100%;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.lv-stage2d .ld-canvas { flex: 0 0 auto; }
+/* Read-only: the desk's hover/selection affordances would promise an edit
+   that this page cannot honour. */
+.lv-stage2d .ld-item { cursor: default; }
+.lv-stage2d .ld-item:hover {
+  border-color: var(--gold-hair);
+  box-shadow: none;
+}
+
+.lv-stage-wrap > .ld-stage--3d[hidden] { display: none; }
+.lv-btn[hidden] { display: none; }
+
+.lv-stage-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+.lv-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--paper-2);
+  border-top: 1px solid var(--hair);
+}
+
+.lv-btn {
+  flex: 1;
+  appearance: none;
+  border: 1px solid var(--gold-hair);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  font-family: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--paper-3);
+  color: var(--ink);
+}
+.lv-btn.primary {
+  background: var(--gold-deep);
+  border-color: var(--gold-deep);
+  color: var(--paper-3);
+}
+.lv-btn:disabled { opacity: 0.5; }
+
+.lv-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  background: var(--paper);
+}
+.lv-status[hidden] { display: none; }

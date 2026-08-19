@@ -1,21 +1,36 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../brand.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/customer_repository.dart';
+import '../../data/member_preferences.dart';
+import '../../data/recommendation_repository.dart';
 import '../../widgets.dart';
+import '../detail_sheets.dart';
+import '../home_sections.dart';
+import 'user_shell.dart';
 
 /// Gabay — the member-side AI catering companion ("gabay" = guide).
 ///
-/// DESIGN ONLY for now: this lays out the assistant's welcome, a "how I can
-/// help" rundown of its planned capabilities, a set of starter prompts and a
-/// chat composer. None of the intelligence is wired yet — typing a message or
-/// tapping a prompt simply surfaces a "coming soon" note. The real behaviour
-/// (collaborative-filtering recommendations, budget/headcount package matching,
-/// healthier-meal swaps, layout explanations and an FAQ assistant) is captured
-/// in project memory for a later implementation pass.
+/// Mostly design for now: the assistant's welcome, a "how I can help" rundown of
+/// its planned capabilities, a set of starter prompts and a chat composer. The
+/// conversation isn't wired — typing a message or tapping a prompt surfaces a
+/// "coming soon" note.
+///
+/// One capability IS live: "Picks just for you", the collaborative-filtering
+/// recommendations, which sit in a real panel at the top of the page (see
+/// [_RecommendedPanel]) rather than in the coming-soon rundown below it. The
+/// rest (budget/headcount package matching, healthier-meal swaps, layout
+/// explanations, the FAQ assistant) still await an implementation pass.
 class UserGabayPage extends StatefulWidget {
-  const UserGabayPage({super.key});
+  const UserGabayPage({super.key, this.onNavigate});
+
+  /// Switches the member shell to another tab. Null when Gabay is hosted
+  /// somewhere that can't navigate — the recommendation panel then simply
+  /// doesn't offer to open Packages.
+  final void Function(int index)? onNavigate;
 
   @override
   State<UserGabayPage> createState() => _UserGabayPageState();
@@ -24,14 +39,14 @@ class UserGabayPage extends StatefulWidget {
 class _UserGabayPageState extends State<UserGabayPage> {
   final TextEditingController _controller = TextEditingController();
 
+  StreamSubscription<RecommendationSet>? _recSub;
+  RecommendationSet _recs = RecommendationSet.empty;
+  bool _recsLoading = true;
+
   /// The capabilities Gabay will offer once implemented — also the content of
-  /// the "how I can help" rundown.
+  /// the "how I can help" rundown. "Picks just for you" is deliberately absent:
+  /// it's live, and lives in [_RecommendedPanel] above this list.
   static const List<(IconData, String, String)> _capabilities = [
-    (
-      Icons.recommend_outlined,
-      'Picks just for you',
-      'Meal and package ideas drawn from your past orders.',
-    ),
     (
       Icons.savings_outlined,
       'Match my budget',
@@ -69,7 +84,32 @@ class _UserGabayPageState extends State<UserGabayPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Same stream the member home's strip reads — one repository, so the two
+    // surfaces can never disagree about what this member is being shown. A
+    // failed read settles into the empty set, which drops the panel.
+    _recSub = RecommendationRepository().watchRecommended().listen(
+      (set) {
+        if (!mounted) return;
+        setState(() {
+          _recs = set;
+          _recsLoading = false;
+        });
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _recs = RecommendationSet.empty;
+          _recsLoading = false;
+        });
+      },
+    );
+  }
+
+  @override
   void dispose() {
+    _recSub?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -96,71 +136,246 @@ class _UserGabayPageState extends State<UserGabayPage> {
     final name = CustomerRepository().displayName?.trim() ?? '';
     final first = name.isEmpty ? 'Kaibigan' : name.split(' ').first;
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screen,
-              AppSpacing.lg,
-              AppSpacing.screen,
-              AppSpacing.xl,
-            ),
-            children: [
-              FadeSlideIn(child: const _GabayHeader()),
-              const SizedBox(height: AppSpacing.xl),
-
-              // Greeting from the assistant.
-              FadeSlideIn(
-                delay: const Duration(milliseconds: 80),
-                child: _AssistantBubble(
-                  'Kumusta, $first! I\'m Gabay, your catering companion. '
-                  'I can suggest meals and packages, work to your budget and '
-                  'guest count, and answer your planning questions. How can I '
-                  'help today?',
-                ),
+    // The recommendation panel answers to the member's own switch over whether
+    // Gabay may put suggestions in front of them — watched, not read once, so
+    // toggling it in Settings takes the panel away without a tab bounce.
+    return ValueListenableBuilder<MemberPreferences>(
+      valueListenable: MemberPreferencesScope.notifier,
+      builder: (context, prefs, _) => Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screen,
+                AppSpacing.lg,
+                AppSpacing.screen,
+                AppSpacing.xl,
               ),
-              const SizedBox(height: AppSpacing.section),
+              children: [
+                FadeSlideIn(child: const _GabayHeader()),
+                const SizedBox(height: AppSpacing.xl),
 
-              FadeSlideIn(
-                delay: const Duration(milliseconds: 140),
-                child: Text('HERE\'S HOW I CAN HELP', style: AppTextStyles.eyebrow),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              for (var i = 0; i < _capabilities.length; i++) ...[
+                // Greeting from the assistant.
                 FadeSlideIn(
-                  delay: Duration(milliseconds: 180 + i * 50),
-                  child: _CapabilityCard(
-                    icon: _capabilities[i].$1,
-                    title: _capabilities[i].$2,
-                    subtitle: _capabilities[i].$3,
+                  delay: const Duration(milliseconds: 80),
+                  child: _AssistantBubble(
+                    'Kumusta, $first! I\'m Gabay, your catering companion. '
+                    'I can suggest meals and packages, work to your budget and '
+                    'guest count, and answer your planning questions. How can I '
+                    'help today?',
                   ),
                 ),
-                const SizedBox(height: AppSpacing.sm + 2),
-              ],
-              const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.section),
 
-              FadeSlideIn(
-                delay: const Duration(milliseconds: 220),
-                child: Text('TRY ASKING', style: AppTextStyles.eyebrow),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              FadeSlideIn(
-                delay: const Duration(milliseconds: 260),
-                child: Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
+                // ── Picks just for you (live) ────────────────────────────────
+                // The one capability that isn't a promise. Answers to the
+                // member's own suggestions switch, and drops out entirely when
+                // there's nothing to recommend — an empty panel would say Gabay
+                // is broken when it's only new.
+                if (prefs.gabaySuggestions &&
+                    (_recsLoading || _recs.isNotEmpty)) ...[
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 110),
+                    child: _RecommendedPanel(
+                      loading: _recsLoading,
+                      set: _recs,
+                      onOpenPackages: widget.onNavigate == null
+                          ? null
+                          : () => widget.onNavigate!(UserShell.tabPackages),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.section),
+                ],
+
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 140),
+                  child: Text(
+                    'HERE\'S HOW I CAN HELP',
+                    style: AppTextStyles.eyebrow,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                for (var i = 0; i < _capabilities.length; i++) ...[
+                  FadeSlideIn(
+                    delay: Duration(milliseconds: 180 + i * 50),
+                    child: _CapabilityCard(
+                      icon: _capabilities[i].$1,
+                      title: _capabilities[i].$2,
+                      subtitle: _capabilities[i].$3,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm + 2),
+                ],
+                const SizedBox(height: AppSpacing.lg),
+
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 220),
+                  child: Text('TRY ASKING', style: AppTextStyles.eyebrow),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 260),
+                  child: Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final prompt in _starters)
+                        _PromptChip(prompt, onTap: _comingSoon),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _Composer(controller: _controller, onSend: _comingSoon),
+        ],
+      ),
+    );
+  }
+}
+
+// ════════════════════════════ Recommended panel ════════════════════════════
+/// "Picks just for you" — the collaborative-filtering recommendations, in the
+/// one place on the member side that can explain itself.
+///
+/// The home strip shows the same items in passing; here they get the assistant's
+/// own voice around them, a badge naming what produced the list, and a way
+/// through to Packages when a pick is a package rather than a dish. Which is the
+/// point of the source badge: Gabay promises to say why something was
+/// recommended, and a panel that can't distinguish "members like you ordered
+/// this" from "the kitchen featured it" can't keep that promise.
+class _RecommendedPanel extends StatelessWidget {
+  const _RecommendedPanel({
+    required this.loading,
+    required this.set,
+    required this.onOpenPackages,
+  });
+
+  final bool loading;
+  final RecommendationSet set;
+
+  /// Opens the Packages tab; null when this Gabay can't navigate.
+  final VoidCallback? onOpenPackages;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withValues(alpha: 0.12),
+                    borderRadius: AppRadius.mdAll,
+                  ),
+                  child: const Icon(
+                    Icons.recommend_outlined,
+                    size: 19,
+                    color: AppColors.goldDeep,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm + 2),
+                Expanded(
+                  child: Text(
+                    'Picks just for you',
+                    style: AppTextStyles.serif(size: 17, height: 1.15),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!loading) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: RecommendationSourceBadge(set.source),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+
+          // The cards run to the card's own edge rather than the screen
+          // gutter, so the strip reads as belonging to the panel — hence the
+          // ListView here instead of the home page's [ForYouStrip], which pads
+          // itself to the wider screen inset.
+          SizedBox(
+            height: 196,
+            child: loading
+                ? const Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: AppColors.goldDeep,
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                    ),
+                    itemCount: set.items.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (context, i) {
+                      final item = set.items[i];
+                      return RecommendedCard(
+                        item,
+                        onTap: () {
+                          if (!item.isPackage) {
+                            showProductSheet(context, item.product!);
+                          } else {
+                            onOpenPackages?.call();
+                          }
+                        },
+                      );
+                    },
+                  ),
+          ),
+
+          if (!loading && onOpenPackages != null) ...[
+            const SizedBox(height: AppSpacing.sm + 2),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: TextButton(
+                onPressed: onOpenPackages,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final prompt in _starters)
-                      _PromptChip(prompt, onTap: _comingSoon),
+                    Text(
+                      'See the packages',
+                      style: AppTextStyles.sans(
+                        size: 12,
+                        weight: FontWeight.w700,
+                        color: AppColors.goldDeep,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const Icon(
+                      Icons.arrow_forward,
+                      size: 14,
+                      color: AppColors.goldDeep,
+                    ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
-        _Composer(controller: _controller, onSend: _comingSoon),
-      ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -202,10 +417,7 @@ class _GabayHeader extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 2),
-              Text(
-                'Your catering companion',
-                style: AppTextStyles.bodySmall,
-              ),
+              Text('Your catering companion', style: AppTextStyles.bodySmall),
             ],
           ),
         ),
@@ -312,10 +524,7 @@ class _CapabilityCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  title,
-                  style: AppTextStyles.serif(size: 16, height: 1.15),
-                ),
+                Text(title, style: AppTextStyles.serif(size: 16, height: 1.15)),
                 const SizedBox(height: 3),
                 Text(subtitle, style: AppTextStyles.bodySmall),
               ],

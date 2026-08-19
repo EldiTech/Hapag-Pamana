@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import '../../brand.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/allergens.dart';
+import '../../data/member_preferences.dart';
 import '../../data/product.dart';
 import '../../data/product_repository.dart';
 import '../../widgets.dart';
 import '../detail_sheets.dart';
+import 'settings/dietary_preference_page.dart';
 
 /// Member-side Menu screen — live products from Firestore. A type tab bar (Food
 /// Packs / Catering Food Trays), per-type category chips, a search box and a
@@ -16,7 +18,10 @@ import '../detail_sheets.dart';
 /// products marked "Visible in app" are shown.
 ///
 /// Self-contained member-domain copy of the guest menu so the signed-in catalogue
-/// can grow member-only touches (favourites, "order again") independently.
+/// can grow member-only touches (favourites, "order again") independently — the
+/// first of those being the member's dietary preference: a dish carrying an
+/// allergen they asked us to avoid wears a flag on its card ([_AvoidTag]), and a
+/// note above the grid names what's being flagged and opens the setting.
 class UserMenuPage extends StatefulWidget {
   const UserMenuPage({super.key});
 
@@ -42,6 +47,10 @@ class _UserMenuPageState extends State<UserMenuPage> {
   @override
   void initState() {
     super.initState();
+    // Follow the member's dietary preference, so setting an allergen in
+    // Settings has the grid flagged the moment they come back to this tab
+    // (which is kept alive by the shell, and so never rebuilt on its own).
+    MemberPreferencesScope.notifier.addListener(_onPreferences);
     _sub = _repo.watchVisible().listen(
       (products) {
         if (mounted) {
@@ -65,8 +74,13 @@ class _UserMenuPageState extends State<UserMenuPage> {
 
   @override
   void dispose() {
+    MemberPreferencesScope.notifier.removeListener(_onPreferences);
     _sub?.cancel();
     super.dispose();
+  }
+
+  void _onPreferences() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -74,6 +88,7 @@ class _UserMenuPageState extends State<UserMenuPage> {
     final loading = _loading;
     final error = _error;
     final all = _all;
+    final prefs = MemberPreferencesScope.value;
 
     // Products for the active type — drives the category chips.
     final ofType = all.where((p) => p.type == _type).toList();
@@ -151,6 +166,23 @@ class _UserMenuPageState extends State<UserMenuPage> {
                   active: _category,
                   onSelect: (c) => setState(() => _category = c),
                 ),
+              // Above the allergen map, because it's about *this member* rather
+              // than about the menu: it says which flags they'll see and where
+              // the setting behind them lives.
+              if (prefs.avoidAllergens.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.lg),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 120),
+                  child: _DietNote(
+                    avoided: knownAllergens(prefs.avoidAllergens),
+                    onTap: () => Navigator.of(context).push(
+                      BrandPageRoute(
+                        builder: (_) => const DietaryPreferencePage(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               if (showAllergens) ...[
                 const SizedBox(height: AppSpacing.lg),
                 FadeSlideIn(
@@ -206,6 +238,7 @@ class _UserMenuPageState extends State<UserMenuPage> {
               delay: Duration(milliseconds: 40 * (i % 8)),
               child: _MenuItemCard(
                 shown[i],
+                avoided: prefs.avoidedIn(shown[i].allergens),
                 onTap: () => showProductSheet(context, shown[i]),
               ),
             ),
@@ -449,9 +482,18 @@ class _AllergenSummary extends StatelessWidget {
 const double _kTitleBlock = 18.0 * 2;
 
 class _MenuItemCard extends StatelessWidget {
-  const _MenuItemCard(this.product, {required this.onTap});
+  const _MenuItemCard(
+    this.product, {
+    required this.onTap,
+    this.avoided = const [],
+  });
 
   final Product product;
+
+  /// The allergens on this dish that the member asked us to avoid. Empty for a
+  /// member who's set no preference — and the card then looks exactly as before.
+  final List<Allergen> avoided;
+
   final VoidCallback onTap;
 
   @override
@@ -471,6 +513,14 @@ class _MenuItemCard extends StatelessWidget {
                   ProductImage(product),
                   if (product.featured)
                     const Positioned(top: 8, left: 8, child: FeaturedTag()),
+                  // Opposite corner from the Featured tag, so a dish can carry
+                  // both without them colliding.
+                  if (avoided.isNotEmpty)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: _AvoidTag(avoided),
+                    ),
                 ],
               ),
             ),
@@ -491,6 +541,100 @@ class _MenuItemCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.caption,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────── Dietary flags ───────────────────────────
+/// Why the flags are here, and how to change them: names the allergens the
+/// member is avoiding and opens the setting. Shown only once they've set one, so
+/// a member with no preference never sees a word about it.
+class _DietNote extends StatelessWidget {
+  const _DietNote({required this.avoided, required this.onTap});
+
+  /// The avoided allergens, already resolved against the live taxonomy.
+  final List<Allergen> avoided;
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.health_and_safety_outlined,
+            size: 18,
+            color: AppColors.goldDeep,
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('YOUR DIETARY PREFERENCE', style: AppTextStyles.eyebrow),
+                const SizedBox(height: 3),
+                Text(
+                  'Flagging dishes with ${allergenSentence(avoided)}.',
+                  style: AppTextStyles.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.chevron_right,
+            size: 20,
+            color: AppColors.brownSoft.withValues(alpha: 0.6),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The flag on a dish the member asked us to keep away from. Painted in the
+/// hottest of the offending allergens' own heat colours, so the tag carries the
+/// same risk language as the heatmap and the "contains" chips rather than
+/// inventing a warning colour of its own.
+class _AvoidTag extends StatelessWidget {
+  const _AvoidTag(this.avoided);
+
+  final List<Allergen> avoided;
+
+  @override
+  Widget build(BuildContext context) {
+    final severity = avoided.fold<double>(
+      0,
+      (worst, a) => a.severity > worst ? a.severity : worst,
+    );
+    final fill = allergenHeatColor(severity);
+    final ink = onAllergenHeat(severity);
+    // One offender is worth naming; several would crowd the corner, so they're
+    // counted instead and the sheet spells them out.
+    final label = avoided.length == 1
+        ? avoided.first.short.toUpperCase()
+        : '${avoided.length} TO AVOID';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(7, 4, 9, 4),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: AppRadius.pillAll,
+        border: Border.all(color: ink.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 12, color: ink),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTextStyles.engraved(size: 8, color: ink, spacing: 1.2),
           ),
         ],
       ),

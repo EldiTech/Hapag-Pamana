@@ -5,12 +5,15 @@ import '../../brand.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/customer_repository.dart';
 import '../../widgets.dart';
-import '../user/user_shell.dart';
+import 'taste_profile_page.dart';
 
 /// Guest Sign-Up — a three-step wizard (Name · Contact · Security). Each step
 /// validates before advancing; the final step creates a Firebase Auth account
-/// and a matching `customers/{uid}` profile via [CustomerRepository], then opens
-/// the member-side [UserShell]. Mirrors the app's Heirloom-Editorial styling.
+/// and a matching `customers/{uid}` profile via [CustomerRepository], then hands
+/// off to [TasteProfilePage] — the taste quiz that gives the recommendation
+/// engine something to work from before the member has ordered anything. That
+/// screen is what opens the member-side `UserShell`, whether the quiz is
+/// answered or skipped. Mirrors the app's Heirloom-Editorial styling.
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -60,7 +63,9 @@ class _SignUpPageState extends State<SignUpPage> {
     switch (step) {
       case 0:
         final name = _name.text.trim();
-        setState(() => _nameErr = name.isEmpty ? 'Please enter your name' : null);
+        setState(
+          () => _nameErr = name.isEmpty ? 'Please enter your name' : null,
+        );
         return _nameErr == null;
       case 1:
         final email = _email.text.trim();
@@ -136,10 +141,12 @@ class _SignUpPageState extends State<SignUpPage> {
       messenger.showSnackBar(
         SnackBar(content: Text('Welcome to the hapag, $name!')),
       );
-      // Now signed in: drop Sign-Up and Log In and open the member side,
-      // keeping the guest shell as the root so logout can return to it.
+      // Now signed in: drop Sign-Up and Log In and ask the taste questions,
+      // keeping the guest shell as the root so logout can return to it. The
+      // quiz opens the member shell itself, on the same root, so a skipped
+      // quiz and an answered one land in exactly the same place.
       navigator.pushAndRemoveUntil(
-        BrandPageRoute(builder: (_) => const UserShell()),
+        BrandPageRoute(builder: (_) => TasteProfilePage(name: name)),
         (route) => route.isFirst,
       );
     } on DuplicateAccountException catch (e) {
@@ -208,7 +215,9 @@ class _SignUpPageState extends State<SignUpPage> {
       if (!mounted) return;
       setState(() => _submitting = false);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Something went wrong. Please try again.')),
+        const SnackBar(
+          content: Text('Something went wrong. Please try again.'),
+        ),
       );
     }
   }
@@ -303,10 +312,8 @@ class _SignUpPageState extends State<SignUpPage> {
                         duration: Motion.base,
                         switchInCurve: Motion.standard,
                         switchOutCurve: Motion.exit,
-                        transitionBuilder: (child, animation) => FadeTransition(
-                          opacity: animation,
-                          child: child,
-                        ),
+                        transitionBuilder: (child, animation) =>
+                            FadeTransition(opacity: animation, child: child),
                         child: _step == 0
                             ? Column(
                                 key: const ValueKey('footer-first'),

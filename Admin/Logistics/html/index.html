@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Dispatch</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../../Content%20Moderator/css/global.css" />
+  <link rel="stylesheet" href="../../Purchasing/css/purchasing.css" />
+  <link rel="stylesheet" href="../../assets/hp-workflow.css" />
+  <link rel="stylesheet" href="../css/logistics.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <!-- The release queue: orders the kitchen says are ready, waiting on this
+         desk to release them &mdash; and everything already on its way.
+         Given its own labelled section (mirroring Equipment pickups below)
+         so the two independent queues never read as one continuous list. -->
+    <section class="dispatch-lane dispatch-lane--food">
+      <h2 class="panel-title panel-title--food">
+        <span class="panel-title-ic"><span class="ic" data-icon="cloche"></span></span>
+        Food release
+      </h2>
+      <p class="panel-sub">The kitchen's cook/pack/release rail.</p>
+
+      <div class="stat-grid" id="lgStats"></div>
+      <div class="toolbar" id="lgChips"></div>
+
+      <section class="panel">
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Event</th>
+                <th>Function date</th>
+                <th>Pax</th>
+                <th>Stage</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="lgRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <!-- Equipment pickups — the Catering Equipment desk's own independent
+         lane (bookings/{id}.equipmentPickup): whether or not the food has
+         been released yet, an event's gear can be requested, picked up and
+         delivered on its own schedule. Only events with an active request
+         show here. -->
+    <section class="dispatch-lane dispatch-lane--equipment">
+      <h2 class="panel-title panel-title--equipment">
+        <span class="panel-title-ic"><span class="ic" data-icon="crate"></span></span>
+        Equipment pickups
+      </h2>
+      <p class="panel-sub">The Catering Equipment desk's checkout/return rail — tracked separately from food.</p>
+
+      <div class="stat-grid" id="epuStats"></div>
+      <div class="toolbar" id="epuChips"></div>
+      <section class="panel">
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Event</th>
+                <th>Function date</th>
+                <th>Stage</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="epuRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../../assets/hp-fulfilment.js"></script>
+  <script src="../js/dispatch.js"></script>
+</body>
+</html>

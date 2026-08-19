@@ -1,7 +1,8 @@
 // HapagPamana · Admin portal — Firebase Auth + Firestore role gate.
 // On sign-in we authenticate, then read users/{uid}.role and hand off to that
 // role's dashboard (window.ROLE_HOMES): content moderators to the Content
-// Moderator, order managers to Orders. Unknown/inactive roles are bounced.
+// Moderator, order managers to Orders, master chefs to the kitchen, finance
+// officers to the costing board. Unknown/inactive roles are bounced.
 (function () {
   "use strict";
 
@@ -19,6 +20,24 @@
 
   // Fallback when ROLE_HOMES is missing (older firebase-config.js).
   const MOD_PAGE = "Content%20Moderator/html/index.html";
+
+  // Per-role welcome curtain greeting (falls back to a generic one).
+  const ROLE_GREETINGS = {
+    owner: "Welcome, Owner",
+    admin: "Welcome, Admin",
+    master_chef: "Welcome, Master Chef",
+    content_moderator: "Welcome, Moderator",
+    marketing_admin: "Welcome, Marketing Admin",
+    order_manager: "Welcome, Order Manager",
+    production_manager: "Welcome, Production Manager",
+    finance: "Welcome, Finance",
+    purchasing_staff: "Welcome, Purchasing Staff",
+    stock_clerk: "Welcome, Stock Clerk",
+    team_leader: "Welcome, Team Leader",
+    logistics: "Welcome, Logistics",
+    catering_equipment: "Welcome, Catering Equipment",
+    layout_designer: "Welcome, Layout Designer",
+  };
 
   // ── Firebase init ─────────────────────────────────────────────────────────
   let auth = null, db = null;
@@ -141,6 +160,8 @@
         label.textContent = "WELCOME…";
         const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         const veil = document.getElementById("welcomeVeil");
+        const welcomeText = document.getElementById("welcomeText");
+        if (welcomeText) welcomeText.textContent = ROLE_GREETINGS[data.role] || "Welcome back";
         if (veil) veil.setAttribute("aria-hidden", "false");
         document.body.classList.add("is-success");
         // Pre-mark the session as verified so guard.js on the dashboard uses

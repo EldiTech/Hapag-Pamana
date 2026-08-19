@@ -27,10 +27,7 @@ const double _kMinStatusClearance = 24;
 /// subscription (not a StreamBuilder) so a stream re-emit never rebuilds the
 /// whole scroll view out from under the user.
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.onLogin, required this.onNavigate});
-
-  /// Opens the guest Log In route.
-  final VoidCallback onLogin;
+  const HomePage({super.key, required this.onNavigate});
 
   /// Switches the shell to another tab (0 Home · 1 Menu · 2 Catering · 3 About).
   final void Function(int index) onNavigate;
@@ -126,7 +123,6 @@ class _HomePageState extends State<HomePage> {
           children: [
             _Header(
               topInset: topInset,
-              onLogin: widget.onLogin,
               onBrowse: settings.ordering
                   ? () => widget.onNavigate(GuestShell.tabMenu)
                   : null,
@@ -225,14 +221,9 @@ class _HomePageState extends State<HomePage> {
 
 // ════════════════════════════ Header ════════════════════════════
 class _Header extends StatelessWidget {
-  const _Header({
-    required this.topInset,
-    required this.onLogin,
-    required this.onBrowse,
-  });
+  const _Header({required this.topInset, required this.onBrowse});
 
   final double topInset;
-  final VoidCallback onLogin;
 
   /// Null while ordering is switched off — the browse button is dropped so
   /// the hero never points at a Menu tab that isn't there.
@@ -257,10 +248,11 @@ class _Header extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logo row + Log In, mirroring the inner-tab app bar so the brand
-          // stays anchored top-left across the whole app. A fixed row height
-          // with centred children keeps the logo and chip aligned to a shared
-          // baseline regardless of their intrinsic heights.
+          // Logo row, mirroring the inner-tab app bar so the brand stays
+          // anchored top-left across the whole app. Logging in is offered from
+          // the shell's nav bar instead, so nothing competes with the brand
+          // here. A fixed row height with centred children keeps the emblem and
+          // wordmark on a shared baseline regardless of intrinsic heights.
           SizedBox(
             height: 52,
             child: Row(
@@ -274,9 +266,8 @@ class _Header extends StatelessWidget {
                 Container(width: 1, height: 30, color: AppColors.hairline),
                 const SizedBox(width: AppSpacing.md),
                 // Brand name beside the emblem, mirroring the inner-tab app
-                // bar (logo · divider · title). Expanded keeps the Log In chip
-                // pinned right; FittedBox scales the wordmark down rather than
-                // truncating it on narrow screens.
+                // bar (logo · divider · title). FittedBox scales the wordmark
+                // down rather than truncating it on narrow screens.
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,
@@ -291,8 +282,6 @@ class _Header extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                _LogInChip(onTap: onLogin),
               ],
             ),
           ),
@@ -336,37 +325,6 @@ class _Header extends StatelessWidget {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _LogInChip extends StatelessWidget {
-  const _LogInChip({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      radius: AppRadius.pill,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.person_outline, size: 16, color: AppColors.brown),
-          const SizedBox(width: 7),
-          Text(
-            'Log In',
-            style: AppTextStyles.sans(
-              size: 12,
-              weight: FontWeight.w600,
-              color: AppColors.brown,
-              spacing: 0.5,
-            ),
-          ),
         ],
       ),
     );

@@ -31,6 +31,13 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Flutter's own translations (Material / Cupertino / Widgets), so the language
+  # a member picks in Settings turns over everything the framework supplies —
+  # the booking wizards' date and time pickers, dialog buttons, the
+  # text-selection menu and date formatting. See lib/main.dart.
+  flutter_localizations:
+    sdk: flutter
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -49,9 +56,37 @@ dependencies:
   image_picker: ^1.1.2
 
   # Opens external links from the About screen — the dialer, e-mail, Google
-  # Maps and the social pages. Falls back to a clipboard copy when no app can
-  # handle the link.
+  # Maps and the social pages — and hands the member to PayMongo's hosted
+  # checkout page for a booking's downpayment. Falls back to a clipboard copy
+  # when no app can handle the link.
   url_launcher: ^6.3.1
+
+  # Talks to PayMongo's Checkout Sessions API for the 50% downpayment a booking
+  # is held with (lib/data/paymongo_service.dart).
+  http: ^1.5.0
+
+  # The address step on the catering wizard: an embedded, draggable-pin map
+  # plus Google Places autocomplete (lib/data/places_service.dart,
+  # lib/screens/user/address_picker_page.dart).
+  google_maps_flutter: ^2.13.0
+
+  # Loads .env at startup so API keys and other secrets live outside source
+  # control instead of as hardcoded defaults (see .env.example, lib/env.dart).
+  flutter_dotenv: ^5.2.1
+
+  # Renders the Gabay mark (Assets/Gabay.svg) crisply at any size.
+  flutter_svg: ^2.2.1
+
+  # Hosts the 3D Layout Viewer (hosting/layout-viewer) inside the app — the
+  # same Three.js scene the Layout Designer desk draws with, so a member can
+  # orbit their event's floor plan and walk through it. See
+  # lib/screens/user/layout_preview_page.dart.
+  webview_flutter: ^4.10.0
+
+dependency_overrides:
+  objective_c: ^9.5.0
+  jni: ^1.0.3
+  jni_flutter: ^1.0.2
 
 dev_dependencies:
   flutter_test:
@@ -92,6 +127,8 @@ flutter:
 
   assets:
     - Assets/HapagPamana.png
+    - Assets/Gabay.svg
+    - .env
 
   # To add assets to your application, add an assets section, like this:
   # assets:

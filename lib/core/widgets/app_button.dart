@@ -85,7 +85,13 @@ class AppButton extends StatelessWidget {
                 Icon(icon, size: 18),
                 const SizedBox(width: 8),
               ],
-              Text(label),
+              // Flexible + ellipsis: on a narrow screen (e.g. the wizard's
+              // BACK + primary pair) a long label like "ACCOUNT CREATED"
+              // would otherwise overflow the button's Row and paint the
+              // yellow/black overflow stripes instead of just eliding.
+              Flexible(
+                child: Text(label, overflow: TextOverflow.ellipsis),
+              ),
             ],
           );
 

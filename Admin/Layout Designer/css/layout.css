@@ -1,0 +1,2284 @@
+/* HapagPamana · Layout Designer — the drafting table.
+   Layered on Content Moderator/css/global.css, which owns the shell, the
+   panels, the badges, the modal chrome and every colour token used here.
+   Nothing below pins its own palette: the portal ships a light paper theme
+   with a dark variant, and a hardcoded colour would survive only one of them. */
+
+/* ── Top Navigation (Overview / Layout Designer) ───────────────────────── */
+.ld-top-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--gold-hair2);
+  padding-bottom: 12px;
+}
+.ld-nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid var(--gold-hair2);
+  border-radius: var(--r);
+  background: var(--paper-3);
+  color: var(--ink-soft);
+  font-family: var(--engraved);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.16s var(--ease);
+}
+.ld-nav-tab .ic svg { width: 16px; height: 16px; color: var(--gold-deep); }
+.ld-nav-tab:hover {
+  background: var(--paper-2);
+  color: var(--brown);
+  border-color: var(--gold);
+}
+.ld-nav-tab.active {
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  border-color: var(--gold-deep);
+  color: #3a2710;
+}
+.ld-nav-tab.active .ic svg { color: #3a2710; }
+
+/* ── Overview Section ─────────────────────────────────────────────────── */
+.ld-overview-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.ld-overview-view[hidden] { display: none !important; }
+
+.ld-overview-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.ld-overview-card {
+  padding: 16px 18px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--gold-hair2);
+  background: var(--paper-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ld-overview-card-title {
+  font-family: var(--engraved);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.ld-overview-card-val {
+  font-family: var(--display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.ld-overview-card-sub {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+
+.ld-overview-panel {
+  padding: 20px;
+}
+.ld-overview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.ld-overview-head h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ld-overview-table-wrap {
+  overflow-x: auto;
+}
+.ld-overview-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+.ld-overview-table th {
+  padding: 10px 14px;
+  font-family: var(--engraved);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.ld-overview-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--gold-hair2);
+  color: var(--ink-soft);
+  vertical-align: middle;
+
+/* Chair styling mirroring table appearance */
+.chair {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+.chair th {
+  padding: 10px 14px;
+  font-family: var(--engraved);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.chair td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--gold-hair2);
+  color: var(--ink-soft);
+  vertical-align: middle;
+}
+}
+.ld-overview-table tr:hover td {
+  background: var(--paper-3);
+}
+.ld-overview-client {
+  display: flex;
+  flex-direction: column;
+}
+.ld-overview-client strong {
+  font-family: var(--display);
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.ld-overview-client small {
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+}
+
+/* ── The workspace: plan on the left, drafting drawers on the right ────── */
+.ld-work {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 322px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── The plan panel ───────────────────────────────────────────────────── */
+.ld-plan { display: flex; flex-direction: column; gap: 0; overflow: hidden; }
+
+.ld-plan-head {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--gold-hair2);
+  background: var(--vellum);
+}
+.ld-plan-title { display: flex; flex-direction: column; min-width: 0; width: 100%; }
+.ld-plan-title strong {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.06rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ld-plan-title small {
+  font-family: var(--engraved);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+.ld-plan-tools { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; width: 100%; }
+
+/* Floating Stage Canvas Toolbar */
+.ld-canvas-float {
+  position: absolute;
+  left: 20px;
+  bottom: 20px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  background: var(--paper-2);
+  background: color-mix(in srgb, var(--paper-2) 90%, transparent);
+  border: 1px solid var(--gold-hair2);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(8px);
+}
+.ld-float-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.ld-float-btn:hover {
+  background: var(--paper-3);
+  color: var(--brown);
+}
+.ld-float-btn.active {
+  background: var(--gold-hair2);
+  color: var(--gold-deep);
+}
+.ld-float-btn .ic svg { width: 16px; height: 16px; }
+.ld-float-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--gold-hair2);
+  margin: 0 4px;
+}
+.ld-float-select {
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--engraved);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 4px 6px;
+  cursor: pointer;
+  outline: none;
+  border-radius: 4px;
+}
+.ld-float-select:hover {
+  background: var(--paper-3);
+  color: var(--brown);
+}
+.ld-canvas.no-grid {
+  background-image: none !important;
+}
+
+/* Save state — quiet until it has something to say. */
+.ld-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--engraved);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+.ld-saved .ic svg { width: 14px; height: 14px; }
+.ld-saved[data-state="dirty"] { color: var(--warn); }
+.ld-saved[data-state="saving"] { color: var(--ink-faint); }
+
+/* ── The canvas: a ruled sheet the room is drawn on ───────────────────── */
+.ld-stage {
+  position: relative;
+  padding: 30px 30px 26px;
+  background:
+    radial-gradient(120% 120% at 50% 0%, var(--paper-3), var(--paper-2) 70%);
+  overflow: auto;
+}
+
+/* Dimension rules along the top and left edge of the floor. */
+.ld-canvas-wrap {
+  position: relative;
+  margin: 0 auto;
+  padding: 22px 0 0 22px;
+  width: max-content;
+  max-width: 100%;
+}
+.ld-dim {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: var(--engraved);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.ld-dim::before, .ld-dim::after {
+  content: "";
+  flex: 1;
+  background: linear-gradient(90deg, transparent, var(--gold-hair), transparent);
+}
+.ld-dim--x { top: 0; left: 22px; right: 0; height: 20px; }
+.ld-dim--x::before, .ld-dim--x::after { height: 1px; }
+.ld-dim--y {
+  top: 22px; bottom: 0; left: 0; width: 20px;
+  flex-direction: column;
+  writing-mode: vertical-rl;
+}
+.ld-dim--y::before, .ld-dim--y::after {
+  width: 1px;
+  background: linear-gradient(180deg, transparent, var(--gold-hair), transparent);
+}
+
+/* The floor itself — vellum ruled into a metre grid. */
+.ld-canvas {
+  position: relative;
+  border: 1px solid var(--gold-hair);
+  border-radius: var(--r);
+  background-color: var(--vellum);
+  background-image:
+    linear-gradient(to right, var(--gold-hair2) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--gold-hair2) 1px, transparent 1px);
+  box-shadow: var(--shadow-sm), inset 0 0 0 1px rgba(255, 251, 240, 0.28);
+  touch-action: none;
+  overflow: hidden;
+}
+.ld-canvas.is-panning { cursor: grabbing; }
+
+/* ── A piece on the floor ─────────────────────────────────────────────── */
+.ld-item {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 1.5px solid var(--gold-deep);
+  background: var(--paper-3);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.ld-item:hover { border-color: var(--gold); box-shadow: var(--shadow-md); }
+.ld-item.dragging { cursor: grabbing; z-index: 5; box-shadow: var(--shadow-md); }
+.ld-item.selected {
+  border-color: var(--brown);
+  box-shadow: 0 0 0 2px var(--gold-hair), var(--shadow-md);
+  z-index: 4;
+}
+.ld-item:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+
+.ld-item--round { border-radius: 50%; }
+.ld-item--rect  { border-radius: var(--r); }
+
+/* Each kind carries its own tint so the plan reads at a glance. */
+.ld-item[data-kind="round"],
+.ld-item[data-kind="rect"] { background: var(--paper-3); }
+.ld-item[data-kind="buffet"] {
+  background: rgba(169, 130, 60, 0.2);
+  border-color: var(--gold-deep);
+}
+.ld-item[data-kind="stage"] {
+  background: rgba(84, 88, 47, 0.18);
+  border-color: var(--olive);
+}
+.ld-item[data-kind="dance"] {
+  background: rgba(123, 89, 31, 0.22);
+  border-color: var(--gold-deep);
+  background-image: linear-gradient(45deg, transparent 48%, var(--gold-hair) 48% 52%, transparent 52%);
+  background-size: 14px 14px;
+}
+.ld-item[data-kind="bar"] {
+  background: rgba(140, 51, 32, 0.14);
+  border-color: var(--danger);
+}
+.ld-item[data-kind="decor"] {
+  background: rgba(92, 122, 51, 0.16);
+  border-color: var(--ok);
+  border-radius: 50%;
+}
+.ld-item[data-kind="other"] {
+  background: var(--paper-2);
+  border-style: dashed;
+}
+
+.ld-item-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  pointer-events: none;
+  text-align: center;
+  line-height: 1.05;
+  overflow: hidden;
+  max-width: 100%;
+}
+.ld-item-label {
+  font-family: var(--engraved);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--brown);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.ld-item-seats {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+/* Below ~54px a piece is a token, not a card — the label would only smear. */
+.ld-item.is-tiny .ld-item-label { display: none; }
+
+/* Rotation handle + resize grip appear on the selected piece only. */
+.ld-grip {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid var(--brown);
+  background: var(--gilt);
+  box-shadow: var(--shadow-sm);
+  display: none;
+}
+.ld-item.selected .ld-grip { display: block; }
+.ld-grip--size { right: -7px; bottom: -7px; cursor: nwse-resize; border-radius: 3px; }
+.ld-grip--rot  { left: 50%; top: -22px; margin-left: -6.5px; cursor: grab; }
+.ld-item.selected::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -15px;
+  width: 1px;
+  height: 15px;
+  background: var(--gold-hair);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   The 3D view — the same plan stood up in the room (js/scene3d.js).
+   Editing stays in 2D; this half is for looking.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* 2D / 3D toggle — two leaves of one switch, the way the topbar's .seg reads. */
+.ld-viewtabs {
+  display: inline-flex;
+  border: 1px solid var(--gold-hair);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--paper-3);
+}
+.ld-viewtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-family: var(--engraved);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.16s var(--ease), color 0.16s var(--ease);
+}
+.ld-viewtab + .ld-viewtab { border-left: 1px solid var(--gold-hair2); }
+.ld-viewtab .ic svg { width: 15px; height: 15px; }
+.ld-viewtab:hover { color: var(--brown); background: var(--paper-2); }
+.ld-viewtab.active {
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  color: #3a2710;
+}
+.ld-viewtab:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* The two stages occupy the same slot; only one is mounted at a time. */
+.ld-stage--3d {
+  position: relative;
+  padding: 0;
+  background: var(--vellum);
+  overflow: hidden;
+}
+.ld-3d-host {
+  position: relative;
+  width: 100%;
+  height: clamp(360px, 58vh, 680px);
+}
+.ld-3d-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+.ld-3d-canvas.is-orbiting { cursor: grabbing; }
+
+/* A hint that the view can be swung, shown over the corner of the canvas. */
+.ld-3d-hint {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--gold-hair2);
+  background: var(--paper-2);
+  background: color-mix(in srgb, var(--paper-2) 84%, transparent);
+  color: var(--ink-soft);
+  font-family: var(--engraved);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.ld-3d-hint .ic svg { width: 14px; height: 14px; color: var(--gold-deep); }
+
+/* When the browser has no WebGL, or Three.js never arrived. */
+.ld-3d-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 100%;
+  padding: 30px;
+  text-align: center;
+  color: var(--ink-faint);
+}
+.ld-3d-fallback .ic svg { width: 32px; height: 32px; color: var(--gold-hair); }
+.ld-3d-fallback p { margin: 0; font-family: var(--display); font-style: italic; font-size: 1rem; }
+
+/* ── The camera filmstrip ─────────────────────────────────────────────── */
+.ld-cams {
+  display: flex;
+  gap: 10px;
+  padding: 13px 16px;
+  overflow-x: auto;
+  border-top: 1px solid var(--gold-hair2);
+  background: var(--paper-2);
+}
+.ld-cam {
+  flex: 0 0 auto;
+  width: 124px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.ld-cam-shot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 8 / 5;
+  border-radius: var(--r);
+  overflow: hidden;
+  border: 1.5px solid var(--gold-hair2);
+  background: var(--vellum);
+  display: grid;
+  place-items: center;
+  transition: border-color 0.16s var(--ease), transform 0.16s var(--ease);
+}
+.ld-cam-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ld-cam-shot .ic svg { width: 20px; height: 20px; color: var(--gold-hair); }
+.ld-cam:hover .ld-cam-shot { border-color: var(--gold); transform: translateY(-2px); }
+.ld-cam.active .ld-cam-shot {
+  border-color: var(--gold-deep);
+  box-shadow: 0 0 0 2px var(--gold-hair2);
+}
+.ld-cam-name {
+  font-family: var(--engraved);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ld-cam.active .ld-cam-name { color: var(--gold-deep); }
+
+/* ── The empty floor ──────────────────────────────────────────────────── */
+.ld-canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+.ld-canvas-empty .ic svg { width: 34px; height: 34px; color: var(--gold-hair); }
+.ld-canvas-empty p {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 1rem;
+}
+
+/* ── The drafting drawers (right rail) ────────────────────────────────── */
+.ld-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: sticky;
+  top: 92px;
+  max-height: calc(100vh - 112px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.ld-drawer {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;            /* don't let flex crush drawers; let rail scroll */
+  overflow: hidden;          /* keeps content inside border-radius */
+}
+/* .panel-pad adds 22px on top of .ld-drawer's own 16px — cancel it */
+.ld-drawer.panel-pad { padding: 16px; }
+.ld-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 13px;
+  flex: none;
+}
+.ld-drawer-head h3 {
+  margin: 0;
+  font-family: var(--engraved);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+
+/* Palette — the pieces that may be dropped on the floor. */
+.ld-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ld-pal-group { display: flex; flex-direction: column; gap: 8px; }
+.ld-pal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--paper-2);
+  border: 1px solid var(--gold-hair2);
+  border-radius: var(--r);
+  color: var(--ink);
+  font-family: var(--engraved);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.ld-pal-head small {
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--paper-3);
+  color: var(--ink-soft);
+  font-size: 0.5rem;
+}
+.ld-pal-items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 2px;
+}
+.ld-pal-items[hidden] { display: none !important; }
+
+/* Bottom Panel under Draft Board: Item Properties + Covers */
+.ld-plan-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 18px 20px;
+  border-top: 1px solid var(--gold-hair2);
+  background: var(--vellum);
+}
+.ld-bottom-box {
+  background: var(--paper-2);
+  border: 1px solid var(--gold-hair2);
+  border-radius: var(--r-lg);
+  padding: 16px;
+}
+
+.ld-piece {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 6px;
+  border-radius: var(--r);
+  border: 1px solid var(--gold-hair2);
+  background: var(--paper-3);
+  color: var(--ink-soft);
+  font-family: var(--engraved);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease),
+              color 0.15s var(--ease), transform 0.15s var(--ease);
+}
+.ld-piece .ic svg { width: 21px; height: 21px; color: var(--gold-deep); }
+.ld-piece:hover {
+  border-color: var(--gold);
+  background: var(--paper-2);
+  color: var(--brown);
+  transform: translateY(-1px);
+}
+.ld-piece:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* Properties — the selected piece, or a prompt to select one. */
+.ld-props { display: flex; flex-direction: column; gap: 14px; }
+.ld-prop-id {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dotted var(--gold-hair);
+}
+.ld-prop-swatch {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r);
+  border: 1px solid var(--gold-hair);
+  background: var(--vellum);
+  color: var(--gold-deep);
+}
+.ld-prop-swatch .ic svg { width: 22px; height: 22px; }
+.ld-prop-id div { min-width: 0; }
+.ld-prop-id strong {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--ink);
+}
+.ld-prop-id small {
+  display: block;
+  font-family: var(--text);
+  font-style: italic;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.ld-prop-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ld-prop-row .field { margin-bottom: 0; }
+.ld-prop .field { margin-bottom: 0; }
+.ld-prop .control { padding: 8px 11px; font-size: 0.9rem; }
+
+/* The rotation dial reads in degrees beside its slider. */
+.ld-rot { display: flex; align-items: center; gap: 10px; }
+.ld-rot input[type="range"] { flex: 1; accent-color: var(--gold-deep); }
+.ld-rot b {
+  width: 44px;
+  text-align: right;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ld-prop-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 24px 12px;
+  text-align: center;
+  border: 1px dashed var(--gold-hair2);
+  border-radius: var(--r);
+  color: var(--ink-faint);
+}
+.ld-prop-empty .ic svg { width: 26px; height: 26px; color: var(--gold-hair); }
+.ld-prop-empty p {
+  margin: 0;
+  font-family: var(--engraved);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+/* The seating tally — what the plan actually seats against what was booked. */
+.ld-tally { display: flex; flex-direction: column; gap: 11px; }
+.ld-tally-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--text);
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+.ld-tally-row strong {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ld-tally-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--vellum);
+  border: 1px solid var(--gold-hair2);
+  overflow: hidden;
+}
+.ld-tally-bar > span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold-light));
+  transition: width 0.5s var(--ease);
+}
+.ld-tally-bar.is-short > span { background: linear-gradient(90deg, #7a4a12, var(--warn)); }
+.ld-tally-note { margin: 0; font-size: 0.8rem; font-style: italic; color: var(--ink-faint); }
+.ld-tally-note.is-short { color: var(--warn); font-weight: 600; font-style: normal; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   The preset book — the house's standard settings for 30 through 100 pax
+   (js/presets.js), chosen from a gallery of real thumbnails.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* The headcount rail: 30 … 100, one press each. */
+.ld-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.ld-count {
+  min-width: 52px;
+  padding: 8px 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--gold-hair2);
+  background: var(--paper-3);
+  color: var(--ink-soft);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.02rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.16s var(--ease), border-color 0.16s var(--ease), color 0.16s var(--ease);
+}
+.ld-count:hover { border-color: var(--gold); background: var(--paper-2); color: var(--brown); }
+.ld-count.active {
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  border-color: var(--gold-deep);
+  color: #3a2710;
+}
+.ld-count small {
+  display: block;
+  font-family: var(--engraved);
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+/* The four arrangements at that headcount. */
+.ld-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
+  gap: 14px;
+}
+.ld-preset {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  text-align: left;
+  border: 1px solid var(--gold-hair2);
+  border-radius: var(--r-lg);
+  background: var(--paper-2);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.16s var(--ease), transform 0.16s var(--ease), box-shadow 0.16s var(--ease);
+}
+.ld-preset:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* The thumbnail IS the plan — drawn from the same items the preset lands, so
+   what is chosen from the gallery is what appears on the floor. */
+.ld-preset-shot {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--vellum);
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.ld-preset-shot svg { display: block; width: 100%; height: 100%; }
+
+.ld-preset-body { padding: 12px 13px 13px; display: flex; flex-direction: column; gap: 6px; }
+.ld-preset-body h4 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.06rem;
+  color: var(--ink);
+}
+.ld-preset-blurb {
+  margin: 0;
+  font-family: var(--text);
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+.ld-preset-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SIMULATION MODE — the first-person walkthrough (js/simulate.js).
+   The room fills the screen; the chrome is a header, a hint and a small
+   control cluster. Everything here sits BELOW the toast layer (z 80) so a
+   guided-route confirmation still reaches the walker.
+   ═══════════════════════════════════════════════════════════════════════ */
+body.hp-sim-open { overflow: hidden; }
+body.hp-sim-open .app { visibility: hidden; }
+
+.hp-sim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: var(--brown-deep);
+  color: #F4E9CE;
+  font-family: var(--text);
+  animation: fadeIn 0.35s ease both;
+}
+.hp-sim-stage { position: absolute; inset: 0; }
+.hp-sim-canvas { display: block; width: 100%; height: 100%; }
+
+/* ── Header ───────────────────────────────────────────────────────────
+   Two clusters, per brief §14: identity on the left (what this is, which
+   room, how big), state on the right (the time, and how the plan is doing).
+   The strip itself is transparent to the pointer so the room can be dragged
+   through it; only the controls inside take clicks back. */
+.hp-sim-top {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  background: linear-gradient(180deg, rgba(20, 12, 5, 0.82), transparent);
+  pointer-events: none;
+}
+.hp-sim-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.hp-sim-state { display: flex; align-items: center; gap: 12px; pointer-events: auto; }
+.hp-sim-dims {
+  font-family: var(--engraved);
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  color: rgba(244, 233, 206, 0.62);
+  font-variant-numeric: tabular-nums;
+}
+.hp-sim-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--engraved);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gilt);
+}
+.hp-sim-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--gilt);
+  box-shadow: 0 0 9px var(--gilt);
+  animation: hpSimPulse 2.4s ease-in-out infinite;
+}
+@keyframes hpSimPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hp-sim-title {
+  display: block;
+  max-width: 42vw;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #F4E9CE;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hp-sim-clock {
+  font-family: var(--engraved);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  color: rgba(244, 233, 206, 0.7);
+}
+
+/* ── Reticle + click-to-look prompt ───────────────────────────────────── */
+.hp-sim-reticle {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 5px; height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: rgba(244, 233, 206, 0.55);
+  box-shadow: 0 0 0 1px rgba(26, 15, 5, 0.5);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.hp-sim.is-locked .hp-sim-reticle { opacity: 1; }
+/* The crosshair marks where the EYES are pointing. In third person the
+   camera is behind a body on a boom, so a dot in the middle of the screen
+   sits on the avatar's back and means nothing. */
+.hp-sim.is-third .hp-sim-reticle { opacity: 0; }
+/* The view toggle reads as the mode it is IN, not the one it would switch
+   to, so the footer always answers "which view is this". */
+.hp-sim.is-third #hpSimView {
+  border-color: var(--gilt, #DCB661);
+  color: var(--gilt, #DCB661);
+}
+
+.hp-sim-prompt {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 20px 30px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(220, 182, 97, 0.34);
+  background: rgba(20, 12, 5, 0.72);
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.hp-sim-prompt strong {
+  font-family: var(--display);
+  font-size: 1.2rem;
+  color: #F4E9CE;
+}
+.hp-sim-prompt span {
+  font-family: var(--engraved);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: rgba(244, 233, 206, 0.66);
+}
+.hp-sim.is-locked .hp-sim-prompt { opacity: 0; }
+
+/* ── The interaction prompt (brief §13) ───────────────────────────────
+   A single line under the reticle, shown only within reach of something.
+   Deliberately small and deliberately transient: §13's whole instruction is
+   that the screen must not carry permanent prompts. */
+.hp-sim-hint {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 34px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--r);
+  background: rgba(20, 12, 5, 0.7);
+  border: 1px solid rgba(220, 182, 97, 0.28);
+  font-family: var(--engraved);
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: rgba(244, 233, 206, 0.82);
+  pointer-events: none;
+  animation: fadeIn 0.14s ease both;
+}
+.hp-sim-hint b {
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid rgba(220, 182, 97, 0.5);
+  color: var(--gilt);
+  font-weight: 700;
+}
+.hp-sim-hint span { color: rgba(244, 233, 206, 0.58); }
+.hp-sim.is-third .hp-sim-hint { top: calc(50% + 90px); }
+
+/* ── The inspection card (brief §10) ──────────────────────────────────
+   Opened by E, closed by E. Takes the pointer, because it carries a button. */
+.hp-sim-card {
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 268px;
+  padding: 15px 17px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(220, 182, 97, 0.3);
+  border-left: 2px solid var(--gilt);
+  background: rgba(20, 12, 5, 0.86);
+  backdrop-filter: blur(3px);
+  animation: fadeIn 0.18s ease both;
+  z-index: 4;
+}
+.hp-sim-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+.hp-sim-card-head strong {
+  font-family: var(--display);
+  font-size: 1.06rem;
+  color: #F4E9CE;
+}
+.hp-sim-status {
+  flex: none;
+  font-family: var(--engraved);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 3px;
+}
+.hp-sim-status.is-ok   { color: #9CC97A; background: rgba(92, 122, 51, 0.24); }
+.hp-sim-status.is-warn { color: #E8C169; background: rgba(224, 165, 38, 0.2); }
+.hp-sim-status.is-bad  { color: #E39082; background: rgba(192, 57, 43, 0.24); }
+
+.hp-sim-card dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 12px;
+  align-items: baseline;
+}
+.hp-sim-card dl span {
+  font-family: var(--engraved);
+  font-size: 0.53rem;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: rgba(244, 233, 206, 0.58);
+}
+.hp-sim-card dl b {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--gilt);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.hp-sim-card dl b.is-warn { color: #E8C169; }
+
+.hp-sim-card-issues {
+  list-style: none;
+  margin: 11px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid rgba(220, 182, 97, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hp-sim-card-issues li {
+  font-size: 0.76rem;
+  line-height: 1.4;
+  padding-left: 11px;
+  border-left: 2px solid rgba(244, 233, 206, 0.24);
+  color: rgba(244, 233, 206, 0.74);
+}
+.hp-sim-card-issues li.sev-high   { border-left-color: #C0392B; }
+.hp-sim-card-issues li.sev-medium { border-left-color: #E0A526; }
+
+.hp-sim-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(220, 182, 97, 0.16);
+}
+.hp-sim-card-hint {
+  font-family: var(--engraved);
+  font-size: 0.5rem;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: rgba(244, 233, 206, 0.45);
+}
+.hp-sim-card-hint b {
+  padding: 1px 5px;
+  margin-right: 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(220, 182, 97, 0.34);
+  color: var(--gilt);
+}
+
+/* ── The route compass (brief §12) ────────────────────────────────────
+   Which way the destination is, and how far, while a route is live. */
+.hp-sim-compass {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 62px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(220, 182, 97, 0.38);
+  background: rgba(20, 12, 5, 0.74);
+  pointer-events: none;
+}
+.hp-sim-compass-arrow {
+  display: inline-block;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--gilt);
+  transition: transform 0.12s linear;
+}
+.hp-sim-compass-text {
+  font-family: var(--engraved);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: #F4E9CE;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The status panel (brief §15) ─────────────────────────────────────
+   Collapsed to one line by default: the room is what the walkthrough is
+   for, and a permanent dashboard over it defeats the exercise. */
+.hp-sim-status-wrap { position: relative; }
+.hp-sim-status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--r);
+  border: 1px solid rgba(220, 182, 97, 0.32);
+  background: rgba(26, 15, 5, 0.7);
+  color: #F4E9CE;
+  font-family: var(--engraved);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.16s var(--ease), background 0.16s var(--ease);
+}
+.hp-sim-status-toggle:hover { border-color: var(--gilt); background: rgba(220, 182, 97, 0.16); }
+.hp-sim-status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: rgba(244, 233, 206, 0.4);
+}
+.hp-sim-status-dot.is-ok   { background: #7FB05A; box-shadow: 0 0 7px rgba(127, 176, 90, 0.7); }
+.hp-sim-status-dot.is-warn { background: #E0A526; box-shadow: 0 0 7px rgba(224, 165, 38, 0.7); }
+.hp-sim-status-dot.is-bad  { background: #C0392B; box-shadow: 0 0 7px rgba(192, 57, 43, 0.7); }
+.hp-sim-status-warn {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(224, 165, 38, 0.22);
+  color: #E8C169;
+  font-weight: 700;
+}
+
+.hp-sim-status-body {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 316px;
+  max-height: 68vh;
+  overflow-y: auto;
+  padding: 15px 16px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(220, 182, 97, 0.3);
+  background: rgba(20, 12, 5, 0.93);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.16s ease both;
+}
+.hp-sim-status-grid {
+  margin: 0 0 11px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+}
+.hp-sim-status-grid > div {
+  display: contents;
+}
+.hp-sim-status-grid span {
+  font-family: var(--engraved);
+  font-size: 0.53rem;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: rgba(244, 233, 206, 0.58);
+}
+.hp-sim-status-grid b {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #F4E9CE;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.hp-sim-status-grid b.is-ok   { color: #9CC97A; }
+.hp-sim-status-grid b.is-warn { color: #E8C169; }
+.hp-sim-status-grid b.is-bad  { color: #E39082; }
+.hp-sim-status-grid--split {
+  padding-top: 11px;
+  border-top: 1px solid rgba(220, 182, 97, 0.16);
+}
+
+.hp-sim-status-warnings {
+  width: 100%;
+  padding: 8px 11px;
+  border-radius: var(--r);
+  border: 1px solid rgba(224, 165, 38, 0.34);
+  background: rgba(224, 165, 38, 0.1);
+  color: #E8C169;
+  font-family: var(--engraved);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+}
+.hp-sim-status-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hp-sim-status-list li {
+  padding: 8px 10px;
+  border-radius: var(--r);
+  border-left: 2px solid rgba(244, 233, 206, 0.24);
+  background: rgba(244, 233, 206, 0.05);
+  cursor: pointer;
+  transition: background 0.16s var(--ease);
+}
+.hp-sim-status-list li:hover { background: rgba(220, 182, 97, 0.14); }
+.hp-sim-status-list li.sev-high   { border-left-color: #C0392B; }
+.hp-sim-status-list li.sev-medium { border-left-color: #E0A526; }
+.hp-sim-status-list strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 0.9rem;
+  color: #F4E9CE;
+  margin-bottom: 3px;
+}
+.hp-sim-status-list span {
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.42;
+  color: rgba(244, 233, 206, 0.7);
+}
+.hp-sim-status-list em {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  font-family: var(--engraved);
+  font-size: 0.5rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--gilt);
+}
+.hp-sim-status-clean {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(244, 233, 206, 0.66);
+}
+
+/* ── Footer controls ──────────────────────────────────────────────────── */
+.hp-sim-foot {
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px 18px;
+  background: linear-gradient(0deg, rgba(20, 12, 5, 0.86), transparent);
+}
+/* The key legend, one binding a line in two columns — a reference to glance
+   at, not a sentence to read across the bottom of the screen. */
+.hp-sim-keys {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 3px 20px;
+  font-family: var(--engraved);
+  font-size: 0.53rem;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(244, 233, 206, 0.56);
+}
+.hp-sim-keys div { display: flex; align-items: center; gap: 7px; }
+.hp-sim-keys b {
+  min-width: 42px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(220, 182, 97, 0.32);
+  color: var(--gilt);
+  font-weight: 700;
+  text-align: center;
+}
+
+.hp-sim-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.hp-sim-tool { position: relative; }
+.hp-sim-btn {
+  /* Equal weight and one size, per §14 — a row of tools, not a form. */
+  min-width: 84px;
+  padding: 8px 13px;
+  border-radius: var(--r);
+  border: 1px solid rgba(220, 182, 97, 0.36);
+  background: rgba(26, 15, 5, 0.66);
+  color: #F4E9CE;
+  font-family: var(--engraved);
+  font-size: 0.57rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.16s var(--ease), border-color 0.16s var(--ease),
+              color 0.16s var(--ease);
+}
+.hp-sim-btn:hover {
+  background: rgba(220, 182, 97, 0.18);
+  border-color: var(--gilt);
+}
+.hp-sim-btn:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; }
+.hp-sim-btn.is-on {
+  background: rgba(220, 182, 97, 0.24);
+  border-color: var(--gilt);
+  color: var(--gilt);
+}
+.hp-sim-btn--sm { min-width: 0; padding: 5px 10px; font-size: 0.52rem; }
+.hp-sim-btn.is-exit {
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  border-color: var(--gold-deep);
+  color: #33220F;
+}
+
+/* The popovers behind Quality and Guide. Plain buttons rather than a native
+   select: a select opened while the pointer is locked renders behind the
+   lock on some browsers and reads as a dead control. */
+.hp-sim-pop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  min-width: 178px;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 7px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(220, 182, 97, 0.32);
+  background: rgba(20, 12, 5, 0.95);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: fadeIn 0.14s ease both;
+  z-index: 5;
+}
+.hp-sim-pop hr {
+  margin: 5px 2px;
+  border: 0;
+  border-top: 1px solid rgba(220, 182, 97, 0.18);
+}
+.hp-sim-pop-label {
+  padding: 4px 9px 2px;
+  font-family: var(--engraved);
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: rgba(244, 233, 206, 0.45);
+}
+.hp-sim-opt {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--r);
+  background: none;
+  color: rgba(244, 233, 206, 0.82);
+  font-family: var(--engraved);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s var(--ease), color 0.14s var(--ease);
+}
+.hp-sim-opt:hover { background: rgba(220, 182, 97, 0.16); color: #F4E9CE; }
+.hp-sim-opt.is-on { background: rgba(220, 182, 97, 0.22); color: var(--gilt); }
+
+/* "Hide UI" — the room, and nothing else. */
+.hp-sim.is-bare .hp-sim-top,
+.hp-sim.is-bare .hp-sim-keys,
+.hp-sim.is-bare .hp-sim-hint,
+.hp-sim.is-bare .hp-sim-card { opacity: 0; pointer-events: none; }
+.hp-sim.is-bare .hp-sim-foot { background: none; }
+
+/* Touch devices get the stick hint instead of the keyboard legend. */
+.hp-sim.is-touch .hp-sim-keys { display: none; }
+.hp-sim.is-touch .hp-sim-prompt strong::after { content: " and drag"; }
+
+@media (max-width: 900px) {
+  .hp-sim-keys { grid-template-columns: auto; }
+}
+@media (max-width: 720px) {
+  .hp-sim-card { right: 12px; width: 210px; }
+  .hp-sim-keys { display: none; }
+  .hp-sim-foot { justify-content: center; }
+  .hp-sim-status-body { width: min(300px, 88vw); }
+  .hp-sim-title { max-width: 60vw; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   WALKABILITY REPORT (js/walkability.js)
+   ═══════════════════════════════════════════════════════════════════════ */
+.ld-walk-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.ld-walk-score {
+  flex: none;
+  width: 78px; height: 78px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid var(--gold-hair);
+  background: var(--paper-3);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.9rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ld-walk-score.is-good { border-color: var(--ok); color: var(--ok); }
+.ld-walk-score.is-warn { border-color: var(--warn); color: var(--warn); }
+.ld-walk-score.is-bad  { border-color: var(--danger); color: var(--danger); }
+.ld-walk-sum { min-width: 0; }
+.ld-walk-sum strong {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.14rem;
+  color: var(--ink);
+}
+.ld-walk-sum p {
+  margin: 4px 0 0;
+  font-family: var(--text);
+  font-size: 0.86rem;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.ld-walk-list { display: flex; flex-direction: column; gap: 10px; }
+.ld-walk-item {
+  display: flex;
+  gap: 13px;
+  padding: 13px 15px;
+  border-radius: var(--r);
+  border: 1px solid var(--gold-hair2);
+  border-left-width: 3px;
+  background: var(--paper-3);
+}
+.ld-walk-item.sev-high   { border-left-color: var(--danger); }
+.ld-walk-item.sev-medium { border-left-color: var(--warn); }
+.ld-walk-item.sev-low    { border-left-color: var(--gold); }
+.ld-walk-ic { flex: none; font-size: 1.1rem; line-height: 1.3; }
+.ld-walk-body { min-width: 0; flex: 1; }
+.ld-walk-body strong {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--ink);
+}
+.ld-walk-body p {
+  margin: 4px 0 0;
+  font-family: var(--text);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.ld-walk-metric {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  font-family: var(--engraved);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.ld-walk-metric span { color: var(--ink-faint); }
+.ld-walk-metric b { color: var(--ink); font-family: var(--display); font-size: 0.9rem; }
+.ld-walk-metric .is-short b { color: var(--danger); }
+.ld-walk-clean {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 20px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.ld-walk-clean .ic svg { width: 32px; height: 32px; color: var(--ok); }
+.ld-walk-clean p { margin: 0; font-family: var(--display); font-style: italic; font-size: 1.05rem; }
+
+/* ── The event picker ─────────────────────────────────────────────────── */
+.ld-events { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow: auto; }
+.ld-event {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--gold-hair2);
+  background: var(--paper-3);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.ld-event:hover { border-color: var(--gold); background: var(--paper-2); }
+.ld-event.active { border-color: var(--brown); background: var(--paper-2); }
+.ld-event-text { flex: 1; min-width: 0; }
+.ld-event-text strong {
+  display: block;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ld-event-text small {
+  display: block;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Print: the plan on its own sheet, for the crew dressing the room ─── */
+@media print {
+  .sidebar, .topbar, .ld-rail, .ld-plan-tools, .scrim, .toast-wrap,
+  .ld-cams, .ld-3d-hint { display: none !important; }
+  .ld-work { grid-template-columns: 1fr; }
+  .ld-stage { overflow: visible; padding: 0; }
+  .ld-item { box-shadow: none; }
+  /* The 3D canvas prints as the still it already is. */
+  .ld-3d-host { height: 460px; }
+}
+
+/* ── Dressing the room ────────────────────────────────────────────────
+   The Theme button carries the setup's name and a strip of the colours the
+   room is actually wearing, so the current dressing is readable from the
+   toolbar without opening the picker. */
+.ld-theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ld-theme-name {
+  max-width: 13ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld-theme-strip {
+  display: inline-flex;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.ld-theme-strip i {
+  width: 7px;
+  height: 13px;
+  border-radius: 2px;
+  border: 0.5px solid var(--gold-hair2);
+}
+.ld-theme.is-themed { border-color: var(--gold); color: var(--gold-deep); }
+
+/* The picker: a photograph per setup, because the choice being made is a
+   look. The palette read out of each one sits under its title, so what the
+   room will actually wear is visible before it is committed to. */
+.ld-setup-note {
+  margin: 0 0 14px;
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+.ld-setups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+}
+.ld-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink-soft);
+}
+.ld-setup-shot {
+  width: 100%;
+  aspect-ratio: 8 / 5;
+  border-radius: var(--r);
+  overflow: hidden;
+  border: 1.5px solid var(--gold-hair2);
+  background: var(--vellum);
+  display: grid;
+  place-items: center;
+  transition: border-color 0.16s var(--ease), transform 0.16s var(--ease);
+}
+.ld-setup-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ld-setup-shot--house .ic svg { width: 22px; height: 22px; color: var(--gold-hair); }
+.ld-setup:hover .ld-setup-shot { border-color: var(--gold); transform: translateY(-2px); }
+.ld-setup.active .ld-setup-shot {
+  border-color: var(--gold-deep);
+  box-shadow: 0 0 0 2px var(--gold-hair2);
+}
+.ld-setup-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ld-setup-text strong {
+  font-size: 0.86rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld-setup-text small { font-size: 0.74rem; color: var(--ink-soft); }
+.ld-setup.active .ld-setup-text strong { color: var(--gold-deep); }
+.ld-setup-strip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 12px;
+}
+.ld-setup-strip i {
+  width: 16px;
+  height: 11px;
+  border-radius: 2px;
+  border: 0.5px solid var(--gold-hair2);
+}
+/* A photograph the extractor found no scheme in — the room keeps the house
+   colours, and the card says so rather than showing an empty strip. */
+.ld-setup-strip em {
+  font-style: normal;
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+  opacity: 0.75;
+}
+
+@media (max-width: 1080px) {
+  .ld-work { grid-template-columns: 1fr; }
+  .ld-rail { position: static; }
+  /* The rail is full width below the plan here, so the pieces get more
+     columns rather than a taller drawer. */
+  .ld-pal-items { grid-template-columns: repeat(5, 1fr); }
+}
+@media (max-width: 620px) {
+  .ld-stage { padding: 16px 12px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ANALYSE · OPTIMISE · LAYOUTS
+
+   The desk's half of the DESIGN → ANALYZE → OPTIMIZE → SIMULATE workflow.
+   Everything below dresses a report, a list of recommendations, or a
+   comparison — none of it is chrome for its own sake, and none of it is
+   allowed to cover the plan, which is the thing being judged.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── The grouped palette drawer ───────────────────────────────────────
+   Twenty-five kinds in one flat run is a wall nobody reads. Grouped,
+   collapsible, and opening on Tables — which is what the first click on an
+   empty plan is always for. */
+.ld-pal-group { border-bottom: 1px solid var(--rule); }
+.ld-pal-group:last-child { border-bottom: 0; }
+.ld-pal-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 2px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: var(--engraved);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  transition: color 0.16s var(--ease);
+}
+.ld-pal-head:hover { color: var(--gold-deep); }
+.ld-pal-head small {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--paper-3);
+  color: var(--ink-faint);
+  font-size: 0.55rem;
+}
+/* The chevron turns rather than swapping glyphs, so the state reads as one
+   control changing rather than two icons alternating. */
+.ld-pal-head::before {
+  content: "";
+  order: -1;
+  width: 0; height: 0;
+  margin-right: 7px;
+  border-left: 4px solid currentColor;
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+  transition: transform 0.18s var(--ease);
+}
+.ld-pal-group.is-open .ld-pal-head::before { transform: rotate(90deg); }
+.ld-pal-items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 7px;
+  padding: 2px 0 11px;
+}
+
+/* ── Analysis on the sheet ────────────────────────────────────────────
+   The heatmap sits UNDER the pieces; the marks sit on them. Both are
+   measured, never decorative — see js/nav.js widthField. */
+.ld-heat {
+  position: absolute;
+  left: 0; top: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+  border-radius: var(--r);
+  animation: fadeIn 0.3s ease both;
+  z-index: 0;
+}
+.ld-canvas.is-analyzing .ld-item { transition: box-shadow 0.2s var(--ease); }
+.ld-item.sev-high {
+  box-shadow: 0 0 0 2px #C0392B, 0 0 14px rgba(192, 57, 43, 0.4);
+}
+.ld-item.sev-medium {
+  box-shadow: 0 0 0 2px #E0A526, 0 0 12px rgba(224, 165, 38, 0.34);
+}
+.ld-item.sev-low { box-shadow: 0 0 0 1.5px rgba(138, 143, 106, 0.7); }
+.ld-item.is-flash { animation: ldFlash 1.2s ease both; }
+@keyframes ldFlash {
+  0%, 100% { transform: scale(1); }
+  30%      { transform: scale(1.06); }
+}
+
+.ld-issue {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+.ld-issue--congestion.is-critical {
+  background: radial-gradient(circle, rgba(192, 57, 43, 0.34), rgba(192, 57, 43, 0.04) 72%);
+  border: 1px dashed rgba(192, 57, 43, 0.5);
+}
+.ld-issue--congestion.is-moderate {
+  background: radial-gradient(circle, rgba(224, 165, 38, 0.3), rgba(224, 165, 38, 0.04) 72%);
+  border: 1px dashed rgba(224, 165, 38, 0.46);
+}
+
+/* An active toolbar toggle reads as pressed rather than merely hovered. */
+.ld-plan-tools .btn.is-on {
+  background: var(--gold-wash, rgba(169, 130, 60, 0.16));
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
+/* ── The metrics strip in the report ──────────────────────────────────── */
+.ld-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 1px;
+  margin: 16px 0;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.ld-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 13px;
+  background: var(--paper-2);
+}
+.ld-metric span {
+  font-family: var(--engraved);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.ld-metric b {
+  font-family: var(--display);
+  font-size: 1.16rem;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ld-metric b.is-good { color: var(--ok, #5C7A33); }
+.ld-metric b.is-warn { color: var(--warn, #A8761C); }
+.ld-metric b.is-bad  { color: var(--danger, #8C3320); }
+
+/* A finding that names a piece is clickable — it selects and flashes it. */
+.ld-walk-item[data-focus] { cursor: pointer; }
+.ld-walk-item[data-focus]:hover { background: var(--paper-3); }
+
+/* ── The optimiser ────────────────────────────────────────────────────── */
+.ld-opt-head { margin-bottom: 16px; }
+.ld-opt-head p {
+  margin: 12px 0 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.ld-opt-compare {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 15px;
+  border-radius: var(--r-lg);
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+.ld-opt-compare > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.ld-opt-compare span {
+  font-family: var(--engraved);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.ld-opt-compare b {
+  font-family: var(--display);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.ld-opt-compare b.is-good { color: var(--ok, #5C7A33); }
+.ld-opt-compare b.is-warn { color: var(--warn, #A8761C); }
+.ld-opt-compare b.is-bad  { color: var(--danger, #8C3320); }
+.ld-opt-compare small { font-size: 0.7rem; color: var(--ink-faint); }
+.ld-opt-arrow { font-size: 1.3rem; color: var(--gold); }
+
+.ld-opt-list { display: flex; flex-direction: column; gap: 9px; }
+.ld-opt-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 15px;
+  border-radius: var(--r);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule);
+  background: var(--paper-2);
+  transition: opacity 0.2s var(--ease), background 0.2s var(--ease);
+}
+.ld-opt-item.sev-high   { border-left-color: var(--danger, #8C3320); }
+.ld-opt-item.sev-medium { border-left-color: var(--warn, #A8761C); }
+.ld-opt-item.is-done { opacity: 0.62; background: var(--paper-3); }
+.ld-opt-body strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 1rem;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.ld-opt-body p {
+  margin: 0 0 5px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.ld-opt-body small {
+  font-family: var(--engraved);
+  font-size: 0.52rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.ld-opt-acts { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.ld-opt-applied {
+  font-family: var(--engraved);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ok, #5C7A33);
+}
+
+/* ── Saved layouts and the comparison ─────────────────────────────────── */
+.ld-scn-save { display: flex; gap: 8px; align-items: stretch; }
+.ld-scn-save .control { flex: 1; }
+.ld-scn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+}
+.ld-scn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 15px;
+  border-radius: var(--r);
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+}
+.ld-scn-id strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 1rem;
+  color: var(--ink);
+}
+.ld-scn-id small {
+  font-family: var(--engraved);
+  font-size: 0.52rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.ld-scn-metrics { display: flex; gap: 16px; }
+.ld-scn-metrics span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: var(--engraved);
+  font-size: 0.5rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.ld-scn-metrics b {
+  font-family: var(--display);
+  font-size: 1rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ld-scn-acts { display: flex; gap: 6px; flex: none; }
+.ld-scn-empty {
+  margin: 18px 0 0;
+  padding: 22px;
+  text-align: center;
+  border-radius: var(--r);
+  border: 1px dashed var(--rule);
+  color: var(--ink-faint);
+  font-size: 0.86rem;
+}
+
+.ld-cmp-wrap { overflow-x: auto; }
+
+/* ── Fullscreen ─────────────────────────────────────────────────────────
+   ldFullscreen (js/designer.js) puts .ld-work itself into the Fullscreen
+   API and toggles body.ld-fullscreen alongside it — the class covers
+   browsers where requestFullscreen() is unsupported or denied (falls back
+   to a page-filling layout) and lets us reach the sidebar/topbar, which
+   sit outside .ld-work and so aren't touched by :fullscreen alone. */
+:fullscreen.ld-work,
+body.ld-fullscreen .ld-work {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 322px;
+  gap: 0;
+  width: 100vw;
+  height: 100vh;
+  padding: 0;
+  background: var(--paper-2);
+}
+:fullscreen.ld-work .ld-plan,
+body.ld-fullscreen .ld-work .ld-plan { border-radius: 0; height: 100vh; }
+:fullscreen.ld-work .ld-stage,
+body.ld-fullscreen .ld-work .ld-stage { height: 100%; }
+:fullscreen.ld-work .ld-rail,
+body.ld-fullscreen .ld-work .ld-rail {
+  height: 100vh;
+  overflow-y: auto;
+  position: static;
+  border-radius: 0;
+  border-left: 1px solid var(--gold-hair2);
+  padding: 14px;
+  background: var(--paper);
+}
+
+/* Fallback path (no Fullscreen API): hide the rest of the page chrome so
+   .ld-work has the viewport to itself, same as the :fullscreen case. #ldStats
+   and #ldChips are the stat strip and event chips above the plan; .sidebar
+   and .topbar are the shell chrome hp-shell.js builds around #view. */
+body.ld-fullscreen .sidebar,
+body.ld-fullscreen .topbar,
+body.ld-fullscreen #ldStats,
+body.ld-fullscreen #ldChips { display: none !important; }
+body.ld-fullscreen .main,
+body.ld-fullscreen .view { padding: 0; margin: 0; max-width: none; }
+body.ld-fullscreen .ld-work { position: fixed; inset: 0; z-index: 500; }
+
+#ldFullscreen .ic svg { width: 16px; height: 16px; }
+.ld-cmp {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.ld-cmp th, .ld-cmp td {
+  padding: 9px 13px;
+  text-align: right;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.ld-cmp thead th {
+  font-family: var(--engraved);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--gold);
+}
+.ld-cmp tbody th {
+  text-align: left;
+  font-family: var(--engraved);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.ld-cmp tbody td {
+  font-family: var(--display);
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+/* ── The event type picker ────────────────────────────────────────────── */
+.ld-evt-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 9px;
+  margin-top: 16px;
+}
+.ld-evt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 15px;
+  border-radius: var(--r);
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s var(--ease), background 0.16s var(--ease);
+}
+.ld-evt:hover { border-color: var(--gold); background: var(--paper-3); }
+.ld-evt.is-on { border-color: var(--gold); background: var(--gold-wash, rgba(169, 130, 60, 0.12)); }
+.ld-evt strong { font-family: var(--display); font-size: 1rem; color: var(--ink); }
+.ld-evt small { font-size: 0.78rem; line-height: 1.42; color: var(--ink-soft); }
+
+/* A hint under the seats box: what this table's own geometry takes. */
+.ld-prop-hint {
+  margin: -4px 0 12px;
+  font-size: 0.76rem;
+  line-height: 1.42;
+  color: var(--ink-faint);
+}
+.ld-prop-hint .is-short { color: var(--danger, #8C3320); }
+
+@media (max-width: 620px) {
+  .ld-pal-items { grid-template-columns: repeat(2, 1fr); }
+  .ld-opt-item, .ld-scn { flex-direction: column; align-items: stretch; }
+  .ld-opt-acts, .ld-scn-acts { flex-direction: row; }
+  .ld-scn-metrics { justify-content: space-between; }
+}

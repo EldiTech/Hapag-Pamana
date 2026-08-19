@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../brand.dart';
 import '../data/allergens.dart';
 import '../data/catering.dart';
+import '../data/member_preferences.dart';
 import '../data/product.dart';
 import '../data/product_repository.dart';
 import '../widgets.dart';
@@ -43,8 +44,13 @@ Future<void> showProductSheet(BuildContext context, Product product) {
   );
 }
 
-/// The allergen block for a viewed dish: what the dish itself contains, then a
-/// heatmap aggregated across every visible dish in the same category.
+/// The allergen block for a viewed dish: the member's own warning if this dish
+/// crosses their dietary preference, then what the dish contains, then a heatmap
+/// aggregated across every visible dish in the same category.
+///
+/// The warning leads because it's the one part that's about the person reading:
+/// the Menu card only had room to count the offenders, so this is where they're
+/// named. A guest — or a member who's set no preference — sees none of it.
 List<Widget> _allergenSection(Product product) {
   final siblings = ProductRepository.instance.latest
       .where((p) => p.category == product.category)
@@ -71,10 +77,20 @@ List<Widget> _allergenSection(Product product) {
     ];
   }
 
+  // Only the allergens this member asked us to avoid, and only those this dish
+  // actually carries.
+  final avoided = MemberPreferencesScope.value.avoidedIn(product.allergens);
+
   return [
     const SizedBox(height: AppSpacing.lg),
     const _AllergenHairline(),
     const SizedBox(height: AppSpacing.lg),
+
+    // ── Your preference ──
+    if (avoided.isNotEmpty) ...[
+      _AvoidNotice(avoided),
+      const SizedBox(height: AppSpacing.lg),
+    ],
 
     // ── This dish ──
     Text('THIS DISH CONTAINS', style: AppTextStyles.eyebrow),
@@ -101,6 +117,68 @@ List<Widget> _allergenSection(Product product) {
       AllergenHeatmap(stats: stats),
     ],
   ];
+}
+
+/// "You asked us to avoid this" — the dish crosses the member's dietary
+/// preference, named allergen by allergen.
+///
+/// Tinted by the worst offender's own severity (the same ramp the heatmap uses),
+/// and it stops short of telling the member what to do: they set the preference,
+/// so the sheet's job is to make sure they noticed, not to overrule them.
+class _AvoidNotice extends StatelessWidget {
+  const _AvoidNotice(this.avoided);
+
+  final List<Allergen> avoided;
+
+  @override
+  Widget build(BuildContext context) {
+    final severity = avoided.fold<double>(
+      0,
+      (worst, a) => a.severity > worst ? a.severity : worst,
+    );
+    final tint = allergenHeatColor(severity);
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: 0.14),
+        borderRadius: AppRadius.mdAll,
+        border: Border.all(color: tint.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 18, color: tint),
+          const SizedBox(width: AppSpacing.sm + 2),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'HEADS UP',
+                  style: AppTextStyles.engraved(
+                    size: 9,
+                    color: AppColors.brown,
+                    spacing: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'This dish carries ${allergenSentence(avoided)}, which you '
+                  'asked us to avoid.',
+                  style: AppTextStyles.sans(
+                    size: 12,
+                    weight: FontWeight.w600,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// A faint gold-flecked rule separating the allergen block from the dish facts.

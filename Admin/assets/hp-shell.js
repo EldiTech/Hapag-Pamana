@@ -62,11 +62,24 @@
   }
 
   function navMarkup() {
-    return NAV.map((p) => {
+    const items = NAV.map((p) => {
       const active = p.key === CURRENT ? " active" : "";
       const badge = p.badge ? `<span class="nav-badge" id="navBadge" hidden></span>` : "";
       return `<a href="${p.href}" data-view="${p.key}" class="nav-item${active}"><span class="ic" data-icon="${p.icon}"></span>${p.label}${badge}</a>`;
     }).join("");
+    // Owner-only escape hatch back to the Owner Overview hub — hidden until
+    // hp-core confirms the signed-in role is "owner" (see revealOwnerLink()).
+    // Skipped on the Owner dashboard itself, which already has this nav item.
+    const ownerLink = CFG.eyebrow === "Overview" ? "" :
+      `<a href="../../Owner/html/index.html" data-view="owner" class="nav-item" id="ownerBackLink" hidden><span class="ic" data-icon="grid"></span>Owner Overview</a>`;
+    return items + ownerLink;
+  }
+
+  // Reveal the "Owner Overview" link once the signed-in user's role is known.
+  function revealOwnerLink() {
+    const link = document.getElementById("ownerBackLink");
+    if (!link || !HP.userReady) return;
+    HP.userReady.then(() => { if (HP.user.roleKey === "owner") link.hidden = false; });
   }
 
   function init() {
@@ -137,6 +150,7 @@
 
     HP.hydrateIcons(app);
     HP.applyUser(); // paint whatever's already known (e.g. local-demo identity)
+    revealOwnerLink();
 
     // Wiring shared by every page.
     document.getElementById("menuToggle").addEventListener("click", () => app.classList.toggle("nav-open"));

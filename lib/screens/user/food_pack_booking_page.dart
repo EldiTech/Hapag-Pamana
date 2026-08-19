@@ -1,15 +1,22 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../brand.dart';
+import '../../core/format.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../data/booking.dart';
 import '../../data/booking_repository.dart';
 import '../../data/catering.dart';
 import '../../data/customer_repository.dart';
+import '../../data/paymongo_config.dart';
+import '../../data/places_service.dart';
 import '../../data/product.dart';
 import '../../data/product_repository.dart';
 import '../../widgets.dart';
+import 'address_picker_page.dart';
+import 'payment_page.dart';
 
 /// "Book Us Now" for food packs — a short wizard shaped after the business's
 /// food pack *quotation* rather than the catering booking form.
@@ -20,14 +27,24 @@ import '../../widgets.dart';
 /// own pax count — exactly the quotation's MENU section
 /// ("Fish Fillet with aioli sauce (5 pax)").
 ///
-///   1. The Occasion  — occasion, date, venue, pax      (date/venue/pax required)
-///   2. The Client    — name, email, contact number     (all required)
+///   1. The Occasion  — occasion, date, venue, pax
+///   2. The Client    — name, email, contact number
 ///   3. The Menu      — dishes from the Food Packs menu, a pax count on each
-///   4. The Quotation — a recap of the paperwork; delivery time & notes optional
+///   4. The Quotation — a recap of the paperwork, plus the delivery time
+///
+/// Every blank is required and held to a format before the wizard will advance
+/// (see [_checkField]) — only the kitchen notes are genuinely optional. What can
+/// be picked is never typed: the date, the delivery time and every dish come
+/// from pickers.
 ///
 /// Submitting files a `pending` document in `bookings` via
 /// [BookingRepository] with `bookingType: 'Food Pack'` and the menu joined
-/// into quotation-style lines, then settles into a thank-you state.
+/// into quotation-style lines, then hands the member to [PaymentPage] for the
+/// 50% downpayment that holds the slot, and settles into a thank-you state.
+///
+/// The order is filed *before* the payment, so an abandoned payment leaves a
+/// resumable order (`paymentStatus: 'awaiting'`) rather than losing the form —
+/// see [_submit].
 class FoodPackBookingPage extends StatefulWidget {
   const FoodPackBookingPage({super.key, this.package});
 
@@ -61,21 +78,56 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     (
       'THE QUOTATION',
       'One last look',
-      'This is what we\'ll prepare your quotation from. Delivery time and '
-          'notes are optional.',
+      'This is what we\'ll prepare your quotation from. Tell us when to '
+          'deliver; the notes are yours to skip.',
     ),
   ];
 
-  /// Required fields, per step; steps not listed are entirely optional.
-  /// (The Menu step has its own at-least-one-dish check in [_next].)
-  static const Map<int, List<String>> _requiredByStep = {
-    0: ['functionDate', 'venue', 'pax'],
+  /// Every field checked when leaving a step, in the order it appears on the
+  /// page. All of them are required — the kitchen notes are the one blank that
+  /// isn't, so they're not listed. (The Menu step has its own at-least-one-dish
+  /// check in [_next].)
+  static const Map<int, List<String>> _validatedByStep = {
+    0: ['kindOfFunction', 'functionDate', 'venue', 'pax'],
     1: ['clientName', 'email', 'contactNumber'],
+    3: ['deliveryTime'],
   };
+
+  /// "Contains at least one actual letter" — keeps `...` and `12345` from
+  /// passing for a venue or an occasion.
+  static final RegExp _letter = RegExp('[A-Za-z]');
+
+  /// Personal names: letters (incl. Ñ), spaces, and the punctuation real names
+  /// carry — no digits, no symbols.
+  static final RegExp _nameChars = RegExp(r"^[A-Za-zÑñ .'-]+$");
+
+  /// Philippine mobile numbers, once spacing and punctuation are stripped:
+  /// 09171234567 or 639171234567 (the +63 form loses its plus first).
+  static final RegExp _mobile = RegExp(r'^(09\d{9}|639\d{9})$');
+
+  /// The quotation is emailed, so the address has to be a real shape — one @,
+  /// a dotted domain, no spaces.
+  static final RegExp _email = RegExp(r'^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$');
 
   int _step = 0;
   bool _submitting = false;
   bool _submitted = false;
+
+  /// The filed order, once REQUEST QUOTATION has gone through — what the
+  /// downpayment is taken against, and what the thank-you state reports on.
+  String? _bookingId;
+
+  /// True when this order carries a downpayment to collect (see [_orderTotal]);
+  /// false for one with no package price behind it, which the team quotes.
+  bool _gated = false;
+
+  /// True once the downpayment has cleared.
+  bool _paid = false;
+
+  /// The PayMongo checkout page opened for this order, so a second run at the
+  /// payment reuses it instead of opening another.
+  String? _sessionId;
+  String? _checkoutUrl;
 
   final Map<String, TextEditingController> _fields = {};
   final Map<String, String> _errors = {};
@@ -106,7 +158,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     final pkg = widget.package;
     if (pkg != null) {
       _ctrl('package').text = pkg.price > 0
-          ? '${pkg.name} — ${_peso(pkg.price)} per pack'
+          ? '${pkg.name} — ${peso(pkg.price)} per pack'
           : pkg.name;
       if (pkg.minPax > 0) _ctrl('pax').text = '${pkg.minPax}';
     }
@@ -201,62 +253,216 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     setState(() => _ctrl(key).text = picked.format(context));
   }
 
+  /// The venue popup: a full-screen Google Places search plus a draggable
+  /// pin, so the field is filled with a real, mappable address rather than
+  /// however the member happens to type it. Reopening it hands back whatever
+  /// is already on the field, so a member fine-tuning the pin doesn't start
+  /// over from a blank search.
+  Future<void> _pickVenue() async {
+    final current = _ctrl('venue').text.trim();
+    final resolved = await Navigator.of(context).push<ResolvedAddress>(
+      BrandPageRoute<ResolvedAddress>(
+        builder: (_) => AddressPickerPage(
+          initialAddress: current.isEmpty ? null : current,
+          title: 'Choose your venue',
+          searchHint: 'Search for the venue',
+          fieldLabel: 'VENUE / DELIVERY ADDRESS',
+          confirmLabel: 'USE THIS VENUE',
+        ),
+      ),
+    );
+    if (resolved == null || !mounted) return;
+    setState(() {
+      _ctrl('venue').text = resolved.address;
+      _errors.remove('venue');
+    });
+  }
+
+  // ── Validation ────────────────────────────────────────────────────────────
+  /// Every complaint against [step] — presence first, then format — keyed by
+  /// field. Empty means the step is clean.
+  Map<String, String> _stepErrors(int step) {
+    final found = <String, String>{};
+    for (final key in _validatedByStep[step] ?? const <String>[]) {
+      final error = _checkField(key);
+      if (error != null) found[key] = error;
+    }
+    // The Menu step is a list, not a blank: it needs at least one dish (or,
+    // where nothing is published and it fell back to free text, a line of it).
+    if (step == 2 && _menu.isEmpty && _ctrl('menu').text.trim().isEmpty) {
+      found['menu'] = 'Add at least one dish to your menu';
+    }
+    return found;
+  }
+
+  /// Marks [step]'s fields with [found] and clears the ones that now pass.
+  void _paintErrors(int step, Map<String, String> found) {
+    setState(() {
+      for (final key in _validatedByStep[step] ?? const <String>[]) {
+        _errors.remove(key);
+      }
+      if (step == 2) _errors.remove('menu');
+      _errors.addAll(found);
+    });
+  }
+
+  /// The message for [key]'s current value, or null when it passes. Nothing is
+  /// optional here, so an empty blank always complains.
+  String? _checkField(String key) {
+    final value = _ctrl(key).text.trim();
+    if (value.isEmpty) {
+      // A blank that's tapped, not typed, asks to be picked.
+      if (key == 'functionDate') return 'Please pick a date.';
+      if (key == 'deliveryTime') return 'Please pick a time.';
+      if (key == 'venue') return 'Please choose your venue on the map.';
+      return 'Please fill this in';
+    }
+    // Anything a picker wrote is already well-formed, and its shape isn't ours
+    // to second-guess.
+    if (key == 'functionDate' || key == 'deliveryTime' || key == 'venue') {
+      return null;
+    }
+    switch (key) {
+      case 'kindOfFunction':
+        return _checkWords(value, min: 3, max: 60);
+      case 'clientName':
+        if (value.length < 2) return 'Please enter your full name.';
+        if (value.length > 60) return 'Please keep this under 60 characters.';
+        if (!_nameChars.hasMatch(value)) {
+          return 'Letters, spaces, hyphens and apostrophes only.';
+        }
+        return null;
+      case 'email':
+        if (!_email.hasMatch(value)) return 'Enter a valid email address.';
+        return null;
+      case 'contactNumber':
+        return _checkMobile(value);
+      case 'pax':
+        return _checkPax(value);
+      default:
+        return _checkWords(value, min: 2, max: 120);
+    }
+  }
+
+  /// Length bounds plus "has actual words", shared by the free-text blanks.
+  String? _checkWords(String value, {required int min, required int max}) {
+    if (value.length < min) return 'Please write at least $min characters.';
+    if (value.length > max) return 'Please keep this under $max characters.';
+    if (!_letter.hasMatch(value)) {
+      return 'Please use words, not just numbers or symbols.';
+    }
+    return null;
+  }
+
+  /// Headcount: whole numbers only, at least one, no more than the kitchen can
+  /// take in one order — and never under the booked package's minimum.
+  String? _checkPax(String value) {
+    final pax = int.tryParse(value);
+    if (pax == null) return 'Numbers only — e.g. 50';
+    if (pax < 1) return 'How many people are we feeding?';
+    final minPax = widget.package?.minPax ?? 0;
+    if (minPax > 0 && pax < minPax) {
+      return 'This package starts at $minPax pax.';
+    }
+    if (pax > 5000) {
+      return 'For more than 5,000 pax, please message us directly.';
+    }
+    return null;
+  }
+
+  /// Accepts a PH mobile however the member spaces it — 0917 123 4567,
+  /// +63 917 123 4567, (0917) 123-4567 — and nothing else.
+  String? _checkMobile(String value) {
+    final compact = value.replaceAll(RegExp(r'[\s()\-.]'), '');
+    final digits = compact.startsWith('+') ? compact.substring(1) : compact;
+    if (!_mobile.hasMatch(digits)) {
+      return 'Enter an 11-digit mobile number, e.g. 0917 123 4567';
+    }
+    return null;
+  }
+
   // ── Flow ──────────────────────────────────────────────────────────────────
   void _next() {
-    final missing = [
-      for (final k in _requiredByStep[_step] ?? const <String>[])
-        if (_ctrl(k).text.trim().isEmpty) k,
-    ];
-    if (missing.isNotEmpty) {
-      setState(() {
-        for (final k in missing) {
-          _errors[k] = 'Please fill this in';
-        }
-      });
+    final found = _stepErrors(_step);
+    _paintErrors(_step, found);
+    if (found.isNotEmpty) return;
+    if (_step < _steps.length - 1) {
+      setState(() => _step++);
       return;
     }
-    // The quotation is emailed, so a filled-in email has to at least look
-    // like one.
-    if (_step == 1) {
-      final email = _ctrl('email').text.trim();
-      if (!email.contains('@') || !email.contains('.')) {
-        setState(() => _errors['email'] = 'Enter a valid email address');
+    // Last page: re-check every step before filing, so a blank the member
+    // walked back through can't slip out. The wizard returns to the first step
+    // that complains.
+    for (var step = 0; step < _steps.length; step++) {
+      final problems = _stepErrors(step);
+      _paintErrors(step, problems);
+      if (problems.isNotEmpty) {
+        setState(() => _step = step);
         return;
       }
     }
-    // The menu step needs at least one dish (or, when nothing is published
-    // and the step fell back to free text, at least a line of it).
-    if (_step == 2 && _menu.isEmpty && _ctrl('menu').text.trim().isEmpty) {
-      setState(() => _errors['menu'] = 'Add at least one dish to your menu');
-      return;
-    }
-    if (_step < _steps.length - 1) {
-      setState(() => _step++);
-    } else {
-      _submit();
-    }
+    _submit();
   }
 
   void _back() {
     if (_step > 0) setState(() => _step--);
   }
 
+  // ── The downpayment ───────────────────────────────────────────────────────
+  /// The order's full amount — the booked package's per-pack price times the
+  /// number of packs ordered.
+  ///
+  /// Null when the wizard wasn't opened from a package (the Packages tab's plain
+  /// "Food Packs" row starts an order with no package behind it) or when that
+  /// package carries no price. Those file for the team to quote rather than
+  /// having a figure invented for them — see [_submit].
+  num? get _orderTotal {
+    final price = widget.package?.price ?? 0;
+    final packs = int.tryParse(_ctrl('pax').text.trim()) ?? 0;
+    if (price <= 0 || packs <= 0) return null;
+    return price * packs;
+  }
+
+  /// The total's arithmetic, spelled out for the payment screen — "₱180 per pack
+  /// × 50 packs" — so the member can check the figure rather than trust it.
+  String? get _priceLine {
+    final price = widget.package?.price ?? 0;
+    final packs = int.tryParse(_ctrl('pax').text.trim()) ?? 0;
+    if (price <= 0 || packs <= 0) return null;
+    return '${peso(price)} per pack × $packs pack${packs == 1 ? '' : 's'}';
+  }
+
   Future<void> _submit() async {
     setState(() => _submitting = true);
+
+    // Worked out before the write so the terms travel *with* the order: what the
+    // team is owed is then the order's own record, not something recomputed
+    // later from a package whose price may since have changed.
+    final total = _orderTotal;
+    final num due = total != null && PayMongoConfig.isChargeable(total)
+        ? PayMongoConfig.downpaymentOn(total)
+        : 0;
+    final gated = due > 0;
+
+    // Only the write is guarded — once the order is filed, "couldn't send" would
+    // be wrong, and the payment that follows reports its own trouble.
+    final String id;
     try {
-      await BookingRepository().submit({
-        for (final e in _fields.entries) e.key: e.value.text,
-        // A structured menu overrides the free-text fallback under the same
-        // key, so the moderator always reads one `menu` field of
-        // quotation-style lines.
-        if (_menu.isNotEmpty) 'menu': _menuLines.join('\n'),
-        'bookingType': 'Food Pack',
-      });
-      if (!mounted) return;
-      setState(() {
-        _submitted = true;
-        _submitting = false;
-      });
+      id = await BookingRepository().submit(
+        {
+          for (final e in _fields.entries) e.key: e.value.text,
+          // A structured menu overrides the free-text fallback under the same
+          // key, so the moderator always reads one `menu` field of
+          // quotation-style lines.
+          if (_menu.isNotEmpty) 'menu': _menuLines.join('\n'),
+          'bookingType': 'Food Pack',
+        },
+        payment: {
+          'paymentStatus': gated ? 'awaiting' : 'quote_needed',
+          'paymentTotal': ?total,
+          if (gated) 'paymentDue': due,
+        },
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -265,7 +471,53 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
           content: Text('Couldn\'t send your order — please try again.'),
         ),
       );
+      return;
     }
+
+    if (!mounted) return;
+    setState(() {
+      _submitting = false;
+      _bookingId = id;
+      _gated = gated;
+    });
+    if (gated) await _collect(total: total!, due: due);
+    if (!mounted) return;
+    setState(() => _submitted = true);
+  }
+
+  /// Opens the downpayment screen for the order just filed, and records whether
+  /// it settled. Backing out isn't a failure — the order is filed and the
+  /// payment resumable — so this only ever sets [_paid].
+  Future<void> _collect({required num total, required num due}) async {
+    final id = _bookingId;
+    if (id == null) return;
+    final menu = _menuLines;
+    final paid = await Navigator.of(context).push<bool>(
+      BrandPageRoute<bool>(
+        builder: (_) => PaymentPage(
+          bookingId: id,
+          reference: Booking.referenceFor(id),
+          total: total,
+          due: due,
+          orderKind: 'Food Pack',
+          summary: menu.isEmpty ? 'Food pack order' : menu.first,
+          priceLine: _priceLine,
+          // Remembered so reopening this from the thank-you state hands back the
+          // page already paid against, rather than opening a second one.
+          existingSessionId: _sessionId,
+          existingCheckoutUrl: _checkoutUrl,
+          onCheckoutOpened: (sessionId, url) {
+            _sessionId = sessionId;
+            _checkoutUrl = url;
+          },
+          clientName: _ctrl('clientName').text.trim(),
+          phone: _ctrl('contactNumber').text.trim(),
+          email: _ctrl('email').text.trim(),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _paid = paid == true);
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -403,8 +655,9 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
             _field(
               'kindOfFunction',
               'Occasion',
-              hint: 'Office lunch, fiesta, team outing… (optional)',
+              hint: 'Office lunch, fiesta, team outing…',
               icon: Icons.celebration_outlined,
+              inputFormatters: [LengthLimitingTextInputFormatter(60)],
             ),
             _pickerField(
               'functionDate',
@@ -413,10 +666,12 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
               icon: Icons.event_outlined,
               onTap: _pickDate,
             ),
-            _field(
+            _pickerField(
               'venue',
               'Venue / Delivery Address',
+              hint: 'Search or drop a pin on the map',
               icon: Icons.place_outlined,
+              onTap: _pickVenue,
             ),
             _field(
               'pax',
@@ -424,6 +679,11 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
               hint: 'e.g. 50',
               icon: Icons.groups_outlined,
               keyboardType: TextInputType.number,
+              // A headcount is a whole number — the field refuses anything else.
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(4),
+              ],
             ),
           ],
         1 => [
@@ -431,6 +691,11 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
               'clientName',
               'Client\'s Name',
               icon: Icons.person_outline,
+              // Names carry no digits, so the field won't take them.
+              inputFormatters: [
+                FilteringTextInputFormatter.deny(RegExp(r'\d')),
+                LengthLimitingTextInputFormatter(60),
+              ],
             ),
             _field(
               'email',
@@ -438,6 +703,11 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
               hint: 'Where we send your quotation',
               icon: Icons.alternate_email_outlined,
               keyboardType: TextInputType.emailAddress,
+              // An address carries no spaces; the shape is checked on NEXT.
+              inputFormatters: [
+                FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                LengthLimitingTextInputFormatter(120),
+              ],
             ),
             _field(
               'contactNumber',
@@ -445,6 +715,12 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
               hint: '09xx xxx xxxx',
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
+              // Digits and the punctuation people space numbers with, nothing
+              // else; the format itself is checked on NEXT.
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[\d +()\-]')),
+                LengthLimitingTextInputFormatter(20),
+              ],
             ),
           ],
         2 => _menuStep(),
@@ -463,12 +739,14 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
             ),
             const SizedBox(height: AppSpacing.xl),
             _timeField('deliveryTime', 'Time of Delivery'),
+            // The one blank on this wizard that may be left empty.
             _field(
               'notes',
               'Notes for the Kitchen',
-              hint: 'Allergies, gate instructions, anything else…',
+              hint: 'Allergies, gate instructions, anything else… (optional)',
               icon: Icons.edit_note_outlined,
               maxLines: 3,
+              inputFormatters: [LengthLimitingTextInputFormatter(400)],
             ),
           ],
       };
@@ -610,6 +888,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     IconData? icon,
     TextInputType? keyboardType,
     int maxLines = 1,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.lg),
@@ -620,6 +899,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
         prefixIcon: icon,
         keyboardType: keyboardType,
         maxLines: maxLines,
+        inputFormatters: inputFormatters,
         errorText: _errors[key],
         onChanged: (_) {
           if (_errors.containsKey(key)) setState(() => _errors.remove(key));
@@ -661,9 +941,14 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
       );
 
   // ── Thank-you state ───────────────────────────────────────────────────────
+  /// The thank-you state, reading back the outcome the order actually reached:
+  /// settled, waiting on its downpayment, or filed for the team to quote. An
+  /// order still owing its downpayment says so and keeps the payment one tap
+  /// away — it's the one case with something left for the member to do.
   Widget _buildThanks() {
+    final owing = _gated && !_paid;
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.xxxl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -688,29 +973,71 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
                   ),
                 ],
               ),
-              child: const Icon(Icons.check, size: 38, color: AppColors.gold),
+              child: Icon(
+                owing ? Icons.bookmark_outline_rounded : Icons.check,
+                size: 38,
+                color: AppColors.gold,
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
-            Text('MARAMING SALAMAT', style: AppTextStyles.eyebrow),
+            Text(
+              owing ? 'SAVED FOR YOU' : 'MARAMING SALAMAT',
+              style: AppTextStyles.eyebrow,
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Your food pack order is in.',
+              owing
+                  ? 'Your order is waiting.'
+                  : _paid
+                      ? 'Your slot is held.'
+                      : 'Your food pack order is in.',
               textAlign: TextAlign.center,
               style: AppTextStyles.displaySmall,
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'We\'ll prepare your quotation, send it to your email address, '
-              'and confirm the delivery on your contact number.',
+              owing
+                  ? 'Everything you filled in is filed under No. '
+                      '${Booking.referenceFor(_bookingId ?? '')}. We hold the '
+                      'delivery once the downpayment lands — finish it below, '
+                      'or any time from Order Tracking in Settings.'
+                  : _paid
+                      ? 'Your downpayment is in. We\'ll send the full quotation '
+                          'to your email address and confirm the delivery on '
+                          'your contact number.'
+                      : 'We\'ll prepare your quotation, send it to your email '
+                          'address, and confirm the delivery on your contact '
+                          'number.',
               textAlign: TextAlign.center,
               style: AppTextStyles.body,
             ),
             const SizedBox(height: AppSpacing.xxl),
-            AppButton.primary(
-              label: 'DONE',
-              fullWidth: true,
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            if (owing) ...[
+              AppButton.primary(
+                label: 'PAY THE DOWNPAYMENT',
+                icon: Icons.lock_outline_rounded,
+                fullWidth: true,
+                onPressed: () {
+                  final total = _orderTotal;
+                  if (total == null) return;
+                  _collect(
+                    total: total,
+                    due: PayMongoConfig.downpaymentOn(total),
+                  );
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              AppButton.secondary(
+                label: 'LATER',
+                fullWidth: true,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ] else
+              AppButton.primary(
+                label: 'DONE',
+                fullWidth: true,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
           ],
         ),
       ),
@@ -1014,17 +1341,6 @@ class _ProgressRule extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Formats a peso amount with thousands separators, e.g. 1500 → "₱1,500".
-String _peso(num value) {
-  final digits = value.round().abs().toString();
-  final buf = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
-    buf.write(digits[i]);
-  }
-  return '₱$buf';
 }
 
 /// "June 12, 2026" — spelled-out date for the quotation.

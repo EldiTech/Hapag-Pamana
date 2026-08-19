@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Booking Calendar</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <!-- Shares the Heirloom Editorial design system and the Orders page's own
+       booking-sheet styles (dish cards, timeline, etc. — reused by the
+       calendar's day popover), plus its own calendar-only rules. -->
+  <link rel="stylesheet" href="../../Content%20Moderator/css/global.css" />
+  <link rel="stylesheet" href="../css/orders.css" />
+  <link rel="stylesheet" href="../css/calendar.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <!-- The booking calendar — one month at a time, every pending/confirmed
+         order marked on its event day. We only run 1–3 functions a day, so
+         the manager's real question isn't the day's headcount but whether
+         two bookings actually want the venue crew at the same hour: a day is
+         flagged only when two orders' ingress→egress spans overlap. -->
+    <section class="panel">
+      <div class="cal-toolbar">
+        <div class="cal-filters" id="calFilters"></div>
+        <div class="cal-legend">
+          <span class="cal-tag cal-tag--ok"><span class="dot"></span>Confirmed</span>
+          <span class="cal-tag cal-tag--warn"><span class="dot"></span>Pending</span>
+          <span class="cal-tag cal-tag--clash"><span class="dot"></span>Time Clash</span>
+        </div>
+      </div>
+      <div class="cal-head" id="calHead"></div>
+      <div class="cal-grid cal-grid--dow">
+        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+      </div>
+      <div class="cal-grid" id="calDays"></div>
+      <div class="cal-foot">
+        <p class="cal-hint" id="calHint"></p>
+        <div class="cal-stats" id="calStats"></div>
+      </div>
+    </section>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../js/calendar.js"></script>
+</body>
+</html>

@@ -794,6 +794,50 @@ class ProductImage extends StatelessWidget {
   }
 }
 
+/// Opens [product]'s photo full-screen over a dimmed backdrop, pinch/drag
+/// zoomable via [InteractiveViewer]. Tapping the backdrop or the image
+/// dismisses it. No-ops when the product has no photo to show.
+void showProductImageViewer(BuildContext context, Product product) {
+  if (product.imageUrl == null && product.imageBytes == null) return;
+  Navigator.of(context).push(
+    PageRouteBuilder(
+      opaque: false,
+      barrierColor: Colors.black87,
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return FadeTransition(
+          opacity: animation,
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              body: SafeArea(
+                child: Stack(
+                  children: [
+                    Center(
+                      child: InteractiveViewer(
+                        maxScale: 4,
+                        child: ProductImage(product),
+                      ),
+                    ),
+                    Positioned(
+                      top: AppSpacing.sm,
+                      right: AppSpacing.sm,
+                      child: IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
 /// Cover-fit image for a [CateringPackage] (remote URL or inline data URL),
 /// with a branded letter-tile fallback. Mirrors [ProductImage].
 class PackageImage extends StatelessWidget {
@@ -1033,9 +1077,21 @@ Color allergenHeatColor(double intensity) {
 }
 
 /// Ink that stays legible on a heat cell of the given intensity (cream once the
-/// fill darkens past mid-gold, brown below).
-Color _onHeat(double intensity) =>
+/// fill darkens past mid-gold, brown below). Public because anything painting an
+/// allergen its own colour — the heatmap, the "contains" chips, the Menu's
+/// dietary flags — needs the matching foreground.
+Color onAllergenHeat(double intensity) =>
     intensity >= 0.5 ? AppColors.cream : AppColors.brown;
+
+/// Names [allergens] as a phrase that reads inside a sentence — "peanut",
+/// "peanut and shellfish", "peanut, shellfish and soy". Shared by the Menu's
+/// dietary note and the dish sheet's warning, which say the same thing at
+/// different sizes.
+String allergenSentence(List<Allergen> allergens) {
+  final names = [for (final a in allergens) a.label.toLowerCase()];
+  if (names.length <= 1) return names.isEmpty ? '' : names.first;
+  return '${names.take(names.length - 1).join(', ')} and ${names.last}';
+}
 
 /// A heatmap of the allergens actually present in an aggregated set of dishes.
 /// Each present allergen is a cell whose warmth reflects frequency × severity;
@@ -1104,7 +1160,7 @@ class _AllergenCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final intensity = stat.intensity;
-    final fg = _onHeat(intensity);
+    final fg = onAllergenHeat(intensity);
 
     return Tooltip(
       message: '${stat.allergen.label} — in ${stat.count} of ${stat.total} '
@@ -1222,7 +1278,7 @@ class AllergenContainsChips extends StatelessWidget {
               style: AppTextStyles.sans(
                 size: 11,
                 weight: FontWeight.w600,
-                color: _onHeat(a.severity),
+                color: onAllergenHeat(a.severity),
                 spacing: 0.2,
               ),
             ),

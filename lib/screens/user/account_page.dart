@@ -9,7 +9,7 @@ import '../../core/widgets/app_widgets.dart';
 import '../../data/customer.dart';
 import '../../data/customer_repository.dart';
 import '../../widgets.dart';
-import 'user_settings_page.dart';
+import 'settings/settings_page.dart';
 
 /// Member account tab — shows the signed-in customer's profile (from
 /// `customers/{uid}`, falling back to the auth record), lets them set a profile

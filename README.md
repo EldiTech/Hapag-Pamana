@@ -5,8 +5,11 @@ Firebase (Firestore + Auth). Guests can browse the live menu and catering packag
 members additionally get a personalised home, profile management, the Gabay assistant tab, and
 the Book-Us-Now wizard.
 
-There is also a staff-facing **Content Moderator** web portal (plain HTML/CSS/JS, no build step)
-for managing the content the app reads.
+There is also a staff web portal (plain HTML/CSS/JS, no build step) with four role-gated
+dashboards behind one sign-in: **Content Moderator** (the content the app reads), **Orders**
+(every booking filed from the app), **Master Chef** (ingredient plans and the recipe book) and
+**Finance** (costs those plans, confirms the money and releases requisition slips). Each staff
+member's `users/{uid}.role` decides which one opens.
 
 ## Project layout
 
@@ -18,7 +21,8 @@ for managing the content the app reads.
 | `lib/data/` | Models + Firestore repositories (products, catering, customers, bookings, allergens) |
 | `lib/screens/` | Guest side: splash → `GuestShell` (Home / Menu / Catering / About / Login) |
 | `lib/screens/user/` | Member side: `UserShell` (Home / Menu / Gabay / Catering / Account) + booking wizard |
-| `Admin/` | Content Moderator portal — `index.html` is the staff sign-in gate, the dashboard lives in `Admin/Content Moderator/` |
+| `Admin/` | Staff portal — `index.html` is the sign-in gate; `Admin/assets/` holds the shared shell (`hp-guard.js`, `hp-core.js`, `hp-shell.js`) each dashboard is built from |
+| `Admin/Content Moderator/` · `Admin/Orders/` · `Admin/Master Chef/` · `Admin/Finance/` | The four dashboards, one folder each (`html/`, `js/`, `css/`); all share `Content Moderator/css/global.css` |
 | `firestore.rules` | Security rules — **publish manually** in the Firebase console after changes |
 
 ## Running

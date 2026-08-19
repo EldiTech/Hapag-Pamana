@@ -16,5 +16,6 @@ window.HP_DASHBOARD = {
     // Each kitchen page exports something different; the pages wire the
     // handler themselves (HP.shell.onExport).
     export: { label: () => (/recipes\.html$/i.test(location.pathname) ? "Recipes CSV" : "Shopping list CSV") },
+    routeTransitions: true,
   },
 };

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../brand.dart';
+import '../core/format.dart';
 import '../core/widgets/app_widgets.dart';
 import '../data/catering.dart';
 import '../data/catering_repository.dart';
@@ -504,7 +505,7 @@ class _PackageCard extends StatelessWidget {
           const Spacer(),
           if (pkg.price > 0) ...[
             Text(
-              _peso(pkg.price),
+              peso(pkg.price),
               style: AppTextStyles.serif(
                 size: 18,
                 weight: FontWeight.w700,
@@ -602,7 +603,7 @@ class _PackageDetail extends StatelessWidget {
           children: [
             if (pkg.price > 0)
               Text(
-                '${_peso(pkg.price)} ${_priceUnit(pkg)}',
+                '${peso(pkg.price)} ${_priceUnit(pkg)}',
                 style: AppTextStyles.sans(
                   size: 13,
                   weight: FontWeight.w600,
@@ -780,13 +781,3 @@ class _ContactRow extends StatelessWidget {
 String _priceUnit(CateringPackage pkg) =>
     pkg.isFoodPack ? 'per pack' : 'per head';
 
-/// Formats a peso amount with thousands separators, e.g. 1500 → "₱1,500".
-String _peso(num value) {
-  final digits = value.round().abs().toString();
-  final buf = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
-    buf.write(digits[i]);
-  }
-  return '₱$buf';
-}

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Layout Designer</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../../Content%20Moderator/css/global.css" />
+  <link rel="stylesheet" href="../css/layout.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <!-- Overview View -->
+    <div class="ld-overview-view" id="ldOverviewView">
+      <div class="ld-overview-summary" id="ldOverviewSummary"></div>
+      <div class="panel panel-pad ld-overview-panel">
+        <div class="ld-overview-head">
+          <h3>Event Layouts Database</h3>
+          <div class="ld-overview-filters" id="ldOverviewFilters"></div>
+        </div>
+        <div class="ld-overview-table-wrap">
+          <table class="ld-overview-table">
+            <thead>
+              <tr>
+                <th>Event / Client</th>
+                <th>Date & Venue</th>
+                <th>Seating Tally</th>
+                <th>Room & Pieces</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="ldOverviewTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar" id="ldChips"></div>
+
+    <div class="ld-work">
+      <section class="panel ld-plan">
+        <div class="ld-plan-head">
+          <div class="ld-plan-title">
+            <strong id="ldEventName">No event chosen</strong>
+            <small id="ldEventMeta">Pick an event to start drawing</small>
+          </div>
+          <div class="ld-plan-tools">
+            <span class="ld-saved" id="ldSaved" hidden></span>
+            <span class="ld-viewtabs" id="ldViewTabs">
+              <button class="ld-viewtab active" data-view2d="2d"><span class="ic" data-icon="grid"></span>2D View</button>
+              <button class="ld-viewtab" data-view2d="3d" id="ldTab3d"><span class="ic" data-icon="cube"></span>3D View</button>
+            </span>
+            <button class="btn btn-primary btn-sm" id="ldPick">Choose event</button>
+            <button class="btn btn-ghost btn-sm" id="ldPreset" disabled>Presets</button>
+            <button class="btn btn-ghost btn-sm" id="ldRoom" disabled>Room size</button>
+            <!-- What the room is dressed for. Steers the analysis and the
+                 walkthrough's lighting; never moves anything on the plan. -->
+            <button class="btn btn-ghost btn-sm" id="ldEvent" disabled>Event type</button>
+            <!-- Dresses the 3D room in a setup photo's own colours. Enabled
+                 with the rest once an event is open — see js/designer.js. -->
+            <button class="btn btn-ghost btn-sm ld-theme" id="ldTheme" disabled>
+              <span class="ld-theme-name">Theme</span>
+              <span class="ld-theme-strip" hidden></span>
+            </button>
+            <!-- DESIGN → ANALYZE → OPTIMIZE → SIMULATE, in that order, so the
+                 toolbar reads as the workflow it is. -->
+            <button class="btn btn-ghost btn-sm" id="ldWalk" disabled>Analyse</button>
+            <button class="btn btn-ghost btn-sm" id="ldOptimise" disabled>Optimise</button>
+            <button class="btn btn-ghost btn-sm" id="ldScenarios" disabled>Layouts</button>
+            <button class="btn btn-ghost btn-sm" id="ldPrint" disabled>Print</button>
+            <button class="btn btn-ghost btn-sm" id="ldReset" disabled><span class="ic" data-icon="undo"></span>Reset layout</button>
+            <button class="btn btn-ghost btn-sm" id="ldSave" disabled><span class="ic" data-icon="plan"></span>Save plan</button>
+            <button class="btn btn-primary btn-sm" id="ldSimulate" disabled>▶ Simulate</button>
+          </div>
+        </div>
+
+        <div class="ld-stage" id="ldStage2d">
+          <div class="ld-canvas-wrap">
+            <div class="ld-dim ld-dim--x" id="ldDimX"></div>
+            <div class="ld-dim ld-dim--y" id="ldDimY"></div>
+            <div class="ld-canvas" id="ldCanvas" tabindex="-1">
+              <div class="ld-canvas-empty" id="ldCanvasEmpty">
+                <span class="ic" data-icon="plan"></span>
+                <p>Choose a confirmed event, then add pieces from the right.</p>
+              </div>
+            </div>
+          </div>
+          <div class="ld-canvas-float">
+            <button class="ld-float-btn" id="ldUndo" title="Undo"><span class="ic" data-icon="undo"></span></button>
+            <button class="ld-float-btn" id="ldRedo" title="Redo"><span class="ic" data-icon="redo"></span></button>
+            <span class="ld-float-sep"></span>
+            <select class="ld-float-select" id="ldZoom" title="Zoom level">
+              <option value="0.5">50%</option>
+              <option value="0.75">75%</option>
+              <option value="1" selected>100%</option>
+              <option value="1.25">125%</option>
+              <option value="1.5">150%</option>
+            </select>
+            <span class="ld-float-sep"></span>
+            <button class="ld-float-btn" id="ldGridToggle" title="Toggle Grid"><span class="ic" data-icon="grid"></span></button>
+            <button class="ld-float-btn" id="ldFullscreen" title="Fullscreen" aria-label="Fullscreen"><span class="ic" data-icon="expand"></span></button>
+          </div>
+        </div>
+
+        <!-- The same plan stood up in the room. Read-only: editing lives in
+             the 2D sheet, where a click means one unambiguous thing. -->
+        <div class="ld-stage ld-stage--3d" id="ldStage3d" hidden>
+          <div class="ld-3d-host" id="ld3dHost">
+            <span class="ld-3d-hint"><span class="ic" data-icon="eye"></span>Drag to orbit · scroll to zoom</span>
+          </div>
+          <div class="ld-cams" id="ldCams"></div>
+        </div>
+
+      </section>
+
+      <div class="ld-rail">
+        <section class="panel panel-pad ld-drawer">
+          <div class="ld-drawer-head"><h3>Add pieces</h3></div>
+          <div class="ld-palette" id="ldPalette"></div>
+        </section>
+
+        <section class="panel panel-pad ld-drawer">
+          <div class="ld-drawer-head"><h3>Item properties</h3></div>
+          <div id="ldProps"></div>
+        </section>
+
+        <section class="panel panel-pad ld-drawer">
+          <div class="ld-drawer-head"><h3>Covers</h3></div>
+          <div id="ldTally"></div>
+        </section>
+      </div>
+    </div>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <!-- Three.js powers the 3D view only. It is loaded defensively: if the CDN
+       is unreachable the page still runs, and the 3D tab reports that the
+       viewer couldn't load instead of the whole desk failing. -->
+  <!-- Pinned to r128: the last line where the loader/util addons below still
+       ship as plain global scripts. r150+ moved examples/js to ES-module-only
+       "jsm" builds, which a bare <script src> can't consume without turning
+       every Three-touching file in this app into a module — a far bigger
+       change than the crowd this pin is here to support. -->
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <!-- FBXLoader: reads the Mixamo character/animation exports the crowd uses.
+       Not part of the core min build, hence the separate addon script. -->
+  <script src="https://unpkg.com/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+  <!-- SkeletonUtils.clone: a fresh skeleton per guest, so 40 rigged bodies
+       can each play a different clip from one loaded mesh. -->
+  <script src="https://unpkg.com/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+  <!-- LAYOUT_RULES first: the piece catalogue, the clearances, the lighting
+       presets and the event types. Every module below reads it, so it has to
+       be defined before any of them evaluate. -->
+  <script src="../js/rules.js"></script>
+  <script src="../js/scene3d.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/nav.js"></script>
+  <script src="../js/walkability.js"></script>
+  <script src="../js/optimise.js"></script>
+  <script src="../js/models.js"></script>
+  <script src="../js/crowd.js"></script>
+  <script src="../js/simulate.js"></script>
+  <script src="../js/presets.js"></script>
+  <script src="../js/designer.js"></script>
+</body>
+</html>

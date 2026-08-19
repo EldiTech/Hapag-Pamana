@@ -307,10 +307,13 @@ body {
 .chip-sep { width: 1px; height: 20px; background: var(--gold-hair); }
 /* Category chips — little index tabs. */
 .chip-filter {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   padding: 7px 14px; font-family: var(--engraved); font-size: 0.66rem; font-weight: 600; letter-spacing: 1.2px;
   text-transform: uppercase; border-radius: var(--r); border: 1px solid var(--gold-hair2);
   background: var(--paper-3); color: var(--ink-soft); cursor: pointer; transition: all 0.15s ease;
 }
+.chip-filter .ic { display: inline-flex; align-items: center; font-size: 14px; }
+.chip-filter .ic svg { width: 14px; height: 14px; flex: 0 0 auto; }
 .chip-filter:hover { background: var(--paper-2); border-color: var(--gold); color: var(--brown); }
 .chip-filter.active {
   background: linear-gradient(180deg, #543819, var(--brown)); color: #F4E9CE; border-color: var(--brown);
@@ -511,7 +514,7 @@ table.data td.table-empty { text-align: center; padding: 36px 18px; color: var(-
    on a dark plate (tap to feature); on = solid gilt coin with a filled star —
    the two states must be unmistakable at a glance. Saves without the editor. */
 .prod-feat {
-  position: absolute; top: 9px; left: 9px;
+  position: absolute; top: 9px; left: 45px;
   width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
   background: rgba(20,10,3,0.72); color: #d8cdbb; backdrop-filter: blur(4px);
   border: 1px solid rgba(216,205,187,0.35); font-size: 13px;
@@ -534,6 +537,7 @@ table.data td.table-empty { text-align: center; padding: 36px 18px; color: var(-
   font-family: var(--engraved); font-size: 0.56rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
   backdrop-filter: blur(4px);
 }
+.prod-div { border-top: 1px dashed var(--hair); margin: 4px 0; }
 .prod-status--ok  { background: rgba(20,10,3,0.7); color: #cfe0b0; border: 1px solid rgba(92,122,51,0.5); }
 .prod-status--off { background: rgba(20,10,3,0.7); color: #d8cdbb; border: 1px solid var(--hair-soft); }
 .prod-body { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 6px; }
@@ -542,6 +546,27 @@ table.data td.table-empty { text-align: center; padding: 36px 18px; color: var(-
   line-height: 1.25; overflow-wrap: anywhere;
 }
 .prod-body .badge-cat { align-self: flex-start; }
+/* The per-head add-on rate. A dish carrying its own price (rather than its
+   category's) says so — that exception is what's worth spotting in the grid. */
+.prod-price {
+  display: flex; align-items: baseline; gap: 6px;
+  font-family: var(--display); font-weight: 700; font-size: 1.05rem; color: var(--gold-deep);
+}
+.prod-price small {
+  font-family: var(--engraved); font-size: 0.58rem; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--ink-soft);
+}
+.prod-price-flag {
+  margin-left: auto; padding: 2px 7px; border-radius: var(--r);
+  font-family: var(--engraved); font-size: 0.52rem; font-weight: 700;
+  letter-spacing: 1.2px; text-transform: uppercase;
+  background: var(--gold-light); color: var(--gold-deep); border: 1px solid var(--gold-hair);
+}
+.prod-price--unset {
+  font-family: var(--text); font-style: italic; font-weight: 500;
+  font-size: 0.82rem; color: var(--ink-faint);
+}
+.prod-view-facts small { font-family: var(--text); font-style: italic; color: var(--ink-soft); }
 /* The action row must never overflow the card (which clips under
    overflow:hidden). The two text buttons share the row evenly and may shrink;
    the delete icon keeps its fixed size and sits flush right. */
@@ -674,6 +699,20 @@ table.data td.table-empty { text-align: center; padding: 36px 18px; color: var(-
   border-radius: var(--r);
 }
 .card-foot { display: flex; gap: 9px; margin-top: auto; padding-top: 8px; }
+.card-foot--stack { flex-direction: column; align-items: stretch; }
+.card-foot--stack .btn { width: 100%; }
+
+.pager { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 0 4px; }
+.pager:empty { padding: 0; }
+.page-nums { display: flex; gap: 6px; }
+.page-btn {
+  min-width: 32px; height: 32px; padding: 0 6px; display: grid; place-items: center;
+  font-family: var(--engraved); font-size: 0.72rem; font-weight: 600;
+  color: var(--ink-soft); background: none; border: 1px solid var(--gold-hair); border-radius: var(--r);
+  cursor: pointer; transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.page-btn:hover { background: var(--paper-2); border-color: var(--gold); }
+.page-btn.active { background: var(--brown); border-color: var(--brown); color: #F4E9CE; cursor: default; }
 .cat-card { flex-direction: row; align-items: center; }
 .cat-card .cat-ic {
   width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center;
@@ -683,13 +722,35 @@ table.data td.table-empty { text-align: center; padding: 36px 18px; color: var(-
 .cat-card .cat-meta { flex: 1; }
 .cat-card h3 { margin: 0; font-size: 1.02rem; font-family: var(--display); font-weight: 600; }
 .cat-card small { color: var(--ink-soft); font-family: var(--engraved); font-size: 0.62rem; letter-spacing: 0.8px; text-transform: uppercase; }
+/* The per-head add-on rate every dish in the category inherits — set in gilt
+   display type, the same money voice the package cards use. */
+.cat-card .cat-price {
+  display: block; margin-top: 3px;
+  font-family: var(--display); font-weight: 700; font-size: 1.02rem; color: var(--gold-deep);
+}
+.cat-card .cat-price small { font-size: 0.58rem; color: var(--ink-soft); }
+.cat-card .cat-price--unset {
+  font-family: var(--text); font-style: italic; font-weight: 500;
+  font-size: 0.8rem; color: var(--ink-faint);
+}
 
-/* Category groups — one section per product type. */
-.cat-group { margin-bottom: 34px; }
-.cat-group:last-child { margin-bottom: 0; }
+/* Category groups — one section per product type, side by side. Each type
+   gets its own accent (border + icon swatch) so the two columns don't read
+   as one continuous list when they sit next to each other. */
+#catGroups { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; align-items: start; }
+@media (max-width: 1024px) { #catGroups { grid-template-columns: 1fr; } }
+.cat-group {
+  margin-bottom: 0; padding: 18px 20px 20px; border: 1px solid var(--gold-hair); border-top-width: 3px; border-radius: var(--r);
+}
+.cat-group--0 { border-top-color: var(--gold); }
+.cat-group--1 { border-top-color: var(--danger); }
 .cat-group-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .cat-group-title { margin: 0; display: flex; align-items: center; gap: 11px; font-family: var(--display); font-weight: 700; font-size: 1.3rem; color: var(--ink); }
-.cat-group-title::before { content: ""; width: 15px; height: 15px; background: var(--fleur) center/contain no-repeat; }
+.cat-group-swatch {
+  width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 50%;
+  background: var(--vellum); border: 1px solid var(--gold-hair); color: var(--gold-deep); font-size: 15px;
+}
+.cat-group--1 .cat-group-swatch { color: var(--danger); }
 .cat-group-count {
   min-width: 23px; height: 21px; padding: 0 7px; border-radius: 999px; display: inline-grid; place-items: center;
   font-family: var(--engraved); font-size: 0.64rem; font-weight: 700;
@@ -950,6 +1011,18 @@ select.control { appearance: none; background-image: url("data:image/svg+xml,%3C
 .control[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .control--center { text-align: center; }
 .control--xs { width: 84px; text-align: center; }
+/* A control wearing units — "₱ [ 150 ] / pax". The affixes are painted inside
+   the field's own frame, so a price reads as one object rather than an input
+   with words loose beside it. */
+.control-affix { position: relative; display: flex; align-items: center; }
+.control-affix .control { padding-left: 32px; padding-right: 62px; }
+.control-affix .affix {
+  position: absolute; pointer-events: none; font-family: var(--engraved);
+  font-size: 0.72rem; font-weight: 700; color: var(--ink-soft);
+}
+.control-affix .affix:not(.affix--end) { left: 14px; }
+.control-affix .affix--end { right: 14px; font-size: 0.6rem; letter-spacing: 1.1px; text-transform: uppercase; }
+.control-affix:focus-within .affix { color: var(--gold-deep); }
 .field-hint { font-family: var(--text); font-style: italic; font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; }
 .inline-toggles { display: flex; gap: 24px; flex-wrap: wrap; }
 .field-error { color: var(--danger); font-family: var(--text); font-size: 0.78rem; margin-top: 6px; font-weight: 600; font-style: italic; }
@@ -1198,6 +1271,12 @@ html:active-view-transition .nav-item.active::before { animation: none; }
 
   /* Tone down the bright printed-edge highlights so they don't read as white rules. */
   .thumb { box-shadow: inset 0 0 0 2px rgba(255, 244, 214, 0.08); }
+
+  /* --gold-deep is lifted for dark mode so gold TEXT reads on dark paper —
+     but this badge sets it as the text color ON TOP of a gold fill
+     (--gold-light), so the lift makes the label vanish into its own
+     background. Pin it back to a dark ink here so the pill stays readable. */
+  .prod-price-flag { color: #3a2710; }
   .uploader-preview { box-shadow: inset 0 0 0 2px rgba(255, 244, 214, 0.08); }
 
   /* Select chevron: lighter stroke so it shows on the dark input. */
@@ -1236,22 +1315,45 @@ html:active-view-transition .nav-item.active::before { animation: none; }
     width: 100% !important; max-width: none !important; max-height: none !important;
     box-shadow: none !important; border: 0 !important; animation: none !important;
   }
-  body.hp-print-modal .modal-body { max-height: none !important; overflow: visible !important; }
+  body.hp-print-modal .modal-body { max-height: none !important; overflow: visible !important; padding: 6px 2px !important; }
+  body.hp-print-modal .modal-head { position: static !important; padding: 0 2px 6px !important; }
+  body.hp-print-modal .modal-head h3 { font-size: 1.05rem !important; }
+  body.hp-print-modal .modal::before { display: none !important; }
   body.hp-print-modal .modal-foot,
   body.hp-print-modal .modal-head .icon-btn { display: none !important; }
 }
 
+/* ═══ Overview — compact fit (no scroll on a typical viewport) ═══
+   Scoped to #bento (unique to Content Moderator's index.html) so no other
+   page's bento-tile/view spacing changes. Trims outer padding, grid gap,
+   tile padding and banner/figure sizes so all three rows fit without
+   the tallest tile (App configuration) forcing dead space below its
+   shorter row-mates. */
+#bento { gap: 12px; }
+.view:has(#bento) { padding: 18px 28px 20px; }
+#bento .bento-tile { padding: 16px; gap: 10px; }
+#bento .bento-figure { font-size: 1.7rem; }
+#bento .bf-num { font-size: 1.4rem; }
+#bento .bf-raw { font-size: 1.05rem; }
+#bento .banner-masthead { gap: 8px; }
+#bento .bf-col { padding: 2px 14px; }
+#bento .bk-rows { gap: 8px; }
+#bento .bt { width: 40px; height: 40px; }
+#bento .cfg-list li,
+#bento .bento-list li { padding: 5px 0; }
+
 /* ═══ Product grid multi-select (bulk operations) ═══ */
 .prod-pick {
-  position: absolute; top: 8px; left: 8px; z-index: 2;
-  display: grid; place-items: center; width: 30px; height: 30px;
-  border-radius: 50%; background: rgba(46, 30, 12, 0.55); cursor: pointer;
+  position: absolute; top: 9px; left: 9px; z-index: 2;
+  display: grid; place-items: center; width: 28px; height: 28px;
+  border-radius: 50%; background: rgba(20,10,3,0.72); backdrop-filter: blur(4px);
+  border: 1px solid rgba(216,205,187,0.35); cursor: pointer;
 }
 .prod-pick input { width: 15px; height: 15px; accent-color: var(--gilt); cursor: pointer; }
 .bulk-bar {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-  padding: 10px 14px; margin-bottom: 14px;
+  padding: 10px 14px; margin-bottom: 14px; max-width: 100%; box-sizing: border-box;
   border: 1px solid var(--gold-hair); border-radius: 12px; background: var(--vellum);
 }
 .bulk-bar strong { font-size: 0.85rem; margin-right: 4px; }
-.bulk-bar .control--xs { max-width: 180px; }
+.bulk-bar .control--xs { flex: 0 0 auto; width: auto; text-align: left; padding-right: 40px; }

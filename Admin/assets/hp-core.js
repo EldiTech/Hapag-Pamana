@@ -67,6 +67,9 @@ window.HP = (function () {
     // Recipe book — a bound ledger of dishes.
     book:   P('<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17.5H6.5A2.5 2.5 0 0 0 4 22V4.5Z"/><path d="M20 17H6.5A2.5 2.5 0 0 0 4 19.5"/><path d="M9 7h7M9 10.5h5"/>'),
     printer: P('<path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/>'),
+    chevronLeft:  P('<path d="M15 5l-7 7 7 7"/>'),
+    chevronRight: P('<path d="M9 5l7 7-7 7"/>'),
+    alert: P('<path d="M12 3 2 20h20L12 3Z"/><path d="M12 9v5"/><circle cx="12" cy="17" r=".01"/>', '<path d="M12 16.5a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5" fill="currentColor" stroke="none"/>'),
     // ── Food category icons (used by the menu categories) ──
     // Each silhouette is deliberately distinct so the bowl-based categories
     // (salad / soup / pasta / rice) don't read as the same shape.
@@ -135,12 +138,22 @@ window.HP = (function () {
   /* ── Signed-in user (sidebar identity + greeting) ────────────────────── */
   const ROLE_LABEL = {
     content_moderator: "Content Moderator",
-    order_manager: "Order Manager",
+    marketing_admin: "Marketing Admin",
+    order_manager: "Marketing Admin", // superseded by marketing_admin
     master_chef: "Master Chef",
+    production_manager: "Production Manager",
+    finance: "Production Manager", // superseded by production_manager
+    purchasing_staff: "Purchasing Staff",
+    stock_clerk: "Stock Clerk",
+    team_leader: "Team Leader",
+    logistics: "Logistics",
+    layout_designer: "Layout Designer",
+    catering_equipment: "Catering Equipment",
     admin: "Administrator",
+    owner: "Owner",
   };
   const DEFAULT_ROLE = CFG.defaultRoleLabel || "Staff";
-  const user = { name: "Signed in", role: DEFAULT_ROLE, initial: "·", greet: "" };
+  const user = { name: "Signed in", role: DEFAULT_ROLE, roleKey: "", initial: "·", greet: "" };
 
   // Paint the current user into the sidebar (no-op if the shell isn't built
   // yet, so this is safe to call before or after hp-shell.js runs).
@@ -152,10 +165,15 @@ window.HP = (function () {
     if (r) r.textContent = user.role;
     if (a) a.textContent = user.initial;
   }
-  function setUser(name, roleLabel) {
+  /* `role` is the label a human reads in the sidebar; `roleKey` is the raw
+     users/{uid}.role string. Pages that gate on WHO the visitor is (rather
+     than just greeting them) must compare the key — the label is shared by
+     superseded role strings and would match the wrong desk. */
+  function setUser(name, roleLabel, roleKey) {
     const safe = (name || "Signed in").trim() || "Signed in";
     user.name = safe;
     user.role = roleLabel || DEFAULT_ROLE;
+    user.roleKey = roleKey || "";
     user.initial = (safe.charAt(0) || "·").toUpperCase();
     user.greet = safe.split(/\s+/)[0];
     applyUser();
@@ -170,9 +188,9 @@ window.HP = (function () {
       const snap = await (window.__hpUserDoc
         || FB.db.collection(window.USERS_COLLECTION).doc(authUser.uid).get());
       const d = snap.exists ? snap.data() : {};
-      setUser(d.name || authUser.displayName || emailName, ROLE_LABEL[d.role] || DEFAULT_ROLE);
+      setUser(d.name || authUser.displayName || emailName, ROLE_LABEL[d.role] || DEFAULT_ROLE, d.role);
     } catch {
-      setUser(authUser.displayName || emailName, DEFAULT_ROLE);
+      setUser(authUser.displayName || emailName, DEFAULT_ROLE, "");
     }
   }
 
@@ -328,6 +346,11 @@ window.HP = (function () {
      authenticated staff member before anything may be read. The Content
      Moderator's store (js/store.js) re-points HP.ready at its data-ready
      promise, which builds on this one. */
+  // Resolves once the signed-in user is known (auth only — doesn't wait on
+  // the sidebar identity read). Separate from userReady below because
+  // pages gate content on auth alone and shouldn't pay for the role read too.
+  let resolveUserReady;
+  const userReady = new Promise((r) => { resolveUserReady = r; });
   const ready = new Promise((resolve) => {
     if (ONLINE) {
       let booted = false;
@@ -335,12 +358,15 @@ window.HP = (function () {
         if (!authUser || booted) return;
         booted = true;
         // Sidebar identity is cosmetic — let it land whenever it lands rather
-        // than serializing a Firestore read ahead of the content.
-        populateUser(authUser);
+        // than serializing a Firestore read ahead of the content. userReady
+        // tracks its completion for callers that DO need roleKey (e.g. the
+        // owner-back nav link).
+        populateUser(authUser).finally(() => resolveUserReady());
         resolve({ user: authUser, online: true });
       });
     } else {
       setUser("Local demo", "Preview mode");
+      resolveUserReady();
       resolve({ user: null, online: false });
     }
   });
@@ -350,11 +376,13 @@ window.HP = (function () {
     ONLINE,
     FB,
     ready,
+    userReady,
     icon,
     ICONS,
     hydrateIcons,
     skel,
     esc,
+    ROLE_LABEL,
     csvCell,
     toast,
     reduceMotion,

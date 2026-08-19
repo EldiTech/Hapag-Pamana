@@ -1,0 +1,347 @@
+/* HapagPamana · Stock Clerk — receiving sheet and liquidation ledger.
+   Layered on Content Moderator/css/global.css and Purchasing/css/purchasing.css
+   (the checklist table, the money heads and .is-over all come from there —
+   this file only adds what receiving and liquidation need on top). Colours are
+   taken from the shell's tokens so both themes are covered. */
+
+/* ── Receiving: the quality verdict ──────────────────────────────────── */
+.qc-buyer {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.76rem;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+.ck-table input.qc-note { margin-top: 5px; font-size: 0.8rem; }
+
+.qc-verdict { width: 156px; }
+.qc-seg {
+  display: inline-flex;
+  border-radius: var(--r);
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  background: var(--paper-3);
+}
+.qc-opt { position: relative; }
+.qc-opt input { position: absolute; opacity: 0; width: 0; height: 0; }
+.qc-opt span {
+  display: block;
+  padding: 5px 13px;
+  font-family: var(--engraved);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.qc-opt + .qc-opt span { border-left: 1px solid var(--hair-soft); }
+.qc-opt span:hover { color: var(--brown); background: var(--vellum); }
+.qc-pass input:checked + span { background: var(--ok); color: var(--paper-3); }
+.qc-fail input:checked + span { background: var(--danger); color: var(--paper-3); }
+.qc-opt input:focus-visible + span { box-shadow: inset 0 0 0 2px var(--gold-hair); }
+.qc-opt input:disabled + span { cursor: not-allowed; opacity: 0.45; }
+.qc-opt input:disabled + span:hover { background: none; color: var(--ink-faint); }
+
+/* ── Liquidation ledger ──────────────────────────────────────────────── */
+.lq-ledger {
+  margin: 18px 0;
+  border: 1px solid var(--hair-soft);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--paper-2);
+}
+.lq-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 18px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--hair-soft);
+}
+.lq-row:last-child { border-bottom: 0; }
+.lq-row span { font-size: 0.9rem; color: var(--ink-soft); }
+.lq-row strong {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The variance line is the one the eye should land on. */
+.lq-var {
+  background: var(--vellum);
+  border-top: 1px solid var(--gold-hair2);
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.lq-var strong { font-size: 1.5rem; }
+.lq-sub span, .lq-sub strong { font-size: 0.86em; }
+
+.lq-block { margin-top: 20px; }
+.lq-block h4 {
+  margin: 0 0 9px;
+  font-family: var(--engraved);
+  font-size: 0.64rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  font-weight: 600;
+}
+.lq-list { margin: 0; padding-left: 18px; display: grid; gap: 7px; }
+.lq-list li { font-size: 0.9rem; color: var(--ink-soft); }
+.lq-list li strong { color: var(--ink); }
+.lq-list small { display: block; color: var(--ink-faint); font-style: italic; }
+
+/* Blockers explain why the file button isn't there — they should read as a
+   note about what's outstanding, not as an error the clerk has made. */
+.lq-blockers {
+  padding: 13px 16px;
+  border-radius: var(--r-lg);
+  background: rgba(152, 105, 27, 0.1);
+  border: 1px solid rgba(152, 105, 27, 0.28);
+}
+.lq-blockers h4 { margin-bottom: 7px; color: var(--warn); }
+
+.lq-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 11px;
+}
+.lq-thumbs figure {
+  margin: 0;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--hair-soft);
+  background: var(--paper-2);
+  box-shadow: var(--shadow-sm);
+}
+.lq-thumbs img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  cursor: zoom-in;
+  background: var(--vellum);
+}
+.lq-thumbs figcaption {
+  padding: 7px 9px;
+  font-family: var(--display);
+  font-size: 0.98rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.lq-thumbs figcaption small {
+  display: block;
+  font-family: var(--text);
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 720px) {
+  .qc-verdict { width: auto; }
+  .lq-var strong { font-size: 1.25rem; }
+}
+
+/* ── Pantry & Activity ────────────────────────────────────────────────────
+   The shelf, its movements and the ledger that explains both. Reuses the
+   portal's paper/gilt tokens so the store reads as the same document as the
+   receiving and liquidation boards. */
+
+/* The "Issue to kitchen" call sits at the end of the filter row. */
+.seg-cta { margin-left: auto; }
+
+/* ── Item + movement forms ───────────────────────────────────────────── */
+.pn-form .pn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.pn-onhand {
+  font-family: var(--display);
+  font-size: 1.02rem;
+  color: var(--ink-soft);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hair-soft);
+  margin-bottom: 12px;
+}
+.pn-onhand strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Live preview of what a movement would do to the shelf. */
+.pn-preview {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--gold-hair);
+  border-radius: var(--r);
+  background: var(--paper-2);
+  font-family: var(--display);
+  font-size: 1.02rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  min-height: 42px;
+}
+.pn-preview strong { color: var(--ink); }
+.pn-preview .pn-delta { color: var(--ink-faint); font-size: 0.9rem; }
+.pn-preview .is-over { color: var(--danger); }
+
+/* ── The ledger list (one item's history) ────────────────────────────── */
+.pn-log { list-style: none; margin: 0; padding: 0; }
+.pn-log-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--hair-soft);
+}
+.pn-log-row:last-child { border-bottom: 0; }
+
+/* Signed movement — the column the eye lands on first. */
+.pn-log-delta {
+  font-family: var(--display);
+  font-size: 1.02rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pn-log-delta.is-up { color: var(--ok); }
+.pn-log-delta.is-down { color: var(--brown); }
+
+.pn-log-main strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 0.99rem;
+  color: var(--ink);
+}
+.pn-log-main small,
+.pn-log-meta small {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+}
+.pn-log-meta {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Issue-to-kitchen sheet ──────────────────────────────────────────── */
+.pn-dishes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.pn-issue .table-wrap { margin-top: 12px; }
+.pn-issue td { vertical-align: middle; }
+/* Badge and tick share the cell — the tick reads as the badge's consequence. */
+.pn-issue .is-pick {
+  margin-left: 10px;
+  vertical-align: middle;
+  accent-color: var(--gold-deep);
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+}
+.pn-issue .is-pick:disabled { cursor: not-allowed; opacity: 0.45; }
+
+@media (max-width: 720px) {
+  .seg-cta { margin-left: 0; width: 100%; }
+  .pn-log-row { grid-template-columns: auto 1fr; }
+  .pn-log-meta { grid-column: 2; text-align: left; }
+}
+
+/* Who clears a blocker — the buyer's columns vs this desk's. Sits inside the
+   "Not ready to file" block, quieter than the list it explains. */
+.lq-whose {
+  margin: 10px 0 0;
+  padding-top: 9px;
+  border-top: 1px solid var(--hair-soft);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+.lq-whose strong { color: var(--ink); }
+
+/* ── Order picker (Issue to kitchen) ──────────────────────────────────────
+   The Master Chef's dish picker has the same shape, but its styles live in
+   that dashboard's own stylesheet, which the stores pages don't load. Rather
+   than cross-link another desk's CSS, the picker carries its own here under
+   an `ord-` prefix — self-contained, and free to diverge. */
+
+.ord-pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 12px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+.ord-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 11px;
+  cursor: pointer;
+  border: 1px solid var(--hair-soft);
+  border-radius: var(--r-lg);
+  background: var(--paper-3);
+  font-family: var(--text);
+  transition: border-color 0.15s ease;
+}
+.ord-pick-row:hover { border-color: var(--gold); }
+
+/* The client's initial, standing in for a dish photo. */
+.ord-thumb {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r);
+  border: 1px solid var(--gold-hair2);
+  background: var(--vellum);
+  color: var(--gold-deep);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.12rem;
+}
+.ord-pick-txt { flex: 1; min-width: 0; }
+.ord-pick-txt strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.ord-pick-txt small {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+.ord-pick-empty {
+  margin: 0;
+  padding: 16px 10px;
+  text-align: center;
+  font-size: 0.86rem;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+/* Quiet explanatory line under a field or list. (The Master Chef's
+   `.plan-hint` is the same idea, but lives in that dashboard's stylesheet.) */
+.pn-hint {
+  margin: 8px 0 0;
+  font-size: 0.79rem;
+  line-height: 1.55;
+  color: var(--ink-faint);
+}
+.pn-hint strong { color: var(--ink-soft); }

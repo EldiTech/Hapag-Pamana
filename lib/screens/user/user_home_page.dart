@@ -7,8 +7,10 @@ import '../../brand.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/app_settings.dart';
 import '../../data/customer_repository.dart';
+import '../../data/member_preferences.dart';
 import '../../data/product.dart';
 import '../../data/product_repository.dart';
+import '../../data/recommendation_repository.dart';
 import '../../widgets.dart';
 import '../home_sections.dart';
 import 'user_shell.dart';
@@ -22,12 +24,15 @@ const double _kMinStatusClearance = 24;
 /// Shares the guest [HomePage]'s warm-parchment editorial layout so the app
 /// reads as one continuous design across the guest → member boundary: the same
 /// Featured carousel, Explore category strip, "From the Kitchen" run and
-/// catering invitation (all from `home_sections.dart`). Only the header differs
-/// — instead of the guest's brand + "Log In" chip it carries a personalised
-/// greeting with the member's name and an avatar that jumps to the Account tab.
+/// catering invitation (all from `home_sections.dart`). Two things are the
+/// member's alone — the header (a personalised greeting and an avatar that jumps
+/// to the Account tab, in place of the guest's brand + "Log In" chip), and the
+/// "For You" strip, which needs a signed-in member to have recommendations for.
 ///
 /// Products come from the shared [ProductRepository] via a manual subscription
-/// (a stream re-emit must not rebuild the whole scroll view).
+/// (a stream re-emit must not rebuild the whole scroll view); recommendations
+/// come from [RecommendationRepository] the same way, and are held apart so a
+/// recomputed set repaints one strip rather than the page.
 class UserHomePage extends StatefulWidget {
   const UserHomePage({super.key, required this.onNavigate});
 
@@ -46,6 +51,10 @@ class _UserHomePageState extends State<UserHomePage> {
   List<Product> _all = const [];
   bool _loading = true;
   bool _error = false;
+
+  StreamSubscription<RecommendationSet>? _recSub;
+  RecommendationSet _recs = RecommendationSet.empty;
+  bool _recsLoading = true;
 
   @override
   void initState() {
@@ -67,11 +76,30 @@ class _UserHomePageState extends State<UserHomePage> {
         });
       },
     );
+    // The strip is a bonus, never a blocker: a failed read just settles it into
+    // its empty state, which the build drops from the page entirely.
+    _recSub = RecommendationRepository().watchRecommended().listen(
+      (set) {
+        if (!mounted) return;
+        setState(() {
+          _recs = set;
+          _recsLoading = false;
+        });
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _recs = RecommendationSet.empty;
+          _recsLoading = false;
+        });
+      },
+    );
   }
 
   @override
   void dispose() {
     _sub?.cancel();
+    _recSub?.cancel();
     super.dispose();
   }
 
@@ -98,114 +126,204 @@ class _UserHomePageState extends State<UserHomePage> {
     // ("best seller") dish.
     final categories = bestByCategory(_all);
 
+    // The house's genuinely most-ordered dishes. Empty until the order tally has
+    // enough in it to mean anything.
+    final loved = mostLoved(_all);
+
     // Sits on the shell's shared parchment backdrop (no own ground), so the
     // member home rests on the same warm weave as every other tab.
     //
     // The section run follows the dashboard's App-features switches, exactly
     // like the guest [HomePage]: Featured obeys featuredOnHome, the menu
     // teasers obey ordering, and the catering invitation obeys catering.
+    //
+    // The "For You" strip answers to the member's own switch instead — the
+    // moderator has no say over whether one member wants suggestions, so it
+    // reads [MemberPreferences.gabaySuggestions] from the inner builder.
     return ValueListenableBuilder<AppSettings>(
       valueListenable: AppSettingsScope.notifier,
-      builder: (context, settings, _) => MediaQuery.removePadding(
-        context: context,
-        removeTop: true,
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xxxl),
-          children: [
-            _MemberHeader(
-              topInset: topInset,
-              name: CustomerRepository().displayName,
-              onAccount: () => widget.onNavigate(UserShell.tabAccount),
-              onBrowse: settings.ordering
-                  ? () => widget.onNavigate(UserShell.tabMenu)
-                  : null,
-            ),
-            const SizedBox(height: AppSpacing.sm),
+      builder: (context, settings, _) => ValueListenableBuilder<MemberPreferences>(
+        valueListenable: MemberPreferencesScope.notifier,
+        builder: (context, prefs, _) => MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: AppSpacing.xxxl),
+            children: [
+              _MemberHeader(
+                topInset: topInset,
+                name: CustomerRepository().displayName,
+                onAccount: () => widget.onNavigate(UserShell.tabAccount),
+                onBrowse: settings.ordering
+                    ? () => widget.onNavigate(UserShell.tabMenu)
+                    : null,
+              ),
+              const SizedBox(height: AppSpacing.sm),
 
-            // ── Featured highlight ─────────────────────────────────────────
-            if (settings.featuredOnHome) ...[
-              FadeSlideIn(
-                delay: _d(120),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-                  child: SectionHeading(
-                    'Featured',
-                    onSeeAll: settings.ordering
-                        ? () => widget.onNavigate(UserShell.tabMenu)
-                        : null,
+              // ── Picks just for you ─────────────────────────────────────────
+              // Ahead of Featured: a pick made for this member outranks the
+              // house's own. Hidden while the member has switched Gabay's
+              // suggestions off in Settings, and while the set is genuinely
+              // empty (nothing published to recommend at all).
+              if (prefs.gabaySuggestions &&
+                  (_recsLoading || _recs.isNotEmpty)) ...[
+                FadeSlideIn(
+                  delay: _d(100),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen,
+                    ),
+                    child: SectionHeading(
+                      'For You',
+                      onSeeAll: () => widget.onNavigate(UserShell.tabGabay),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              FadeSlideIn(
-                delay: _d(160),
-                child: FeaturedCarousel(
-                  products: featured,
+                // The provenance badge sits under the heading rather than beside
+                // it — "From orders like yours" is too long to share the row with
+                // a title and a "See all".
+                if (!_recsLoading)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen,
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: RecommendationSourceBadge(_recs.source),
+                    ),
+                  ),
+                const SizedBox(height: 14),
+                FadeSlideIn(
+                  delay: _d(140),
+                  child: ForYouStrip(
+                    loading: _recsLoading,
+                    set: _recs,
+                    onOpenPackages: () =>
+                        widget.onNavigate(UserShell.tabPackages),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.section),
+              ],
+
+              // ── Featured highlight ─────────────────────────────────────────
+              if (settings.featuredOnHome) ...[
+                FadeSlideIn(
+                  delay: _d(120),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen,
+                    ),
+                    child: SectionHeading(
+                      'Featured',
+                      onSeeAll: settings.ordering
+                          ? () => widget.onNavigate(UserShell.tabMenu)
+                          : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                FadeSlideIn(
+                  delay: _d(160),
+                  child: FeaturedCarousel(
+                    products: featured,
+                    loading: _loading,
+                    onTap: () => widget.onNavigate(UserShell.tabMenu),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.section),
+              ],
+
+              // ── Categories — each with its best seller ─────────────────────
+              if (settings.ordering && (_loading || categories.isNotEmpty)) ...[
+                FadeSlideIn(
+                  delay: _d(220),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen,
+                    ),
+                    child: SectionHeading('Explore'),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                FadeSlideIn(
+                  delay: _d(260),
+                  child: CategoryStrip(
+                    loading: _loading,
+                    categories: categories,
+                    onTap: () => widget.onNavigate(UserShell.tabMenu),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.section),
+              ],
+
+              // ── From the Kitchen (live dishes) ─────────────────────────────
+              if (settings.ordering) ...[
+                FadeSlideIn(
+                  delay: _d(320),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen,
+                    ),
+                    child: SectionHeading(
+                      'From the Kitchen',
+                      onSeeAll: () => widget.onNavigate(UserShell.tabMenu),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                KitchenStrip(
                   loading: _loading,
-                  onTap: () => widget.onNavigate(UserShell.tabMenu),
+                  error: _error,
+                  picks: picks,
+                  onBrowse: () => widget.onNavigate(UserShell.tabMenu),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.section),
-            ],
+                const SizedBox(height: AppSpacing.section),
+              ],
 
-            // ── Categories — each with its best seller ─────────────────────
-            if (settings.ordering && (_loading || categories.isNotEmpty)) ...[
-              FadeSlideIn(
-                delay: _d(220),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-                  child: SectionHeading('Explore'),
-                ),
-              ),
-              const SizedBox(height: 14),
-              FadeSlideIn(
-                delay: _d(260),
-                child: CategoryStrip(
-                  loading: _loading,
-                  categories: categories,
-                  onTap: () => widget.onNavigate(UserShell.tabMenu),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.section),
-            ],
-
-            // ── From the Kitchen (live dishes) ─────────────────────────────
-            if (settings.ordering) ...[
-              FadeSlideIn(
-                delay: _d(320),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-                  child: SectionHeading(
-                    'From the Kitchen',
-                    onSeeAll: () => widget.onNavigate(UserShell.tabMenu),
+              // ── Most loved (the house's real order tally) ──────────────────
+              // Distinct from "For You" above: that's personal, this is the
+              // whole house's verdict. Drops out entirely until enough orders
+              // have been counted to make the claim honest (see [mostLoved]),
+              // which is also why it never shows a loading skeleton — an empty
+              // tally isn't loading, it's just empty.
+              if (settings.ordering && loved.isNotEmpty) ...[
+                FadeSlideIn(
+                  delay: _d(350),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen,
+                    ),
+                    child: SectionHeading(
+                      'Most Loved',
+                      onSeeAll: () => widget.onNavigate(UserShell.tabMenu),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              KitchenStrip(
-                loading: _loading,
-                error: _error,
-                picks: picks,
-                onBrowse: () => widget.onNavigate(UserShell.tabMenu),
-              ),
-              const SizedBox(height: AppSpacing.section),
-            ],
+                const SizedBox(height: 14),
+                KitchenStrip(
+                  loading: false,
+                  error: false,
+                  picks: loved,
+                  onBrowse: () => widget.onNavigate(UserShell.tabMenu),
+                ),
+                const SizedBox(height: AppSpacing.section),
+              ],
 
-            // ── Catering invitation ────────────────────────────────────────
-            if (settings.catering)
-              FadeSlideIn(
-                delay: _d(380),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-                  child: CateringInvite(
-                    onTap: () => widget.onNavigate(UserShell.tabPackages),
+              // ── Catering invitation ────────────────────────────────────────
+              if (settings.catering)
+                FadeSlideIn(
+                  delay: _d(380),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen,
+                    ),
+                    child: CateringInvite(
+                      onTap: () => widget.onNavigate(UserShell.tabPackages),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

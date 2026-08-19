@@ -16,6 +16,16 @@
 .order-type .ic svg { width: 12px; height: 12px; }
 .order-type--pack { background: rgba(169, 130, 60, 0.14); color: var(--gold-deep); border-color: var(--gold-hair2); }
 
+/* ── Table pagination (Recipe Book) ─────────────────────────────── */
+.pager {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--hair-soft);
+}
+.pager-count {
+  font-family: var(--engraved); font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.8px; color: var(--ink-faint); min-width: 100px; text-align: center;
+}
+
 /* ── Ingredient planner (detail modal) ──────────────────────────── */
 /* The planner carries dish sections and input rows — a wider page. */
 .modal-root:has(.plan-sheet) .modal { max-width: 720px; }
@@ -155,51 +165,285 @@
 }
 
 /* ── Recipe editor (Recipe Book modal) ──────────────────────────── */
-.modal-root:has(.recipe-sheet) .modal { max-width: 760px; }
+/* The costing sheet is a wide table, not a form — give it the screen. It
+   grows with the viewport instead of sitting in a fixed island. */
+.modal-root:has(.recipe-sheet) .modal { max-width: min(1240px, 94vw); }
 
-.rcp-top { display: flex; gap: 14px; }
-.rcp-portions { width: 130px; flex: 0 0 auto; }
+/* Section captions — a gold rule carrying the eye across the sheet. The
+   "how is this costed?" toggle rides on the same line to save a row. */
+.rcp-legend {
+  display: flex; align-items: center; gap: 11px;
+  margin: 26px 0 13px; font-family: var(--engraved); font-size: 0.85rem;
+  font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase;
+  color: var(--gold-deep);
+}
+.rcp-legend::after {
+  content: ""; flex: 1; height: 1px; margin-left: 3px;
+  background: var(--gold-hair2); order: 1;
+}
+.rcp-legend .rcp-how { order: 2; }
+.rcp-legend .ic { display: inline-flex; flex: 0 0 auto; color: var(--gold-deep); }
+.rcp-legend .ic svg { width: 17px; height: 17px; }
 
-/* Column headings over the ingredient rows — the costing sheet's header. */
+.rcp-top { display: flex; gap: 12px; align-items: flex-end; }
+/* Sized to content, not a fixed width — "20 portions" in the display face
+   overflows a hard 190px and collides with the − / + buttons. */
+.rcp-portions { flex: 0 0 auto; }
+/* Tighter than the global form rhythm — this sheet is a dense table, not a
+   spaced-out form. Matches `.field > label` so source order can't decide it. */
+.recipe-sheet .field { margin-bottom: 0; }
+.recipe-sheet .field > label {
+  margin-bottom: 7px; font-size: 0.72rem; letter-spacing: 0.9px;
+  color: var(--ink-soft);
+}
+.recipe-sheet .control { padding: 13px 15px; font-size: 1.02rem; }
+
+/* Portions — a stepper, since a yield is nudged far more often than typed. */
+.rcp-stepper {
+  display: flex; align-items: stretch;
+  border: 1px solid var(--gold-hair2); border-radius: var(--r);
+  background: var(--paper-3); overflow: hidden;
+}
+.rcp-step {
+  width: 42px; flex: 0 0 auto; border: 0; cursor: pointer;
+  background: transparent; color: var(--ink-soft);
+  font-size: 1.25rem; line-height: 1; transition: background 0.15s ease, color 0.15s ease;
+}
+.rcp-step:hover { background: var(--vellum); color: var(--gold-deep); }
+.rcp-step-mid {
+  flex: 1; min-width: 0; display: flex; align-items: baseline;
+  justify-content: center; gap: 6px; padding: 0 10px;
+  border-inline: 1px solid var(--gold-hair2);
+}
+.recipe-sheet .rcp-stepper .control {
+  width: 2.6em; min-width: 0; flex: 0 0 auto; padding: 11px 0; text-align: right;
+  border: 0; background: transparent;
+  font-family: var(--display); font-size: 1.3rem; font-weight: 700;
+}
+.rcp-stepper .control:focus { outline: none; box-shadow: none; }
+/* The spinners duplicate the − / + buttons flanking the box. */
+.rcp-stepper .control::-webkit-outer-spin-button,
+.rcp-stepper .control::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.rcp-stepper .control { -moz-appearance: textfield; appearance: textfield; }
+.rcp-step-unit {
+  flex: 0 0 auto; font-family: var(--text); font-size: 0.88rem; color: var(--ink-faint);
+}
+
+/* The explainer is folded away by default — the rows themselves carry the
+   working line, so the prose only needs to exist when asked for. */
+.rcp-how {
+  flex: 0 0 auto; padding: 0; border: 0; background: none; cursor: pointer;
+  font-family: var(--text); font-size: 0.92rem; font-weight: 400;
+  letter-spacing: 0; text-transform: none; color: var(--gold-deep);
+  text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px;
+}
+.rcp-how:hover { color: var(--ink); }
+.rcp-how-body {
+  margin: 0 0 10px; padding: 11px 13px;
+  border: 1px solid var(--gold-hair2); border-left: 3px solid var(--gold-deep);
+  border-radius: var(--r); background: var(--vellum);
+}
+.rcp-how-body p {
+  margin: 0 0 6px; font-family: var(--text); font-size: 0.79rem;
+  line-height: 1.55; color: var(--ink-soft);
+}
+.rcp-how-body p:last-child { margin-bottom: 0; }
+.rcp-how-eq {
+  font-family: var(--display) !important; font-size: 0.92rem !important; color: var(--ink) !important;
+}
+.rcp-how-eq strong { color: var(--gold-deep); }
+
+/* ONE track list for the band, the headings and the rows — they must line up
+   to the pixel, so the columns are declared once and inherited. Changing a
+   width here moves all three together. */
+.rcp-group, .rcp-head, .rcp-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)   /* ingredient  */
+    96px             /* qty         */
+    100px            /* unit        */
+    124px            /* pack price  */
+    168px            /* pack size + unit */
+    110px            /* cost        */
+    40px;            /* delete      */
+  gap: 10px;
+}
+
+/* Banner band pairing the columns into the two questions they answer. Each
+   caption spans its pair via grid-column, so it can never drift. */
+/* Padding matches .ing-row-wrap so the captions stay over their columns. */
+.rcp-group {
+  margin-bottom: 8px; padding: 0 4px;
+  font-family: var(--engraved); font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.9px; text-transform: uppercase; color: var(--gold-deep);
+}
+.rcp-group-use, .rcp-group-buy {
+  padding-bottom: 6px; text-align: center;
+  border-bottom: 1px solid var(--gold-hair);
+}
+.rcp-group-use { grid-column: 2 / 4; }   /* qty + unit   */
+.rcp-group-buy { grid-column: 4 / 6; }   /* price + pack */
+
+/* Column headings over the ingredient rows — the costing sheet's header.
+   Caps at small sizes need size and weight to stay legible, so these sit at
+   0.63rem with reduced tracking rather than 0.55rem wide-spaced. */
 .rcp-head {
-  display: grid; grid-template-columns: 1fr 70px 84px 84px 84px 68px 32px;
-  gap: 7px; margin-bottom: 6px; padding: 0 2px;
-  font-family: var(--engraved); font-size: 0.52rem; font-weight: 700;
-  letter-spacing: 1px; text-transform: uppercase; color: var(--ink-faint);
+  margin-bottom: 8px; padding: 0 4px; align-items: end;
+  font-family: var(--engraved); font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.8px; text-transform: uppercase; color: var(--ink-soft);
 }
-.rcp-head span:nth-child(2), .rcp-head span:nth-child(4),
-.rcp-head span:nth-child(5), .rcp-head span:nth-child(6) { text-align: right; }
+.rcp-head span:nth-child(2) { text-align: right; }
+.rcp-head span:nth-child(4), .rcp-head span:nth-child(5) { text-align: center; }
+.rcp-head span:nth-child(6) { text-align: right; }
 
-.rcp-row {
-  display: grid; grid-template-columns: 1fr 70px 84px 84px 84px 68px 32px;
-  gap: 7px; align-items: center;
+/* Each row plus the working line underneath it. Rows are ruled like the
+   costing sheet they mirror — a ledger reads better than floating boxes. */
+.ing-row-wrap {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 7px 4px 8px; border-radius: var(--r);
+  border-bottom: 1px solid var(--hair-soft);
+  transition: background 0.14s ease;
 }
-.rcp-row .control { padding: 8px 10px; font-size: 0.88rem; }
-.rcp-row .rcp-qty, .rcp-row .rcp-pcost, .rcp-row .rcp-psize { text-align: right; }
+.ing-row-wrap:last-child { border-bottom: 0; }
+.ing-row-wrap:hover, .ing-row-wrap:focus-within { background: var(--hair-soft); }
+
+.rcp-row { align-items: center; }
+.rcp-row .control { padding: 12px 14px; font-size: 1.02rem; }
+.rcp-row .rcp-qty, .rcp-row .rcp-psize { text-align: right; }
+/* Numbers are what the chef reads back — give them the display face and a
+   little more weight than the ingredient name beside them. */
+.rcp-row .rcp-qty, .rcp-row .rcp-psize, .rcp-row .rcp-pcost {
+  font-family: var(--display); font-size: 1.15rem; font-weight: 700;
+}
+/* Placeholders must not read as entered values — faint and upright, so an
+   empty row is obviously empty. */
+.rcp-row .control::placeholder, .rcp-stepper .control::placeholder {
+  color: var(--ink-faint); opacity: 0.6; font-style: normal; font-weight: 400;
+}
+/* Figures are tabular: digits must sit in the same column down the sheet. */
+.rcp-row .rcp-qty, .rcp-row .rcp-psize, .rcp-row .rcp-pcost, .rcp-cost,
+.recipe-sheet .rcp-stepper .control {
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+
+/* Pack price — the peso sign sits inside the field, so the number reads as
+   money without the chef typing the symbol. */
+.rcp-money { position: relative; display: block; }
+.rcp-money .rcp-pcost { width: 100%; padding-left: 20px; text-align: right; }
+.rcp-money-sign {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  pointer-events: none; font-family: var(--text); font-size: 0.8rem;
+  color: var(--ink-faint);
+}
+/* No sign floating over an empty box — it belongs to a figure, not a blank. */
+.rcp-money:has(.rcp-pcost:placeholder-shown):not(:focus-within) .rcp-money-sign {
+  opacity: 0;
+}
+
+/* Pack size + its own unit, fused into one control: "1 kg". */
+.rcp-pack { display: grid; grid-template-columns: minmax(0, 1fr) 78px; gap: 0; }
+.rcp-pack .rcp-psize {
+  border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0;
+}
+.rcp-pack .rcp-punit {
+  min-width: 0; border-top-left-radius: 0; border-bottom-left-radius: 0;
+  padding-inline: 10px; font-size: 0.95rem; color: var(--ink);
+  background-color: var(--vellum);
+}
+/* The global chevron sits at right 14px with 38px of padding — too wide for
+   these narrow unit columns. Pull both in so "bottles" still fits. */
+.rcp-row select.control {
+  padding-right: 28px; background-position: right 9px center;
+}
+
+/* A pack unit that can't convert to the recipe unit (kg vs pc). */
+.rcp-row--mismatch .rcp-punit { border-color: var(--warn); color: var(--warn); }
+.rcp-math--warn { color: var(--warn) !important; font-style: normal !important; }
+
+/* The line's arithmetic, shown as the chef types. Upright, not italic — it is
+   a figure to be read, not an aside. */
+.rcp-math {
+  padding-left: 3px; font-family: var(--text); font-size: 0.88rem;
+  color: var(--ink-soft); line-height: 1.45;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rcp-math:empty { display: none; }
 .rcp-cost {
   text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font-family: var(--display); font-size: 0.95rem; font-weight: 700; color: var(--gold-deep);
+  font-family: var(--display); font-size: 1.3rem; font-weight: 700; color: var(--gold-deep);
 }
+/* An uncosted row shows a dash, not a figure — don't dress it as money. */
+.rcp-cost--empty { color: var(--ink-faint); font-weight: 400; }
 
-/* Total cost · per serving — the sheet's bottom lines. */
-.rcp-totals {
-  display: flex; justify-content: flex-end; gap: 26px; flex-wrap: wrap;
-  margin: 14px 0 16px; padding-top: 12px; border-top: 1px solid var(--gold-hair2);
-  font-family: var(--engraved); font-size: 0.6rem; font-weight: 700;
-  letter-spacing: 1.3px; text-transform: uppercase; color: var(--ink-faint);
+/* Cost summary — the sheet's bottom lines. A right-aligned strip rather than
+   a full-width card: two figures don't need a panel of their own. */
+.rcp-summary {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 14px 48px;
+  margin-top: 16px; padding: 20px 24px;
+  border: 1px solid var(--gold-hair); border-radius: var(--r-lg);
+  background: var(--paper-3);
 }
-.rcp-totals span { display: inline-flex; align-items: baseline; gap: 9px; }
-.rcp-totals strong {
-  font-family: var(--display); font-size: 1.25rem; font-weight: 700;
-  letter-spacing: 0; color: var(--ink);
+.rcp-sum-fig {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px;
 }
+.rcp-sum-label {
+  font-family: var(--engraved); font-size: 0.74rem; font-weight: 700;
+  letter-spacing: 0.9px; text-transform: uppercase; color: var(--ink-soft);
+}
+.rcp-sum-fig strong {
+  font-family: var(--display); font-size: 2.15rem; font-weight: 700;
+  line-height: 1.1; color: var(--ink);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+/* Before any cost exists both figures are dashes — keep them quiet. */
+.rcp-sum-fig strong.is-empty {
+  font-size: 1.6rem; color: var(--ink-faint); font-weight: 400;
+}
+.rcp-sum-fig small {
+  flex-basis: 100%; text-align: right;
+  font-family: var(--text); font-size: 0.84rem; color: var(--ink-faint);
+}
+.rcp-remarks { margin-top: 14px; }
+/* Scoped to the recipe sheet — the prep board keeps the compact button. */
+.recipe-sheet .add-ing { margin-top: 12px; padding: 9px 16px; font-size: 0.8rem; }
+.recipe-sheet .add-ing .ic svg { width: 15px; height: 15px; }
+.recipe-sheet textarea.control { min-height: 96px; }
 
-@media (max-width: 640px) {
+/* The prep board's rows only narrow — they keep the phone breakpoint. */
+@media (max-width: 700px) {
   .ing-row { grid-template-columns: 1fr 72px 86px 30px; }
   .ing-row--costed { grid-template-columns: 1fr 68px 80px 60px 30px; }
-  .rcp-top { flex-direction: column; gap: 0; }
-  .rcp-head { display: none; }
-  .rcp-row { grid-template-columns: 1fr 62px 74px 74px 74px 58px 30px; }
+}
+
+/* The recipe sheet folds earlier: below this its seven columns pinch the
+   ingredient name, so the rows become cards before they get unusable. */
+@media (max-width: 900px) {
+  .rcp-top { flex-direction: column; align-items: stretch; gap: 10px; }
+  .rcp-portions { width: 100%; }
+  .rcp-head, .rcp-group { display: none; }
+  /* Without the headings, each row becomes a small card. The card is the
+     WRAPPER, so the working line sits inside it with the figures it explains. */
+  .ing-row-wrap {
+    padding: 11px; border: 1px solid var(--gold-hair2);
+    border-radius: var(--r); background: var(--paper-3);
+  }
+  .ing-row-wrap:last-child { border-bottom: 1px solid var(--gold-hair2); }
+  .ing-row-wrap + .ing-row-wrap { margin-top: 8px; }
+  /* Every cell is placed explicitly — the desktop track list has 7 columns
+     and this one has 4, so anything left to auto-flow lands in the wrong cell. */
+  .rcp-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 84px 34px;
+    gap: 7px;
+  }
+  .rcp-row .rcp-name  { grid-column: 1 / 4; grid-row: 1; }
+  .rcp-row .ing-del   { grid-column: 4;     grid-row: 1; }
+  .rcp-row .rcp-qty   { grid-column: 1;     grid-row: 2; }
+  .rcp-row .rcp-unit  { grid-column: 2;     grid-row: 2; }
+  .rcp-row .rcp-cost  { grid-column: 3 / 5; grid-row: 2; text-align: right; }
+  .rcp-row .rcp-money { grid-column: 1 / 3; grid-row: 3; }
+  .rcp-row .rcp-pack  { grid-column: 3 / 5; grid-row: 3; }
+  .rcp-math { white-space: normal; padding-left: 10px; }
+  .rcp-summary { justify-content: space-between; }
 }
 
 /* ═══ Event-day check-off (per-dish "prepped" state) ═══ */

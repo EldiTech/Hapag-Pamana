@@ -29,6 +29,21 @@
 
   HP.shell.onSearch((term) => { searchTerm = term; render(); });
 
+  // The store's currency symbol, for the add-on price field's prefix.
+  const currency = () => (HP.store.DB && HP.store.DB.settings && HP.store.DB.settings.currency) || "₱";
+
+  /* The dish's per-head add-on rate on its card. A dish priced apart from its
+     category is marked, because that's the exception a moderator scanning the
+     grid needs to spot — an inherited rate is just the category's number. */
+  function priceTag(d) {
+    const rate = HP.dishPrice(d);
+    if (rate === null) return `<span class="prod-price prod-price--unset">Not priced</span>`;
+    const own = HP.hasPriceOverride(d);
+    return `<span class="prod-price${own ? " prod-price--own" : ""}"
+      title="${own ? "Priced apart from its category" : `Inherited from ${HP.esc(d.category)}`}"
+      >${HP.money(rate)} <small>/ pax</small></span>`;
+  }
+
   // ── Bulk operations: a selection of card ids drives the action bar that
   // appears above the grid (delete / show / hide / feature / move category).
   const selection = new Set();
@@ -90,7 +105,10 @@
       }));
 
     // ── Cards: filter by type → categories (OR) → search ──
-    let list = alive.filter((d) => d.type === typeFilter).sort((a, b) => a.name.localeCompare(b.name));
+    let list = alive.filter((d) => d.type === typeFilter).sort((a, b) => {
+      if (!!a.featured !== !!b.featured) return a.featured ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
     if (catFilters.size > 0) list = list.filter((d) => catFilters.has(d.category));
     if (searchTerm) list = list.filter((d) => d.name.toLowerCase().includes(searchTerm));
 
@@ -120,6 +138,8 @@
         <div class="prod-body">
           <h3 class="prod-name">${HP.esc(d.name)}</h3>
           <span class="badge badge-cat">${HP.esc(d.category)}</span>
+          <div class="prod-div"></div>
+          ${priceTag(d)}
         </div>
         <div class="card-foot">
           <button class="btn btn-ghost btn-sm" data-view="${d.id}"><span class="ic">${HP.icon("eye")}</span>View</button>
@@ -287,6 +307,11 @@
         <dl class="prod-view-facts">
           <div><dt>Product type</dt><dd>${HP.esc(d.type)}</dd></div>
           <div><dt>Category</dt><dd>${HP.esc(d.category)}</dd></div>
+          <div><dt>Add-on price</dt><dd>${
+            HP.dishPrice(d) === null
+              ? "Not priced"
+              : `${HP.money(HP.dishPrice(d))} / pax<small> · ${
+                  HP.hasPriceOverride(d) ? "its own price" : `from ${HP.esc(d.category)}`}</small>`}</dd></div>
           <div><dt>Shown in app</dt><dd>${d.available ? "Yes" : "No"}</dd></div>
           <div><dt>Featured on Home</dt><dd>${d.featured ? "Yes" : "No"}</dd></div>
         </dl>
@@ -337,6 +362,15 @@
             <select class="control" name="category">${catOptions(startType, d ? d.category : "")}</select>
             <div class="field-error" data-err="category" hidden></div></div>
         </div>
+
+        <div class="field"><label>Add-on price</label>
+          <div class="control-affix"><span class="affix">${HP.esc(currency())}</span>
+            <input class="control" name="addOnPrice" type="number" min="0" step="1"
+                   value="${d && HP.hasPriceOverride(d) ? d.addOnPrice : ""}"
+                   placeholder="Inherit from category">
+            <span class="affix affix--end">/ pax</span></div>
+          <div class="field-error" data-err="addOnPrice" hidden></div>
+          <div class="field-hint" id="priceHint"></div></div>
 
         <div class="field"><label>Product image</label>
           <div class="uploader">
@@ -389,8 +423,25 @@
     }
     renderPreview();
 
+    // The add-on price is optional: left blank, the dish charges whatever its
+    // category charges. The hint below names that inherited rate so "blank"
+    // never means "unknown", and follows the category the form is pointing at.
+    const priceHint = document.getElementById("priceHint");
+    function renderPriceHint() {
+      const cat = HP.categoriesForType(typeSel.value).find((c) => c.name === catSel.value);
+      const rate = HP.categoryPrice(cat);
+      priceHint.textContent = rate === null
+        ? "This category has no price yet — set one on the Categories page, or give this dish its own."
+        : `Leave blank to charge the ${catSel.value} rate (${HP.money(rate)} / pax). Fill it in only for a dish priced apart from its category.`;
+    }
+    renderPriceHint();
+    catSel.addEventListener("change", renderPriceHint);
+
     // Category dropdown follows the chosen product type.
-    typeSel.addEventListener("change", () => { catSel.innerHTML = catOptions(typeSel.value, catSel.value); });
+    typeSel.addEventListener("change", () => {
+      catSel.innerHTML = catOptions(typeSel.value, catSel.value);
+      renderPriceHint();
+    });
     nameInput.addEventListener("input", () => { if (!image) renderPreview(); });
 
     document.getElementById("pickImg").addEventListener("click", () => fileInput.click());
@@ -409,16 +460,22 @@
 
     document.getElementById("saveDish").addEventListener("click", () => {
       const name = nameInput.value.trim(), category = f.category.value;
+      const priceRaw = f.addOnPrice.value.trim();
       let ok = true;
       ok = HP.setErr(f, "name", name ? "" : "Name is required.") && ok;
       ok = HP.setErr(f, "category", category ? ""
         : (HP.categoriesForType(f.type.value).length ? "Choose a category." : "Add a category for this type first.")) && ok;
+      // Blank is valid — it means "inherit". Anything present must be a number.
+      ok = HP.setErr(f, "addOnPrice",
+        priceRaw === "" || (Number.isFinite(Number(priceRaw)) && Number(priceRaw) >= 0)
+          ? "" : "Enter a price, or leave it blank to use the category's.") && ok;
       if (!ok) return;
       const allergens = Array.from(f.querySelectorAll('input[name="allergen"]:checked')).map((c) => c.value);
       const payload = {
         name, type: f.type.value, category, allergens,
         image, available: f.available.checked, featured: f.featured.checked,
       };
+      if (priceRaw !== "") payload.addOnPrice = Number(priceRaw);
       // Save against the LIVE store — a background refetch may have replaced
       // the copy captured when the modal opened, and a write into that orphan
       // would land in Firestore but never on screen (or in the cache).
@@ -429,6 +486,9 @@
         if (!DB.dishes.some((x) => x.id === d.id)) DB.dishes.push(rec); // vanished mid-edit — re-attach
       } else { rec = { id: HP.uid(), createdAt: Date.now(), ...payload }; DB.dishes.push(rec); }
       HP.store.persist("dishes", rec);
+      // Cleared override → drop the field entirely, so the dish goes back to
+      // inheriting its category's rate (a stored 0 would price it free).
+      if (priceRaw === "" && "addOnPrice" in rec) HP.store.clearFields("dishes", rec.id, ["addOnPrice"]);
       // Make sure the just-saved product is visible after closing the modal.
       typeFilter = rec.type; catFilters.clear();
       HP.closeModal();

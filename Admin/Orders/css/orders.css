@@ -15,6 +15,12 @@
 .order-type .ic svg { width: 12px; height: 12px; }
 .order-type--pack { background: rgba(169, 130, 60, 0.14); color: var(--gold-deep); border-color: var(--gold-hair2); }
 
+/* The downpayment badge, tucked under the status in the same cell — the two
+   read as one column ("where it stands, and whether it's paid") rather than
+   costing the register another column of width. */
+.cell-pay { margin-top: 5px; }
+.cell-pay .badge { font-size: 0.58rem; }
+
 /* ── Booking sheet (detail modal) ───────────────────────────────── */
 /* The sheet carries photos and a timeline — give it a wider page. */
 .modal-root:has(.order-sheet) .modal { max-width: 700px; }
@@ -41,6 +47,9 @@
   letter-spacing: 1.6px; text-transform: uppercase; color: var(--gold-deep);
 }
 .order-sec h4::after { content: ""; flex: 1; height: 1px; background: var(--gold-hair2); }
+/* The downpayment section puts its status chip in the heading, where it must not
+   inherit the heading's engraved tracking. */
+.order-sec h4 .badge { letter-spacing: 0.4px; text-transform: none; }
 
 /* At a glance — the occasion's essentials as engraved tiles. */
 .order-hero { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
@@ -90,31 +99,65 @@
 .contact-chip .ic { display: inline-flex; }
 .contact-chip .ic svg { width: 13px; height: 13px; }
 
-/* The day's schedule — one chronological rail from setup to pack-out. */
-.order-times { list-style: none; margin: 0; padding: 0; }
+/* The day's schedule — one chronological rail from setup to pack-out.
+
+   Time, dot and label are three different fonts at three different sizes, so
+   they only line up if all three are hung off the same measurement rather than
+   each carrying its own nudge. `--tl-lead` is the row's top padding and
+   `--tl-line` the label's line height: their half-sum is the label's optical
+   centre, which is where the dot goes and where the rail's first and last
+   segments start and stop. Change the label's size and the rail follows. */
+.order-times {
+  list-style: none; margin: 0; padding: 0;
+  --tl-lead: 7px;
+  --tl-line: 1.35em;
+  --tl-dot: 9px;
+  /* Centre of the first line of the label, measured from the row's top. */
+  --tl-mid: calc(var(--tl-lead) + 0.5 * var(--tl-line));
+}
 .tl-row { display: flex; align-items: stretch; gap: 14px; }
 .tl-row time {
-  flex: 0 0 78px; padding: 7px 0; text-align: right; white-space: nowrap;
+  flex: 0 0 78px; padding: var(--tl-lead) 0; text-align: right; white-space: nowrap;
   font-family: var(--display); font-size: 1.02rem; font-weight: 700; color: var(--ink);
+  /* Same box as the label, so the two share a first-line centre despite the
+     larger display face. */
+  line-height: var(--tl-line);
 }
 .tl-rail { position: relative; flex: 0 0 11px; display: flex; justify-content: center; }
 .tl-rail::before {
   content: ""; position: absolute; top: 0; bottom: 0; width: 1px;
   background: var(--gold-hair2);
 }
-.tl-row:first-child .tl-rail::before { top: 16px; }
-.tl-row:last-child .tl-rail::before { bottom: calc(100% - 16px); }
+/* The rail is a link between dots, not a tail hanging past the ends: it begins
+   and ends at the centre of the first and last dot. */
+.tl-row:first-child .tl-rail::before { top: var(--tl-mid); }
+.tl-row:last-child .tl-rail::before { bottom: calc(100% - var(--tl-mid)); }
 .tl-dot {
-  position: relative; z-index: 1; margin-top: 12px; width: 9px; height: 9px;
+  position: relative; z-index: 1; width: var(--tl-dot); height: var(--tl-dot);
+  /* Border inside the box, so --tl-dot is the circle actually drawn and the
+     centring maths below stays true. */
+  box-sizing: border-box;
+  margin-top: calc(var(--tl-mid) - 0.5 * var(--tl-dot));
   border-radius: 50%; background: var(--gold);
   border: 2px solid var(--paper-2); box-shadow: 0 0 0 1px var(--gold-hair);
 }
-.tl-txt { min-width: 0; padding: 7px 0; }
+.tl-txt { min-width: 0; padding: var(--tl-lead) 0; }
 .tl-txt strong {
   display: block; font-family: var(--text); font-size: 0.92rem;
   font-weight: 600; color: var(--ink);
+  line-height: var(--tl-line);
 }
 .tl-txt small { font-family: var(--text); font-size: 0.78rem; color: var(--ink-faint); }
+/* What the kitchen or logistics wrote against a milestone ("Food at trays", a
+   refusal reason). It sits on its own line under the attribution — a note that
+   ran on the same line as "by …" would read as part of the name. */
+.tl-note {
+  display: block;
+  margin-top: 2px;
+  font-style: italic;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
 
 /* Package & menu — the chosen package as a banner, each dish as a card
    with its photo (or an engraved letter tile while it loads / when the
@@ -187,7 +230,78 @@
   .order-facts { grid-template-columns: 1fr; }
 }
 
-/* Modal foot: Delete sits apart on the left; status actions on the right. */
+/* ── Print (booking sheet only) ─────────────────────────────────── */
+/* The screen layout is airy — big tiles, photos, badge chrome — which on
+   paper just burns pages. Print keeps the same content but flattens it to
+   a dense, ink-cheap ledger that fits on one sheet. */
+@media print {
+  /* Blanket scale-down first — every component below inherits smaller type
+     and tighter line-height before its own spacing is trimmed on top. This
+     is what actually buys back the page; per-component padding tweaks alone
+     don't remove enough height to matter. */
+  body.hp-print-modal .order-sheet { font-size: 0.78rem; line-height: 1.3; }
+
+  body.hp-print-modal .order-sheet-head { padding-bottom: 6px; margin-bottom: 8px; }
+  body.hp-print-modal .order-received { color: #000; }
+
+  body.hp-print-modal .order-sec { margin-bottom: 8px; }
+  body.hp-print-modal .order-sec h4 { margin-bottom: 4px; color: #000; font-size: 0.62rem; }
+  body.hp-print-modal .order-sec h4::after { background: #999; }
+
+  /* Hero tiles, dish cards: drop the card chrome, icons and shadows — the
+     label/value pair is all paper needs. */
+  body.hp-print-modal .order-hero { grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 8px; }
+  body.hp-print-modal .hero-tile {
+    padding: 4px 6px; border-color: #ccc; box-shadow: none; background: none;
+  }
+  body.hp-print-modal .hero-ic { display: none; }
+  body.hp-print-modal .hero-txt strong { font-size: 0.92rem; }
+
+  body.hp-print-modal .client-ava { display: none; }
+  body.hp-print-modal .contact-chip { border-color: #ccc; background: none; padding: 2px 8px; }
+
+  body.hp-print-modal .dish-grid { grid-template-columns: 1fr 1fr; gap: 3px; }
+  body.hp-print-modal .dish-card { padding: 3px 6px; border-color: #ddd; background: none; }
+  body.hp-print-modal .dish-thumb { display: none; }
+  body.hp-print-modal .dish-pax { border-color: #ccc; background: none; }
+
+  body.hp-print-modal .order-pkg, body.hp-print-modal .order-addons {
+    padding: 4px 8px; background: none; border-color: #ccc; margin-bottom: 4px; margin-top: 4px;
+  }
+
+  /* The timeline rail is decorative on screen; on paper it just adds height
+     without adding information, so trim the row padding instead of the rail. */
+  body.hp-print-modal .order-times { --tl-lead: 2px; --tl-line: 1.15em; }
+  body.hp-print-modal .tl-row { gap: 8px; }
+  body.hp-print-modal .tl-row time { flex-basis: 60px; }
+  body.hp-print-modal .tl-txt small { font-size: 0.72rem; }
+
+  body.hp-print-modal .order-facts { gap: 1px 16px; }
+
+  /* Only single rows/cards avoid a mid-block split — forcing whole sections
+     to stay together is what pushed a section onto a mostly-blank next page
+     instead of filling out the remaining space on the one before it. */
+  body.hp-print-modal .hero-tile,
+  body.hp-print-modal .dish-card,
+  body.hp-print-modal .tl-row { break-inside: avoid; }
+  body.hp-print-modal .order-sec h4 { break-after: avoid; }
+}
+
+/* Modal foot: Delete sits apart on the left; status actions on the right.
+   A pending, unpaid sheet carries five actions (Record payment joins the row) —
+   one more than the shared no-wrap foot was sized for, so this one wraps. Only
+   the booking sheet's: the payment and confirm dialogs keep the tidy single
+   row. */
+.modal-root:has(.order-sheet) .modal-foot { flex-wrap: wrap; }
 .order-del { margin-right: auto; }
 .order-del .ic svg { width: 14px; height: 14px; }
 .order-del:hover { color: var(--danger); border-color: var(--danger); }
+
+/* Confirm, locked because the downpayment hasn't landed. Deliberately NOT
+   `disabled`: the shared rule for that sets pointer-events: none, which would
+   swallow both the tooltip and the click that explains the lock. So it reads as
+   unavailable but stays live — see confirmOrder / paymentLockedModal. */
+.is-locked { filter: grayscale(0.55); opacity: 0.72; }
+.is-locked:hover { filter: grayscale(0.2); opacity: 1; }
+.btn.is-locked { cursor: help; box-shadow: none; }
+.icon-btn.is-locked { color: var(--gold-deep); cursor: help; }

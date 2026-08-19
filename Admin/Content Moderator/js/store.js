@@ -57,6 +57,69 @@
       ["Chicken", "drumstick"], ["Rice", "rice"], ["Dessert", "cake"], ["Drinks", "cup"],
     ],
   };
+  /* ── Add-on pricing ────────────────────────────────────────────────────
+     Add-ons are priced BY CATEGORY, per head, exactly as the printed menu
+     does it: Appetizer ₱75/pax, Salad ₱80/pax, Beef ₱150/pax… Every dish in
+     a category inherits its category's rate, so pricing the menu is a dozen
+     numbers rather than one per dish.
+
+     A single dish may override its category — the three items on the ADD-ONS
+     card (Squid Ink Pasta, Shrimp Thermidor, Baked Salmon) are ₱150/pax even
+     though their categories are cheaper. The override lives on the product as
+     `addOnPrice`, deliberately NOT `price`: the v2→v3 migration deletes a
+     `price` field from every product (see stripDishExtras), and a field that
+     migration reaps is a field that vanishes on the next upgrade.
+
+     These are the DEFAULTS, seeded on first run and used as the fallback for a
+     category saved before pricing existed. The live rates are editable per
+     category on the Categories page. */
+  const DEFAULT_CAT_PRICES = {
+    "Food Packs": {
+      Salad: 80, Vegetables: 80, Seafood: 150, Fish: 150, Pork: 130,
+      Chicken: 120, Rice: 50, Noodles: 120, Pasta: 120, Sandwich: 75, Dessert: 50,
+    },
+    "Catering Food Trays": {
+      Appetizer: 75, Soup: 75, Salad: 80, Pasta: 120, Noodles: 120,
+      Sandwich: 75, Vegetables: 80, Seafood: 150, Beef: 150, Pork: 130,
+      Chicken: 120, Rice: 50, Dessert: 50, Drinks: 50,
+    },
+  };
+  // The flat-rate items printed on the ADD-ONS card — priced by name, above
+  // whatever their category charges. Seeded onto the matching products once
+  // (v6 → v7) and editable per product afterwards.
+  const DEFAULT_DISH_PRICES = {
+    "squid ink pasta": 150,
+    "shrimp thermidor": 150,
+    "baked salmon": 150,
+  };
+  // The per-head rate a category charges: the moderator's number when it has
+  // one, else the printed default, else null ("not priced yet" — never 0,
+  // which would read as free).
+  // NB: only a real number counts. Number(null) and Number("") are both 0, so
+  // a field stored as null (or an empty string) would otherwise read as a FREE
+  // dish rather than an unpriced one.
+  const rateOf = (v) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
+  function categoryPrice(cat) {
+    if (!cat) return null;
+    const own = rateOf(cat.price);
+    if (own !== null) return own;
+    const fallback = (DEFAULT_CAT_PRICES[cat.type] || {})[cat.name];
+    return Number.isFinite(fallback) ? fallback : null;
+  }
+  // What one head of a dish costs as an add-on: its own override, else its
+  // category's rate. Null when neither is priced.
+  function dishPrice(dish) {
+    if (!dish) return null;
+    const own = rateOf(dish.addOnPrice);
+    if (own !== null) return own;
+    if (!DB) return null;
+    const cat = DB.categories.find(
+      (c) => !c.deleted && c.type === dish.type && c.name === dish.category);
+    return categoryPrice(cat);
+  }
+  // True when a dish carries its own rate rather than inheriting one.
+  const hasPriceOverride = (dish) => !!dish && rateOf(dish.addOnPrice) !== null;
+
   // Name→default-icon lookup, so a category resolves to a sensible icon from its
   // name (and older categories saved with an emoji still get one).
   const CAT_ICON_BY_NAME = {};
@@ -177,7 +240,8 @@
   /* ── Seed data ───────────────────────────────────────────────────────── */
   const SEED = {
     categories: TYPES.flatMap((type) =>
-      TAXONOMY[type].map(([name, icon]) => ({ id: uid(), name, icon, type }))),
+      TAXONOMY[type].map(([name, icon]) =>
+        ({ id: uid(), name, icon, type, price: (DEFAULT_CAT_PRICES[type] || {})[name] ?? 0 }))),
     // Sample business records are intentionally empty — the dashboard shows
     // ONLY what actually lives in Firestore. The category taxonomy below is the
     // single seeded scaffold (so the product form always has categories to pick).
@@ -516,6 +580,22 @@
     if (HIDE_FIELD[kind]) fields[HIDE_FIELD[kind]] = false;
     updateFields(kind, [{ id, fields }]);
   }
+  /* Remove a field outright, in memory and in the backing store. persist()
+     merges, so writing null there would STORE a null rather than delete the
+     key — and a null add-on override reads as ₱0 (a free dish) to anything
+     that coerces it. Clearing an optional field has to go through here. */
+  function clearFields(kind, id, keys) {
+    const row = (DB[kind] || []).find((r) => r.id === id);
+    if (row) keys.forEach((k) => delete row[k]);
+    writeCache();
+    if (kind === "dishes") scheduleProductIndex();
+    if (!ONLINE) return persistLocal();
+    const gone = firebase.firestore.FieldValue.delete();
+    const fields = {};
+    keys.forEach((k) => { fields[k] = gone; });
+    updateFields(kind, [{ id, fields }]);
+  }
+
   // Bring a trashed row back. Its visibility flag stays off — the moderator
   // re-enables deliberately once they've checked the item over.
   function restore(kind, id) {
@@ -649,9 +729,41 @@
     }
   }
 
+  /* v6 → v7: add-on pricing. Categories gain a per-head `price` and the three
+     flat-rate dishes from the ADD-ONS card gain their `addOnPrice` override.
+     Only rows that carry no number yet are touched, so a rate already set by
+     hand is never overwritten. Field-only chunked updates — the products'
+     inline images are not rewritten along for the ride. */
+  function seedAddOnPrices() {
+    const catFixes = [];
+    DB.categories.forEach((c) => {
+      if (rateOf(c.price) !== null) return;
+      const rate = (DEFAULT_CAT_PRICES[c.type] || {})[c.name];
+      if (!Number.isFinite(rate)) return; // custom category — the moderator prices it
+      c.price = rate;
+      catFixes.push({ id: c.id, fields: { price: rate } });
+    });
+    if (catFixes.length) updateFields("categories", catFixes);
+
+    const dishFixes = [];
+    DB.dishes.forEach((d) => {
+      if (rateOf(d.addOnPrice) !== null) return;
+      const rate = DEFAULT_DISH_PRICES[String(d.name || "").trim().toLowerCase()];
+      if (!Number.isFinite(rate)) return;
+      d.addOnPrice = rate;
+      dishFixes.push({ id: d.id, fields: { addOnPrice: rate } });
+    });
+    if (dishFixes.length) updateFields("dishes", dishFixes);
+
+    if (catFixes.length || dishFixes.length) {
+      console.info(`HapagPamana: priced ${catFixes.length} categor${catFixes.length === 1 ? "y" : "ies"} `
+        + `and ${dishFixes.length} add-on dish${dishFixes.length === 1 ? "" : "es"}.`);
+    }
+  }
+
   // Highest schema version this build understands. The steps below bring older
   // data up to it exactly once, gated by settings.schema.
-  const SCHEMA = 6;
+  const SCHEMA = 7;
   async function ensureSchema() {
     if (!DB) return;
     if (!DB.settings) DB.settings = structuredClone(SEED.settings);
@@ -688,6 +800,10 @@
     // but sat empty — those dishes were filed only under Catering Food Trays.
     // The business offers the same dishes as food packs, so mirror them in.
     if (from < 6) mirrorFoodPackDishes();
+
+    // v6 → v7: give every default category its printed per-head add-on rate,
+    // and the three flat-rate dishes their own.
+    if (from < 7) seedAddOnPrices();
 
     DB.settings.schema = SCHEMA;
     persistSettings();
@@ -948,6 +1064,10 @@
   HP.TYPES = TYPES;
   HP.categoriesForType = categoriesForType;
   HP.iconForCat = iconForCat;
+  HP.categoryPrice = categoryPrice;
+  HP.dishPrice = dishPrice;
+  HP.hasPriceOverride = hasPriceOverride;
+  HP.DEFAULT_CAT_PRICES = DEFAULT_CAT_PRICES;
   Object.defineProperty(HP, "ALLERGENS", { get: currentAllergens, configurable: true });
   HP.DEFAULT_ALLERGENS = DEFAULT_ALLERGENS;
   HP.parseAllergens = parseAllergens;
@@ -965,6 +1085,7 @@
     softRemove,
     restore,
     updateFields,
+    clearFields,
     importContent,
     persistSettings,
     persistAllergens,

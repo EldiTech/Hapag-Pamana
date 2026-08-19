@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../brand.dart';
+import '../core/external_link.dart';
 import '../core/widgets/app_widgets.dart';
 import '../widgets.dart';
 
@@ -124,46 +123,6 @@ class AboutPage extends StatelessWidget {
       ],
     );
   }
-}
-
-// ═══════════════════════════ Link plumbing ═══════════════════════════
-
-/// Opens [uri] in the matching external app (dialer, maps, mail, browser).
-/// When nothing on the device can take it, copies [copyValue] instead and says
-/// so — the row always does *something*.
-Future<void> _openLink(
-  BuildContext context,
-  Uri uri, {
-  required String copyValue,
-  required String copiedWhat,
-}) async {
-  var opened = false;
-  try {
-    opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-  } catch (_) {
-    opened = false;
-  }
-  if (opened || !context.mounted) return;
-
-  await Clipboard.setData(ClipboardData(text: copyValue));
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.brown,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-        content: Text(
-          '$copiedWhat copied to clipboard',
-          style: AppTextStyles.sans(
-            size: 12,
-            weight: FontWeight.w600,
-            color: AppColors.cream,
-          ),
-        ),
-      ),
-    );
 }
 
 // ═══════════════════════════ Sections ═══════════════════════════
@@ -636,7 +595,7 @@ class _OfferCard extends StatelessWidget {
 // ═══════════════════════════ Contact & social ═══════════════════════════
 
 /// The four ways to reach the kitchen, in one card. Every tappable row opens
-/// the matching app — maps, dialer, mail — via [_openLink].
+/// the matching app — maps, dialer, mail — via [openExternalLink].
 class _ContactCard extends StatelessWidget {
   const _ContactCard();
 
@@ -647,7 +606,7 @@ class _ContactCard extends StatelessWidget {
         icon: Icons.location_on_outlined,
         label: 'FIND US',
         value: 'The Kitchen · Metro Manila, Philippines',
-        onTap: () => _openLink(
+        onTap: () => openExternalLink(
           context,
           Uri.parse(
             'https://www.google.com/maps/search/?api=1'
@@ -666,7 +625,7 @@ class _ContactCard extends StatelessWidget {
         icon: Icons.phone_outlined,
         label: 'CALL OR TEXT',
         value: '0917 123 4567',
-        onTap: () => _openLink(
+        onTap: () => openExternalLink(
           context,
           Uri.parse('tel:+639171234567'),
           copyValue: '09171234567',
@@ -677,7 +636,7 @@ class _ContactCard extends StatelessWidget {
         icon: Icons.mail_outline,
         label: 'E-MAIL',
         value: 'hello@fillathome.ph',
-        onTap: () => _openLink(
+        onTap: () => openExternalLink(
           context,
           Uri.parse('mailto:hello@fillathome.ph'),
           copyValue: 'hello@fillathome.ph',
@@ -818,7 +777,7 @@ class _SocialPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PressableScale(
-      onTap: () => _openLink(
+      onTap: () => openExternalLink(
         context,
         Uri.parse(url),
         copyValue: url,

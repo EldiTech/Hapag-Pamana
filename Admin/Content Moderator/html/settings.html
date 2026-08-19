@@ -51,7 +51,7 @@
           </div>
         </div>
         <p class="bento-desc">Import content from a JSON export (merged by id), or erase every product, package, category and setup photo and restore only the built-in category list.</p>
-        <div class="card-foot">
+        <div class="card-foot card-foot--stack">
           <button class="btn btn-ghost" id="importData"><span class="ic" data-icon="upload"></span>Import from JSON</button>
           <button class="btn btn-danger" id="resetData"><span class="ic" data-icon="trash"></span>Erase all content</button>
           <input type="file" id="importFile" accept="application/json,.json" hidden>
@@ -67,21 +67,6 @@
         </div>
         <p class="bento-desc">Deleted products, categories, packages and setup photos wait here — restore them, or delete them forever.</p>
         <div id="trashRows"></div>
-      </section>
-
-      <section class="bento-tile b-12">
-        <div class="bento-head">
-          <div class="label-grp">
-            <span class="stat-ic"><span class="ic" data-icon="leaf"></span></span>
-            <span class="bento-label">Allergens</span>
-          </div>
-          <button class="btn btn-primary" id="allergenAdd"><span class="ic" data-icon="plus"></span>Add allergen</button>
-        </div>
-        <p class="bento-desc">The tags dishes can carry — powers the allergen chips and heatmaps in the app.</p>
-        <div id="allergenRows"></div>
-        <div class="card-foot">
-          <button class="btn btn-ghost" id="allergenDefaults"><span class="ic" data-icon="grid"></span>Restore default allergens</button>
-        </div>
       </section>
     </div>
   </template>

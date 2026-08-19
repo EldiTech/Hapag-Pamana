@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Received</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../../Content%20Moderator/css/global.css" />
+  <link rel="stylesheet" href="../../Purchasing/css/purchasing.css" />
+  <link rel="stylesheet" href="../css/finance.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <!-- Runs the stock clerk has filed here: the checklist, the quality check
+         and the receipt photos behind the spend. Finance opens each one,
+         reads the paper against the slip it was authorised by, and
+         acknowledges receipt — which is what closes the loop back to the
+         stores. -->
+    <div class="stat-grid" id="rcvStats"></div>
+
+    <div class="toolbar" id="rcvChips"></div>
+
+    <section class="panel">
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Slip</th>
+              <th>Client</th>
+              <th>Authorised</th>
+              <th>Spent</th>
+              <th>Receipts</th>
+              <th>Filed by</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rcvRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../../assets/hp-procurement.js"></script>
+  <script src="../js/finance-common.js"></script>
+  <script src="../js/received.js"></script>
+</body>
+</html>

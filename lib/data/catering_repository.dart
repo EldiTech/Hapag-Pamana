@@ -38,6 +38,24 @@ class CateringRepository {
   /// Active packages, cheapest per-head first.
   Stream<List<CateringPackage>> watchPackages() => _packages.watch();
 
+  /// A single package by id, for resuming a saved draft ([Booking.draftPackageId])
+  /// on the exact package it was booked against — the wizard's menu steps come
+  /// from that package's inclusions, so it has to be the same one, not merely a
+  /// same-priced stand-in.
+  ///
+  /// Checked against whatever [watchPackages] has already cached first (no
+  /// network round-trip on the common case — the member just came from that
+  /// package's own detail sheet); falls back to a direct read so a package the
+  /// moderator has since deactivated can still resume, since deactivating only
+  /// hides it from new bookings, not from one already in progress.
+  Future<CateringPackage?> fetchPackage(String id) async {
+    for (final p in _packages._latest ?? const <CateringPackage>[]) {
+      if (p.id == id) return p;
+    }
+    final doc = await _db.collection('packages').doc(id).get();
+    return doc.exists ? CateringPackage.fromDoc(doc) : null;
+  }
+
   /// Visible event setups, newest first.
   Stream<List<EventSetup>> watchSetups() => _setups.watch();
 }

@@ -1,0 +1,254 @@
+/* HapagPamana · the fulfilment workflow rail.
+   Shared by the Team Leader and Logistics dashboards (see hp-fulfilment.js).
+   Both desks must see the SAME diagram for the same order — one picture of
+   where the food is — so the rules live here rather than in either
+   dashboard's own stylesheet. */
+
+/* ── The rail ──────────────────────────────────────────────────────────── */
+/* Grid, not flex: the notes below are laid out on the SAME equal-column track
+   definition, which is what keeps each card under its own circle. --wf-steps
+   is the number of stages (set per rail by hp-fulfilment.js). */
+.wf-rail {
+  display: grid;
+  grid-template-columns: repeat(var(--wf-steps, 4), minmax(0, 1fr));
+  align-items: start;
+  gap: 0;
+  list-style: none;
+  /* The bottom margin is the drop lines' room: the stems are 16px, so the gap
+     has to clear them or they would run into the cards' top edge. */
+  margin: 0 0 18px;
+  /* Room for the is-now ring: it is a 4px box-shadow drawn OUTSIDE the dot's
+     box, so without this the circle's halo is clipped at the ends of the rail. */
+  padding: 8px 6px 0;
+}
+.wf-node {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  text-align: center;
+}
+/* The connector runs BETWEEN nodes: drawn from each node but the first, back
+   toward its predecessor, so it never overhangs either end of the rail.
+   Its offset is derived from the dot size rather than hardcoded, so the line
+   stays on the circles' centreline at every breakpoint. */
+.wf-node + .wf-node::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--wf-dot, 42px) / 2 - 1px);
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: var(--hair);
+  z-index: 0;
+}
+.wf-node.is-done + .wf-node.is-done::before,
+.wf-node.is-done + .wf-node.is-now::before,
+.wf-node.is-done + .wf-node.is-bad::before { background: var(--gold); }
+
+.wf-dot {
+  position: relative;
+  z-index: 1;
+  /* One source of truth for the diameter — the connector's offset is computed
+     from it, so the two can never drift apart. */
+  width: var(--wf-dot, 42px);
+  height: var(--wf-dot, 42px);
+  flex: none;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid var(--hair);
+  background: var(--paper-2);
+  color: var(--ink-faint);
+  transition: border-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+.wf-dot .ic svg { width: 19px; height: 19px; }
+
+.wf-label {
+  font-family: var(--text);
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+
+/* Reached — the food has been through here. */
+.wf-node.is-done .wf-dot { border-color: var(--ok); color: var(--ok); }
+.wf-node.is-done .wf-label { color: var(--ink-soft); }
+
+/* Where the order stands right now: ringed, so it reads at a glance. */
+.wf-node.is-now .wf-dot {
+  border-color: var(--gold-deep);
+  color: var(--gold-deep);
+  box-shadow: 0 0 0 4px var(--gold-hair2);
+}
+.wf-node.is-now .wf-label { color: var(--ink); font-weight: 600; }
+
+/* Refused — logistics sent it back. */
+.wf-node.is-bad .wf-dot {
+  border-color: var(--danger);
+  color: var(--danger);
+  box-shadow: 0 0 0 4px rgba(160, 40, 32, 0.14);
+}
+.wf-node.is-bad .wf-label { color: var(--danger); font-weight: 600; }
+
+/* ── The account beneath the rail ────────────────────────────────────────
+   The cards share the RAIL'S grid: one equal column per stage, in the same
+   order, so every note sits under the circle it explains. The rail and this
+   are laid out from the same track definition below — if they ever diverge
+   the diagram lies, so they are defined together rather than side by side. */
+.wf-cards {
+  display: grid;
+  /* The rail's tracks, exactly: same count, same zero gap, same side padding,
+     so a card's centre is its circle's centre. The cards carry their own
+     spacing as a margin INSIDE the track (see .wf-card) rather than as a grid
+     gap — a gap would narrow every column and walk the cards off the circles
+     a few pixels further at each step. */
+  grid-template-columns: repeat(var(--wf-steps, 4), minmax(0, 1fr));
+  gap: 0;
+  padding: 0 6px;
+  /* Equal-height rows: every card in a row matches the tallest, so the ladder
+     stays even however long a note runs. */
+  grid-auto-rows: 1fr;
+}
+.wf-card {
+  position: relative;
+  /* The gutter lives here, not in the grid: it keeps the track full width so
+     the card stays centred under its circle. */
+  margin: 0 5px 10px;
+  padding: 11px 12px 10px;
+  border: 1px solid var(--hair-soft);
+  border-radius: var(--r);
+  background: var(--paper-3);
+  /* Fill the row's height so neighbouring cards end level. */
+  height: 100%;
+  box-sizing: border-box;
+  /* The folded corner from the reference diagram — a paper slip. */
+  overflow: hidden;
+}
+
+/* ── The drop line: circle → card ─────────────────────────────────────────
+   A short vertical stem under each circle, reaching down toward the card that
+   explains it, so the eye is told which note belongs to which stage instead of
+   inferring it from column position alone.
+
+   Drawn from the RAIL'S NODE, not the card: `.wf-card` sets `overflow: hidden`
+   for its folded corner, and that clipping would eat anything the card tried
+   to draw outside its own box. The node has no such constraint, and it sits in
+   the same grid column — so a stem hanging below the label lands exactly on
+   the card's centreline.
+
+   `.wf-rail.has-notes` is set by hp-fulfilment.js only when cards follow, so a
+   rail shown on its own grows no stems pointing at nothing. */
+.wf-rail.has-notes .wf-node::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  /* From just under the label down through the rail's bottom margin. */
+  top: 100%;
+  width: 2px;
+  height: 16px;
+  transform: translateX(-50%);
+  background: var(--hair);
+  pointer-events: none;
+}
+/* A stage with no card beneath it would point at empty space. hp-fulfilment.js
+   marks how many cards there are, and nodes past that count drop their stem. */
+.wf-rail.has-notes .wf-node.is-unnoted::after { content: none; }
+/* The stem takes its node's state colour, so the rail reads as one figure. */
+.wf-rail.has-notes .wf-node.is-done::after { background: var(--ok); }
+.wf-rail.has-notes .wf-node.is-now::after { background: var(--gold-deep); }
+.wf-rail.has-notes .wf-node.is-bad::after { background: var(--danger); }
+.wf-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  border-width: 9px;
+  border-style: solid;
+  border-color: var(--ok) transparent transparent var(--ok);
+}
+.wf-card.is-bad::before { border-top-color: var(--danger); border-left-color: var(--danger); }
+.wf-card.is-ask::before { border-top-color: var(--gold-deep); border-left-color: var(--gold-deep); }
+
+.wf-card h5 {
+  margin: 0 0 4px;
+  font-family: var(--display);
+  font-size: 0.98rem;
+  color: var(--ink);
+}
+.wf-card p {
+  margin: 0 0 7px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+.wf-card footer {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+.wf-empty {
+  margin: 0;
+  padding: 14px 10px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+/* ── Order cards on the boards ─────────────────────────────────────────── */
+.wf-hint {
+  margin: 8px 0 0;
+  font-size: 0.79rem;
+  line-height: 1.55;
+  color: var(--ink-faint);
+}
+.wf-hint strong { color: var(--ink-soft); }
+
+.wf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hair-soft);
+}
+.wf-actions .btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* A banner for the state that needs a decision. */
+.wf-flag {
+  margin: 0 0 14px;
+  padding: 10px 13px;
+  border-radius: var(--r);
+  border-left: 3px solid var(--gold-deep);
+  background: var(--paper-3);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.wf-flag strong { color: var(--ink); }
+.wf-flag.is-bad { border-left-color: var(--danger); }
+
+@media (max-width: 640px) {
+  /* The dot size flows through --wf-dot, so the connector re-centres itself
+     and needs no separate override. */
+  .wf-rail { --wf-dot: 36px; }
+  .wf-label { font-size: 0.68rem; }
+  /* Four note columns cannot stay readable on a phone. Below this width the
+     cards fall back to a single flowing column, each still titled with its
+     stage, while the rail above keeps its shape. */
+  .wf-cards {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .wf-card h5 { font-size: 0.92rem; }
+}
+
+/* The modal body both desks open: rail, then the account, then the actions. */
+.wf-sheet { display: block; }
+.wf-sheet .ck-head { margin-bottom: 16px; }

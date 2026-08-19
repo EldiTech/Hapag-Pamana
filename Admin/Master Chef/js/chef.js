@@ -159,7 +159,9 @@
   const typeOf = (o) => (String(o.bookingType || "").toLowerCase() === "food pack" ? "Food Pack" : "Catering");
   const clientName = (o) => val(o, "clientName") || "Unnamed client";
 
-  // Same course keys the booking wizard writes (one dish per course).
+  // Same course keys the booking wizard used to write (one dish per course,
+  // a fixed thirteen-course spread). COURSES still leads courseKeys() below
+  // so those keep their proper labels and familiar order.
   const COURSES = [
     ["appetizer", "Appetizer"],
     ["soup", "Soup"],
@@ -174,6 +176,65 @@
     ["desserts", "Desserts"],
     ["drinks", "Drinks"],
   ];
+  // The event day's set-up/program times — never a dish.
+  const TIMELINE_KEYS = ["ingress", "egress", "functionStart", "foodServing", "programEnd"];
+  // Bookkeeping and non-dish fields the wizard writes onto every booking —
+  // never a dish, so courseKeys() below must skip them.
+  const META_KEYS = new Set([
+    "uid", "status", "createdAt", "statusUpdatedAt", "bookingType",
+    "history", "updatedAt", "updatedBy", "deleted", "deletedAt", "deletedBy",
+    "fulfilment",
+    "kindOfFunction", "functionDate", "venue", "address", "pax",
+    "clientName", "contactNumber", "email", "package", "menu", "menuAddOns",
+    "paymentStatus", "paymentTotal", "paymentDue", "paymentPaid", "paidAt",
+    "packageTotal", "addOnsTotal",
+    "paymentRef", "paymentMethod", "checkoutSessionId", "checkoutUrl",
+    "paymentSource", "paymentTakenBy", "paymentTakenByName",
+    ...TIMELINE_KEYS,
+  ]);
+
+  /* Every course on an order, in the order the app asked for them.
+
+     The booking wizard no longer fills a fixed thirteen-course spread — it
+     now builds its questions from the booked package's own inclusions, so a
+     package including "Pasta · Pork · Dessert · Sandwich or Appetizer"
+     writes `pasta`, `pork`, `dessert` and `sandwichOrAppetizer` — keys
+     COURSES has never heard of. Reading only COURSES meant those dishes
+     never reached the kitchen: an order could show one dish on the prep
+     board while the client had ordered four. This finds them instead: any
+     plain non-empty string field that isn't bookkeeping is a dish, whether
+     or not COURSES knows its key. See orders.js's identical courseKeys() —
+     the Orders dashboard hit and fixed this same gap first. */
+  function courseKeys(o) {
+    const out = [];
+    const seen = new Set();
+    COURSES.forEach(([k, label]) => {
+      if (val(o, k)) { out.push({ key: k, label }); seen.add(k); }
+    });
+    Object.keys(o).sort().forEach((k) => {
+      if (seen.has(k) || k === "id") return;
+      if (META_KEYS.has(k)) return;
+      if (typeof o[k] !== "string" || !o[k].trim()) return;
+      out.push({ key: k, label: labelFor(k) });
+    });
+    return out;
+  }
+
+  // A field key as the wizard wrote it, turned back into the words the
+  // client saw: "sandwichOrAppetizer" -> "Sandwich or Appetizer".
+  function labelFor(key) {
+    const words = String(key)
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .split(/\s+/)
+      .filter(Boolean);
+    return words
+      .map((w, i) => {
+        const lower = w.toLowerCase();
+        if (i > 0 && lower === "or") return "or";
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+      })
+      .join(" ");
+  }
 
   const PLAN_STATES = ["unplanned", "draft", "ready"];
   const PLAN_META = {
@@ -197,9 +258,7 @@
           return { name: (m ? m[1] : line).trim(), course: "Menu", pax: m ? `${m[2]} pax` : "" };
         });
     }
-    return COURSES
-      .map(([k, label]) => ({ name: val(o, k), course: label, pax: "" }))
-      .filter((d) => d.name);
+    return courseKeys(o).map(({ key, label }) => ({ name: val(o, key), course: label, pax: "" }));
   }
 
   /* ── Small helpers ────────────────────────────────────────────────────── */
@@ -456,10 +515,9 @@
     if (!(v > 0)) return null;
     return v >= 100 ? Math.round(v) : Number(v.toPrecision(3));
   }
-  const unitCostOf = (i) => {
-    const pc = Number(i.packCost), ps = Number(i.packSize);
-    return pc > 0 && ps > 0 ? pc / ps : null;
-  };
+  // Shared with the Recipe Book — it converts the pack's own unit (a 1 kg
+  // bag costed against a recipe in grams) into the line's unit.
+  const unitCostOf = window.HPChef.unitCostOf;
 
   function scaledItems(recipe, servings) {
     const base = Number(recipe.portions) || 0;
@@ -808,7 +866,9 @@
     const ing = recipe.ingredients.find((i) =>
       dishKey(i.name) === dishKey(it.ingredient));
     if (!ing || !(Number(ing.packSize) > 0)) return null;
-    const norm = normalizeQty(Number(ing.packSize), ing.unit);
+    // The pack is measured in its OWN unit ("1 kg" against a recipe in g);
+    // older rows without packUnit are in the recipe's unit, as before.
+    const norm = normalizeQty(Number(ing.packSize), ing.packUnit || ing.unit);
     const itNorm = normalizeQty(0, it.unit);
     return norm.unit === itNorm.unit ? norm.qty : null; // incompatible units — no pack math
   }
