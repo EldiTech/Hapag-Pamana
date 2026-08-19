@@ -65,6 +65,12 @@ app.*.map.json
 *-firebase-adminsdk-*.json
 node_modules/
 
+# Claude Code's per-machine settings. The release-APK hook in here names an
+# absolute powershell.exe path and an absolute repo path, so it is true only on
+# the machine that wrote it. The script it runs (.claude/update-download-web.ps1)
+# resolves its own paths and IS committed.
+.claude/settings.local.json
+
 # API keys and other secrets (PayMongo, Google Maps/Places, …) — see
 # .env.example for the keys the app expects and lib/env.dart for how
 # they're read. Never commit the real .env.
