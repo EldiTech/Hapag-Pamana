@@ -172,20 +172,28 @@ class _UserGabayPageState extends State<UserGabayPage> {
                 // member's own suggestions switch, and drops out entirely when
                 // there's nothing to recommend — an empty panel would say Gabay
                 // is broken when it's only new.
-                if (prefs.gabaySuggestions &&
-                    (_recsLoading || _recs.isNotEmpty)) ...[
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 110),
-                    child: _RecommendedPanel(
-                      loading: _recsLoading,
-                      set: _recs,
-                      onOpenPackages: widget.onNavigate == null
-                          ? null
-                          : () => widget.onNavigate!(UserShell.tabPackages),
+                // Grows in and collapses away rather than popping: the panel
+                // leaves the moment the member turns suggestions off in
+                // Settings, and the conversation above it should close the gap
+                // rather than jump up into it.
+                SmoothReveal(
+                  visible:
+                      prefs.gabaySuggestions &&
+                      (_recsLoading || _recs.isNotEmpty),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.section),
+                    child: FadeSlideIn(
+                      delay: const Duration(milliseconds: 110),
+                      child: _RecommendedPanel(
+                        loading: _recsLoading,
+                        set: _recs,
+                        onOpenPackages: widget.onNavigate == null
+                            ? null
+                            : () => widget.onNavigate!(UserShell.tabPackages),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.section),
-                ],
+                ),
 
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 140),
@@ -292,13 +300,20 @@ class _RecommendedPanel extends StatelessWidget {
               ],
             ),
           ),
-          if (!loading) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          // The badge can only be written once the picks have landed, so it
+          // grows in with them rather than shoving the strip down.
+          SmoothReveal(
+            visible: !loading,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
               child: RecommendationSourceBadge(set.source),
             ),
-          ],
+          ),
           const SizedBox(height: AppSpacing.md),
 
           // The cards run to the card's own edge rather than the screen
@@ -307,8 +322,12 @@ class _RecommendedPanel extends StatelessWidget {
           // itself to the wider screen inset.
           SizedBox(
             height: 196,
-            child: loading
+            // The spinner dissolves into the picks it was waiting on.
+            child: SmoothSwap(
+              alignment: Alignment.center,
+              child: loading
                 ? const Center(
+                    key: ValueKey('picks-loading'),
                     child: SizedBox(
                       width: 22,
                       height: 22,
@@ -319,6 +338,7 @@ class _RecommendedPanel extends StatelessWidget {
                     ),
                   )
                 : ListView.separated(
+                    key: const ValueKey('picks'),
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.md,
@@ -339,12 +359,20 @@ class _RecommendedPanel extends StatelessWidget {
                       );
                     },
                   ),
+            ),
           ),
 
-          if (!loading && onOpenPackages != null) ...[
-            const SizedBox(height: AppSpacing.sm + 2),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          // Same reasoning as the badge: the link only means something once
+          // there are picks behind it, so it grows in with them.
+          SmoothReveal(
+            visible: !loading && onOpenPackages != null,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm + 2,
+                AppSpacing.md,
+                0,
+              ),
               child: TextButton(
                 onPressed: onOpenPackages,
                 style: TextButton.styleFrom(
@@ -373,7 +401,7 @@ class _RecommendedPanel extends StatelessWidget {
                 ),
               ),
             ),
-          ],
+          ),
         ],
       ),
     );

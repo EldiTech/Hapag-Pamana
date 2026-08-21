@@ -285,6 +285,8 @@
             <p class="ck-meta">${HP.esc(o.functionDate || "")}${
               o.venue ? " · " + HP.esc(o.venue) : ""}${
               o.pax ? " · " + HP.esc(String(o.pax)) + " pax" : ""}</p>
+            ${o.setupStyle ? `<p class="ck-meta">Set-up: <strong>${
+              HP.esc(String(o.setupStyle))}</strong></p>` : ""}
           </div>
           ${badgeFor(o)}
         </div>

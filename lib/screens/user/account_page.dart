@@ -190,13 +190,21 @@ class _AccountPageState extends State<AccountPage> {
         FadeSlideIn(
           delay: _d(80),
           child: Center(
-            child: _loading
-                ? const SkeletonLine(width: 160, height: 18)
-                : Text(
-                    name.isEmpty ? 'Member' : name,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.displaySmall,
-                  ),
+            child: SmoothSwap(
+              alignment: Alignment.center,
+              child: _loading
+                  ? const SkeletonLine(
+                      key: ValueKey('name-loading'),
+                      width: 160,
+                      height: 18,
+                    )
+                  : Text(
+                      name.isEmpty ? 'Member' : name,
+                      key: ValueKey('name-$name'),
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.displaySmall,
+                    ),
+            ),
           ),
         ),
         const SizedBox(height: 6),
@@ -463,20 +471,29 @@ class _InfoRow extends StatelessWidget {
               children: [
                 Text(label, style: AppTextStyles.label),
                 const SizedBox(height: 3),
-                if (loading)
-                  const SkeletonLine(width: 140, height: 12)
-                else
-                  Text(
-                    value.isEmpty ? 'Not set' : value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.sans(
-                      size: 14,
-                      color: value.isEmpty
-                          ? AppColors.brownSoft.withValues(alpha: 0.6)
-                          : AppColors.brown,
-                    ),
-                  ),
+                // The skeleton dissolves into the value it was standing in
+                // for, rather than being replaced between two frames.
+                SmoothSwap(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: loading
+                      ? const SkeletonLine(
+                          key: ValueKey('info-loading'),
+                          width: 140,
+                          height: 12,
+                        )
+                      : Text(
+                          value.isEmpty ? 'Not set' : value,
+                          key: ValueKey('info-$value'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.sans(
+                            size: 14,
+                            color: value.isEmpty
+                                ? AppColors.brownSoft.withValues(alpha: 0.6)
+                                : AppColors.brown,
+                          ),
+                        ),
+                ),
               ],
             ),
           ),

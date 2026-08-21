@@ -149,30 +149,41 @@ class _UserMenuPageState extends State<UserMenuPage> {
                 ),
               ),
               const SizedBox(height: 14),
-              if (loading)
-                SizedBox(
-                  height: 34,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: 6,
-                    separatorBuilder: (_, _) => const SizedBox(width: 10),
-                    itemBuilder: (_, i) =>
-                        PillPlaceholder(width: 64 + (i.isEven ? 30 : 0)),
-                  ),
-                )
-              else if (categories.isNotEmpty)
-                _CategoryChips(
-                  categories: categories,
-                  active: _category,
-                  onSelect: (c) => setState(() => _category = c),
-                ),
+              // Placeholder pills → the real chips → nothing (a type with no
+              // categories): one cross-fade, with the row's height tweened so
+              // the grid below settles rather than jumps.
+              SmoothSwap(
+                resize: true,
+                child: loading
+                    ? SizedBox(
+                        key: const ValueKey('chips-loading'),
+                        height: 34,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: 6,
+                          separatorBuilder: (_, _) => const SizedBox(width: 10),
+                          itemBuilder: (_, i) =>
+                              PillPlaceholder(width: 64 + (i.isEven ? 30 : 0)),
+                        ),
+                      )
+                    : categories.isEmpty
+                        ? const SizedBox.shrink(key: ValueKey('chips-none'))
+                        : _CategoryChips(
+                            key: const ValueKey('chips'),
+                            categories: categories,
+                            active: _category,
+                            onSelect: (c) => setState(() => _category = c),
+                          ),
+              ),
               // Above the allergen map, because it's about *this member* rather
               // than about the menu: it says which flags they'll see and where
-              // the setting behind them lives.
-              if (prefs.avoidAllergens.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.lg),
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 120),
+              // the setting behind them lives. It grows in and collapses away
+              // as the member edits their preference, so turning the setting on
+              // or off never snaps the grid up the screen.
+              SmoothReveal(
+                visible: prefs.avoidAllergens.isNotEmpty,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.lg),
                   child: _DietNote(
                     avoided: knownAllergens(prefs.avoidAllergens),
                     onTap: () => Navigator.of(context).push(
@@ -182,17 +193,19 @@ class _UserMenuPageState extends State<UserMenuPage> {
                     ),
                   ),
                 ),
-              ],
-              if (showAllergens) ...[
-                const SizedBox(height: AppSpacing.lg),
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 140),
+              ),
+              // The summary comes and goes as the filters change what's in
+              // view, so it grows and fades rather than popping the grid down.
+              SmoothReveal(
+                visible: showAllergens,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.lg),
                   child: _AllergenSummary(
                     stats: allergenStats,
                     count: shown.length,
                   ),
                 ),
-              ],
+              ),
               const SizedBox(height: AppSpacing.lg),
             ],
           ),
@@ -234,7 +247,11 @@ class _UserMenuPageState extends State<UserMenuPage> {
             childCount: shown.length,
             // Cards settle in with a gentle staggered fade + rise as the grid
             // appears; the delay is capped so a long menu never feels slow.
+            // Keyed by dish: changing the search or the category rebuilds the
+            // grid with different children, and the key is what makes those
+            // fade + rise into place instead of swapping contents in a frame.
             builder: (i) => FadeSlideIn(
+              key: ValueKey(shown[i].id),
               delay: Duration(milliseconds: 40 * (i % 8)),
               child: _MenuItemCard(
                 shown[i],
@@ -382,6 +399,7 @@ class _TypeSegment extends StatelessWidget {
 // ─────────────────────────── Category chips ───────────────────────────
 class _CategoryChips extends StatelessWidget {
   const _CategoryChips({
+    super.key,
     required this.categories,
     required this.active,
     required this.onSelect,

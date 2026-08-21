@@ -11,6 +11,7 @@ import '../../core/widgets/app_widgets.dart';
 import '../../data/booking.dart';
 import '../../data/booking_repository.dart';
 import '../../data/catering.dart';
+import '../../data/catering_repository.dart';
 import '../../data/customer_repository.dart';
 import '../../data/menu_category.dart';
 import '../../data/paymongo_config.dart';
@@ -18,6 +19,7 @@ import '../../data/product.dart';
 import '../../data/places_service.dart';
 import '../../data/product_repository.dart';
 import '../../widgets.dart';
+import '../detail_sheets.dart';
 import 'address_picker_page.dart';
 import 'payment_page.dart';
 
@@ -30,6 +32,9 @@ import 'payment_page.dart';
 ///   4. The Program  — start, food serving, end of program
 ///   5+. The Package & menu — the package line, then one question per course
 ///       the package includes, four to a page, with add-ons on the last.
+///   Last. The Look — which of the moderator's published event setups the
+///       tables and venue should be dressed in. Only asked when the `setups`
+///       gallery has something in it (see [_hasSetupStep]).
 ///
 /// The menu steps are built from the booked package's `inclusions` rather than
 /// a fixed course list: a package that includes "Pasta · Pork · Dessert ·
@@ -153,7 +158,17 @@ class _BookingPageState extends State<BookingPage> {
     'foodServing': 'Time of Food Serving',
     'programEnd': 'End of Program',
     'package': 'Type/Price of Package',
+    'setupStyle': 'Table & Venue Set-up',
   };
+
+  /// The last step, when the moderator's `setups` gallery has anything in it —
+  /// the look the tables and venue are dressed in.
+  static const (String, String, String) _setupStep = (
+    'THE LOOK',
+    'How we dress the venue',
+    'Pick the set-up you\'d like your tables and venue styled after — tap a '
+        'photo\'s magnifier to see it bigger.',
+  );
 
   /// A field's label: the fixed questions from [_labels], every course from the
   /// package inclusion that created it ("Sandwich or Appetizer"), so the form
@@ -186,6 +201,10 @@ class _BookingPageState extends State<BookingPage> {
   static final RegExp _mobile = RegExp(r'^(09\d{9}|639\d{9})$');
 
   int _step = 0;
+
+  /// Which way the wizard last moved — drives the side the arriving step
+  /// slides in from, so advancing and going back feel like different moves.
+  bool _stepForward = true;
   bool _submitting = false;
   bool _submitted = false;
 
@@ -239,6 +258,12 @@ class _BookingPageState extends State<BookingPage> {
   StreamSubscription<AddOnPricing>? _pricingSub;
   AddOnPricing _pricing = const AddOnPricing.empty();
 
+  /// The event setups the moderator publishes — the photos the last step is
+  /// built from. Empty until they load, and empty for good if the gallery is
+  /// bare, which is exactly when the step shouldn't exist at all.
+  StreamSubscription<List<EventSetup>>? _setupSub;
+  List<EventSetup> _setups = const [];
+
   /// The courses this booking asks for — one per inclusion on the booked
   /// package, in the moderator's order. A booking started without a package
   /// (the "describe one" path) has none, so the wizard just skips the menu
@@ -268,10 +293,27 @@ class _BookingPageState extends State<BookingPage> {
     return pages;
   }
 
-  /// The whole wizard: the fixed questions, then one step per page of courses.
-  /// The last menu step carries the add-ons; when the package has no
-  /// inclusions at all, a single "the package" step does.
-  List<(String, String, String)> get _steps {
+  /// The whole wizard — the questions above, then the set-up step when there
+  /// are setups to choose from.
+  List<(String, String, String)> get _steps => [
+        ..._contentSteps,
+        if (_hasSetupStep) _setupStep,
+      ];
+
+  /// True once the moderator's setup gallery has arrived with something in it.
+  /// Nothing published (or the read failed) means no set-up step: the wizard
+  /// can't ask a member to pick from an empty wall.
+  bool get _hasSetupStep => _setups.isNotEmpty;
+
+  /// Where the set-up step sits, or -1 when there is none. It's appended after
+  /// the menu, so every step before it keeps its index even if the gallery
+  /// only loads once the member is halfway through the form.
+  int get _setupStepIndex => _hasSetupStep ? _contentSteps.length : -1;
+
+  /// The fixed questions, then one step per page of courses. The last menu step
+  /// carries the add-ons; when the package has no inclusions at all, a single
+  /// "the package" step does.
+  List<(String, String, String)> get _contentSteps {
     final pages = _coursePages;
     if (pages.isEmpty) {
       return [
@@ -323,6 +365,7 @@ class _BookingPageState extends State<BookingPage> {
           if (i == 0) 'package',
           for (final c in pages[i]) c.key,
         ],
+      if (_hasSetupStep) _setupStepIndex: const ['setupStyle'],
     };
   }
 
@@ -417,6 +460,21 @@ class _BookingPageState extends State<BookingPage> {
       // and the team quotes them, exactly as before add-ons carried prices.
       onError: (_) {},
     );
+    _setupSub = CateringRepository().watchSetups().listen(
+      (data) {
+        if (!mounted) return;
+        setState(() {
+          _setups = data;
+          // The set-up step exists only while the gallery has photos in it, so
+          // a gallery that empties mid-wizard (the moderator hiding the last
+          // one) must not leave [_step] pointing past the end of the list.
+          _step = _step.clamp(0, _steps.length - 1);
+        });
+      },
+      // No gallery, no set-up question — the team styles the tables as they
+      // always did before the wizard asked.
+      onError: (_) {},
+    );
   }
 
   /// Sets [key]'s field to [value] unless the member has already typed there.
@@ -434,6 +492,7 @@ class _BookingPageState extends State<BookingPage> {
   void dispose() {
     _productSub?.cancel();
     _pricingSub?.cancel();
+    _setupSub?.cancel();
     for (final c in _fields.values) {
       c.dispose();
     }
@@ -910,6 +969,7 @@ class _BookingPageState extends State<BookingPage> {
       if (key == 'package') return 'Please tell us which package.';
       if (key == 'address') return 'Please choose your address on the map.';
       if (key == 'venue') return 'Please choose your venue on the map.';
+      if (key == 'setupStyle') return 'Please choose a set-up.';
       if (_courseByKey.containsKey(key)) {
         // Courses with nothing published fall back to a typed blank.
         return _dishesFor(key).isNotEmpty
@@ -920,11 +980,13 @@ class _BookingPageState extends State<BookingPage> {
     }
     // Anything a picker wrote is already well-formed, and its shape isn't ours
     // to second-guess: the date, the times (a 24-hour locale's "10:00" carries
-    // no letters), the address and venue (Google's own formatted string), and
-    // any course served by the live menu.
+    // no letters), the address and venue (Google's own formatted string), the
+    // set-up (the moderator's own gallery title), and any course served by the
+    // live menu.
     if (key == 'functionDate' ||
         key == 'address' ||
         key == 'venue' ||
+        key == 'setupStyle' ||
         _isTimeKey(key)) {
       return null;
     }
@@ -1096,7 +1158,7 @@ class _BookingPageState extends State<BookingPage> {
   void _next() {
     if (!_validateStep(_step)) return;
     if (_step < _steps.length - 1) {
-      setState(() => _step++);
+      _goToStep(_step + 1);
       return;
     }
     // Last page: re-check every step before filing, so a blank the member
@@ -1106,7 +1168,7 @@ class _BookingPageState extends State<BookingPage> {
       final found = _stepErrors(step);
       _paintErrors(step, found);
       if (found.isNotEmpty) {
-        setState(() => _step = step);
+        _goToStep(step);
         _showProblems(step, found);
         return;
       }
@@ -1115,7 +1177,17 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   void _back() {
-    if (_step > 0) setState(() => _step--);
+    if (_step > 0) _goToStep(_step - 1);
+  }
+
+  /// The one place [_step] moves, so the slide direction can never disagree
+  /// with the step it is animating to — including the jump back to whichever
+  /// step still has a problem on it.
+  void _goToStep(int next) {
+    setState(() {
+      _stepForward = next >= _step;
+      _step = next;
+    });
   }
 
   // ── The downpayment ───────────────────────────────────────────────────────
@@ -1477,22 +1549,10 @@ class _BookingPageState extends State<BookingPage> {
         const SizedBox(height: AppSpacing.sm),
         // ── The step's form ─────────────────────────────────────────────
         Expanded(
-          child: AnimatedSwitcher(
-            duration: Motion.base,
-            switchInCurve: Motion.standard,
-            switchOutCurve: Motion.exit,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.02),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
-              ),
-            ),
+          child: StepTransition(
+            step: _step,
+            forward: _stepForward,
             child: ListView(
-              key: ValueKey<int>(_step),
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.screen,
                 AppSpacing.md,
@@ -1585,9 +1645,12 @@ class _BookingPageState extends State<BookingPage> {
             _timeField('foodServing'),
             _timeField('programEnd'),
           ],
-        // The menu steps, built from the package's inclusions. The first
-        // carries the package line, the last the add-ons.
-        _ => _menuStepFields(step),
+        // The menu steps, built from the package's inclusions (the first
+        // carries the package line, the last the add-ons), and after them the
+        // set-up gallery when there is one.
+        _ => step == _setupStepIndex
+            ? _setupStepFields()
+            : _menuStepFields(step),
       };
 
   /// One menu page: the package line on the first, a field per course the
@@ -1610,6 +1673,64 @@ class _BookingPageState extends State<BookingPage> {
       for (final course in courses) _courseField(course.key),
       if (isLast) ..._addOnsSection(),
     ];
+  }
+
+  // ── The set-up step ───────────────────────────────────────────────────────
+  /// The set-up gallery as a step: every visible photo the moderator has
+  /// published, two to a row, one of them chosen. Like every other answer on
+  /// this wizard it's picked, never typed — the field carries the setup's own
+  /// title, so the kitchen reads back the exact look it published rather than
+  /// a member's description of it.
+  List<Widget> _setupStepFields() {
+    final chosen = _ctrl('setupStyle').text.trim();
+    final error = _errors['setupStyle'];
+    return [
+      Text(_labelFor('setupStyle'), style: AppTextStyles.label),
+      const SizedBox(height: AppSpacing.xs),
+      Text(
+        chosen.isEmpty
+            ? 'Tap a photo to choose the look. We\'ll match it as closely as '
+                'your venue allows.'
+            : 'Chosen: $chosen. Tap another to change it.',
+        style: AppTextStyles.bodySmall,
+      ),
+      if (error != null) ...[
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          error,
+          style: AppTextStyles.sans(
+            size: 12,
+            weight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.error,
+          ),
+        ),
+      ],
+      const SizedBox(height: AppSpacing.md),
+      GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacing.md,
+        crossAxisSpacing: AppSpacing.md,
+        childAspectRatio: 0.82,
+        children: [
+          for (final setup in _setups)
+            _SetupChoiceCard(
+              setup: setup,
+              selected: chosen.isNotEmpty && setup.title.trim() == chosen,
+              onTap: () => _chooseSetup(setup),
+              onView: () => showSetupSheet(context, setup),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  void _chooseSetup(EventSetup setup) {
+    setState(() {
+      _ctrl('setupStyle').text = setup.title.trim();
+      _errors.remove('setupStyle');
+    });
   }
 
   // ── The add-ons section ───────────────────────────────────────────────────
@@ -2629,6 +2750,115 @@ class _DishChoiceRow extends StatelessWidget {
               color: selected
                   ? AppColors.goldDeep
                   : AppColors.brown.withValues(alpha: 0.25),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One event setup on the set-up step — its photo under a gold frame when it's
+/// the chosen look, its title underneath, and a magnifier that opens the photo
+/// full-size without changing the choice.
+class _SetupChoiceCard extends StatelessWidget {
+  const _SetupChoiceCard({
+    required this.setup,
+    required this.selected,
+    required this.onTap,
+    required this.onView,
+  });
+
+  final EventSetup setup;
+  final bool selected;
+  final VoidCallback onTap;
+
+  /// Opens the setup's own lightbox sheet. Its own tap target sits on top of
+  /// the card, so looking closer never picks the setup by accident.
+  final VoidCallback onView;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressableScale(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: Motion.quick,
+        curve: Motion.standard,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.gold.withValues(alpha: 0.14)
+              : AppColors.surface,
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(
+            color: selected ? AppColors.gold : AppColors.hairline,
+            width: selected ? 1.6 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: AppRadius.xsAll,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    SetupImage(setup),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: GestureDetector(
+                        onTap: onView,
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: AppColors.espresso.withValues(alpha: 0.55),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.zoom_in_rounded,
+                            size: 16,
+                            color: AppColors.cream,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (selected)
+                      const Positioned(
+                        top: 6,
+                        left: 6,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.gold,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.check_rounded,
+                              size: 14,
+                              color: AppColors.espresso,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 6, 4, 2),
+              child: Text(
+                setup.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.sans(
+                  size: 12,
+                  weight: FontWeight.w600,
+                  color: selected ? AppColors.goldDeep : AppColors.brown,
+                ),
+              ),
             ),
           ],
         ),

@@ -82,16 +82,25 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
       body: Stack(
         children: [
           const ParchmentBackground(weave: true),
-          SafeArea(top: false, child: _buildBody()),
+          // Skeleton → error / empty → the real list: one cross-fade, so the
+          // page settles into its content instead of blinking between
+          // states as the stream lands.
+          SafeArea(top: false, child: SmoothSwap(child: _buildBody())),
         ],
       ),
     );
   }
 
   Widget _buildBody() {
-    if (_loading) return const _TrackingSkeleton();
-    if (_error) return const _TrackingNotice.error();
-    if (_orders.isEmpty) return const _TrackingNotice.empty();
+    if (_loading) {
+      return const _TrackingSkeleton(key: ValueKey('tracking-loading'));
+    }
+    if (_error) {
+      return const _TrackingNotice.error(key: ValueKey('tracking-error'));
+    }
+    if (_orders.isEmpty) {
+      return const _TrackingNotice.empty(key: ValueKey('tracking-empty'));
+    }
 
     // Drafts aren't orders yet — they never reached the team — so they sit in
     // their own row above everything else, in their own quieter card. Of what
@@ -110,6 +119,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
     }
 
     return ListView(
+      key: const ValueKey('tracking-orders'),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
         AppSpacing.lg,
@@ -187,6 +197,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
   /// there waiting to be finished.
   Widget _buildDraftsOnly(List<Booking> drafts) {
     return ListView(
+      key: const ValueKey('tracking-drafts'),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
         AppSpacing.lg,
@@ -922,7 +933,7 @@ class _OrderSheet extends StatelessWidget {
     'kindOfFunction', 'functionDate', 'venue', 'pax',
     'clientName', 'contactNumber', 'email', 'address',
     'ingress', 'egress', 'functionStart', 'foodServing', 'programEnd',
-    'deliveryTime', 'package', 'notes',
+    'deliveryTime', 'package', 'notes', 'setupStyle',
     'menu', 'menuAddOns', 'bookingType',
     'uid', 'status', 'createdAt', 'statusUpdatedAt', 'history', 'deleted',
     'paymentStatus', 'paymentTotal', 'paymentDue', 'paymentPaid', 'paidAt',
@@ -1011,6 +1022,8 @@ class _OrderSheet extends StatelessWidget {
             if (order.value('pax').isNotEmpty) ('Pax', order.value('pax')),
             if (order.value('package').isNotEmpty)
               ('Package', order.value('package')),
+            if (order.value('setupStyle').isNotEmpty)
+              ('Set-up', order.value('setupStyle')),
             ...times,
           ],
         ),
@@ -1342,7 +1355,7 @@ class _PaperTrail extends StatelessWidget {
 // ════════════════════════════ Loading / empty / error ════════════════════════
 /// Two order-card silhouettes while the first snapshot lands.
 class _TrackingSkeleton extends StatelessWidget {
-  const _TrackingSkeleton();
+  const _TrackingSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -1384,14 +1397,14 @@ class _TrackingSkeleton extends StatelessWidget {
 /// The centred note shown when there's nothing to track, or when the orders
 /// couldn't be read.
 class _TrackingNotice extends StatelessWidget {
-  const _TrackingNotice.empty()
+  const _TrackingNotice.empty({super.key})
       : icon = Icons.receipt_long_outlined,
         eyebrow = 'NOTHING TO TRACK YET',
         title = 'No orders yet',
         message = 'Book us from the Catering tab and your order appears here '
             'the moment it\'s sent — with its status as we work through it.';
 
-  const _TrackingNotice.error()
+  const _TrackingNotice.error({super.key})
       : icon = Icons.cloud_off_outlined,
         eyebrow = 'COULDN\'T LOAD',
         title = 'We couldn\'t reach your orders',

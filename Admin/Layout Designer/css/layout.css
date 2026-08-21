@@ -1828,6 +1828,9 @@ body.hp-sim-open .app { visibility: hidden; }
 }
 .ld-setup-text small { font-size: 0.74rem; color: var(--ink-soft); }
 .ld-setup.active .ld-setup-text strong { color: var(--gold-deep); }
+/* The set-up the client picked in the app — a note on whichever card it is,
+   whether or not that card is the one the plan is currently dressed in. */
+.ld-setup-wish { color: var(--gold-deep); font-weight: 600; }
 .ld-setup-strip {
   display: flex;
   align-items: center;

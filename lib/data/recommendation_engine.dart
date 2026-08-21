@@ -174,19 +174,24 @@ class RecommendationEngine {
     }
 
     // ── Tier 4: the kitchen's own picks ──────────────────────────────────────
-    return RecommendationSet(
-      items: [
-        for (final p
-            in products.where((p) => p.available && p.featured).take(limit))
-          RecommendedItem.dish(p),
-      ],
-      source: RecommendationSource.featured,
-    );
+    final seenFeatured = <String>{};
+    final featured = <RecommendedItem>[];
+    for (final p in products.where((p) => p.available && p.featured)) {
+      if (featured.length >= limit) break;
+      if (!seenFeatured.add(_normalise(p.name))) continue;
+      featured.add(RecommendedItem.dish(p));
+    }
+    return RecommendationSet(items: featured, source: RecommendationSource.featured);
   }
 
   /// Orders the scored ids into the final list: best first, ties broken by name
   /// so the same evidence always produces the same strip (a set that reshuffles
   /// itself on every rebuild reads as noise, not as a recommendation).
+  ///
+  /// Also collapses same-named items to the top scorer — two menu docs that
+  /// share a name (a dish re-added by mistake, or filed under both a product
+  /// and a package) are one dish to a member, and the strip must not show it
+  /// twice just because the moderator's data does.
   static List<RecommendedItem> _rank(
     Map<String, double> scores,
     Map<String, RecommendedItem> items,
@@ -200,7 +205,15 @@ class RecommendationEngine {
           items[b]!.name.toLowerCase(),
         );
       });
-    return [for (final id in ids.take(limit)) items[id]!];
+    final seenNames = <String>{};
+    final result = <RecommendedItem>[];
+    for (final id in ids) {
+      if (result.length >= limit) break;
+      final item = items[id]!;
+      if (!seenNames.add(_normalise(item.name))) continue;
+      result.add(item);
+    }
+    return result;
   }
 
   /// The item ids the member's completed orders name — the seed the crowd tier

@@ -296,20 +296,28 @@ class _TasteProfilePageState extends State<TasteProfilePage> {
       subtitle:
           'Kumusta, $first! Tell us what you cater for and Gabay will have '
           'something ready for you. Pick as many as you like.',
-      child: Wrap(
-        spacing: AppSpacing.sm,
-        runSpacing: AppSpacing.sm,
-        children: [
-          for (final o in OccasionType.values)
-            _ChoiceChip(
-              label: o.label,
-              emoji: o.emoji,
-              selected: _occasions.contains(o.key),
-              onTap: () => setState(() {
-                if (!_occasions.remove(o.key)) _occasions.add(o.key);
-              }),
-            ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final chipWidth = (constraints.maxWidth - AppSpacing.sm) / 2;
+          return Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              for (final o in OccasionType.values)
+                SizedBox(
+                  width: chipWidth,
+                  child: _ChoiceChip(
+                    label: o.label,
+                    emoji: o.emoji,
+                    selected: _occasions.contains(o.key),
+                    onTap: () => setState(() {
+                      if (!_occasions.remove(o.key)) _occasions.add(o.key);
+                    }),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -361,19 +369,27 @@ class _TasteProfilePageState extends State<TasteProfilePage> {
       eyebrow: 'THE FOOD',
       title: 'How do you\nlike to eat?',
       subtitle: 'Pick the flavours your table goes back for.',
-      child: Wrap(
-        spacing: AppSpacing.sm,
-        runSpacing: AppSpacing.sm,
-        children: [
-          for (final f in FlavorNote.values)
-            _ChoiceChip(
-              label: f.label,
-              selected: _flavors.contains(f.key),
-              onTap: () => setState(() {
-                if (!_flavors.remove(f.key)) _flavors.add(f.key);
-              }),
-            ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final chipWidth = (constraints.maxWidth - AppSpacing.sm) / 2;
+          return Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              for (final f in FlavorNote.values)
+                SizedBox(
+                  width: chipWidth,
+                  child: _ChoiceChip(
+                    label: f.label,
+                    selected: _flavors.contains(f.key),
+                    onTap: () => setState(() {
+                      if (!_flavors.remove(f.key)) _flavors.add(f.key);
+                    }),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -460,7 +476,7 @@ class _ChoiceChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (emoji != null) ...[
-              Text(emoji!, style: const TextStyle(fontSize: 14)),
+              Text(emoji!, style: const TextStyle(fontSize: 18)),
               const SizedBox(width: 7),
             ],
             Text(

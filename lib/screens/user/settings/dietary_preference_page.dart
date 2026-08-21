@@ -88,15 +88,22 @@ class _DietaryPreferencePageState extends State<DietaryPreferencePage> {
 
             FadeSlideIn(
               delay: _d(120),
-              child: allergens.isEmpty
+              // The taxonomy can land while this page is open, so the notice
+              // grows into the real list instead of the card snapping taller
+              // under the member's thumb.
+              child: SmoothSwap(
+                resize: true,
+                child: allergens.isEmpty
                   // The taxonomy is fetched at start-up; an empty one means it
                   // hasn't landed yet (or a moderator cleared it). Say so —
                   // an empty card would read as "there are no allergens".
                   ? const SettingsSection(
+                      key: ValueKey('allergens-unavailable'),
                       title: 'ALLERGENS TO AVOID',
                       rows: [_TaxonomyUnavailable()],
                     )
                   : SettingsSection(
+                      key: const ValueKey('allergens'),
                       title: 'ALLERGENS TO AVOID',
                       footnote: 'Dishes on the Menu carrying one of these are '
                           'flagged for you.',
@@ -112,6 +119,7 @@ class _DietaryPreferencePageState extends State<DietaryPreferencePage> {
                           ),
                       ],
                     ),
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
 

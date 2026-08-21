@@ -153,6 +153,34 @@
   let setups = [];        // the visible gallery, read once
   let setupChoice = null; // { id, title } as stored on the plan
 
+  /* The set-up the CLIENT picked in the app's booking wizard, which writes the
+     chosen card's own title to bookings/{id}.setupStyle. Matched back to the
+     gallery by that title — the wizard records what the client saw, never an
+     id — so a card since deleted or renamed simply doesn't resolve and the
+     room opens in the house scheme. */
+  function clientSetup(o) {
+    const wanted = String((o && o.setupStyle) || "").trim().toLowerCase();
+    if (!wanted) return null;
+    const s = setups.find((x) => String(x.title || "").trim().toLowerCase() === wanted);
+    return s ? { id: s.id, title: s.title } : null;
+  }
+
+  /* What a plan opens dressed in: what it was saved with, else the client's
+     own choice — the same "what the plan says, else what the booking says"
+     shape `eventType` below uses. A plan that carries `setup: null` is a
+     designer who deliberately went back to the house scheme; re-opening it
+     must not quietly undo that, so only a plan that has never recorded a
+     decision at all falls back to the client. Nothing here is saved until
+     the designer saves the plan. */
+  function initialSetup(o) {
+    const l = planOf(o) || {};
+    if (l.setup && l.setup.id) {
+      return { id: String(l.setup.id), title: String(l.setup.title || "") };
+    }
+    if (Object.prototype.hasOwnProperty.call(l, "setup")) return null;
+    return clientSetup(o);
+  }
+
   /* ── The kind of function ─────────────────────────────────────────────
      What this room is being dressed for. It changes what the ANALYSIS asks
      of the plan (a conference wants wide aisles and a registration desk; a
@@ -205,8 +233,11 @@
     // is drawable before the dressing is available, and a slow gallery must
     // not hold the desk shut.
     loadSetups().then(() => {
-      // A plan opened before the gallery landed still gets its dressing.
+      // A plan opened before the gallery landed still gets its dressing —
+      // including the client's own choice, which is stored as a title and so
+      // can only be resolved once there is a gallery to resolve it against.
       if (setupChoice) applySetup(setupChoice);
+      else if (current) applySetup(initialSetup(current));
       renderThemeBtn();
     });
     unsub = db.collection("bookings").where("status", "==", "confirmed").limit(LIVE_LIMIT)
@@ -510,11 +541,11 @@
     // open. Dropped rather than re-run — running it is the designer's press.
     analysis = null;
     setAnalyze(false);
-    // The dressing this plan was saved with. Applied through applySetup so a
-    // plan whose setup has since been deleted or hidden falls back to the
-    // house scheme rather than to a colour nobody can find in the gallery.
-    const su = l.setup;
-    applySetup(su && su.id ? { id: String(su.id), title: String(su.title || "") } : null);
+    // The dressing this plan was saved with, else the one the client chose in
+    // the app (see initialSetup). Applied through applySetup so a plan whose
+    // setup has since been deleted or hidden falls back to the house scheme
+    // rather than to a colour nobody can find in the gallery.
+    applySetup(initialSetup(o));
     setDirty(false);
     [saveBtn, roomBtn, printBtn, resetBtn, tab3d, presetBtn, simBtn, walkBtn, themeBtn,
      optBtn, scnBtn, evtBtn]
@@ -2381,12 +2412,16 @@
         ? "No visible setups in the gallery yet — upload one under Content Moderator › Setups."
         : "Setups live in Firestore — connect Firebase to read them.", "warn");
     }
+    // The card the client picked in the app, marked so a designer choosing a
+    // dressing can see what was actually asked for before overriding it.
+    const wish = clientSetup(current);
     const card = (s) => `
       <button class="ld-setup ${setupChoice && setupChoice.id === s.id ? "active" : ""}"
               data-setup="${HP.esc(s.id)}">
         <span class="ld-setup-shot"><img src="${HP.esc(s.image)}" alt="" loading="lazy"></span>
         <span class="ld-setup-text">
           <strong>${HP.esc(s.title || "Untitled setup")}</strong>
+          ${wish && wish.id === s.id ? `<small class="ld-setup-wish">The client chose this</small>` : ""}
           <span class="ld-setup-strip" data-strip="${HP.esc(s.id)}"></span>
         </span>
       </button>`;

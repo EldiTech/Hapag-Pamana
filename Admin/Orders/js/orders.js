@@ -243,12 +243,23 @@
      from their own rail (assets/hp-fulfilment.js). */
   const INTERNAL_KEYS = new Set([
     "fulfilment",
+    // The floor plan the Layout Designer draws (bookings/{id}.layout) — a room
+    // of pieces, summarised by roomHTML below and drawn properly by that desk.
+    "layout",
+    // The Catering Equipment desk's checklist and its hand-over to Logistics.
+    // Summarised by roomHTML; the desk itself renders the lines.
+    "equipmentPrep", "equipmentPickup",
   ]);
   // Every key the sheet already presents somewhere; anything else the app
   // adds later still shows up under "More details".
   const SHEET_KEYS = new Set([
     "kindOfFunction", "functionDate", "venue", "address", "pax",
     "clientName", "contactNumber", "email", "package", "menu", "menuAddOns",
+    // The look the client picked off the moderator's Setups gallery — a room,
+    // not a dish, so it's shown by roomHTML and must be named here or
+    // courseKeys() below would file it as a course and send the kitchen
+    // hunting for "Rustic Garden Buffet" in the recipe book.
+    "setupStyle",
     // The downpayment, which has its own section (see paymentHTML). The two
     // checkout keys are PayMongo plumbing the app uses to resume an abandoned
     // payment — of no use on a booking sheet, so they're hidden rather than
@@ -991,6 +1002,72 @@
     </section>`;
   }
 
+  /* The room the client is getting, gathered from the three desks that decide
+     it: the look the client chose in the app (`setupStyle` — the title of a
+     card on the Content Moderator's Setups gallery, so the crew can look the
+     exact photo up rather than work from a description), the floor plan the
+     Layout Designer drew, and the gear the Catering Equipment desk has pulled.
+
+     Each of those desks renders its own record properly on its own board; the
+     office only needs to know where each one stands, so this summarises rather
+     than repeats. Without it the plan and the checklist reached the Orders
+     sheet as "[object Object]" under "More details" (see INTERNAL_KEYS) and
+     the chosen look was read as though it were a dish. */
+  const EQUIP_PREP = {
+    pending: "Not started",
+    in_progress: "Checklist in progress",
+    ready: "Ready for release",
+    returned: "Returned",
+  };
+  const EQUIP_PICKUP = {
+    requested: "waiting on logistics",
+    picked_up: "picked up by logistics",
+    delivered: "delivered to the venue",
+  };
+  function roomHTML(o) {
+    const look = val(o, "setupStyle");
+
+    const facts = [];
+    const l = o.layout;
+    if (l && typeof l === "object") {
+      const items = Array.isArray(l.items) ? l.items.length : 0;
+      const seated = Number(l.seated) || 0;
+      const r = l.room;
+      if (items) {
+        facts.push(["Floor plan",
+          `${items} piece${items === 1 ? "" : "s"}${seated ? ` · seats ${seated}` : ""}${
+            r && r.w && r.h ? ` · room ${r.w} × ${r.h} m` : ""}`]);
+      }
+      /* The dressing the Layout Designer actually drew the room in. Named only
+         when it differs from what the client asked for — the desk may override
+         a choice (a look that can't be built in that venue), and that is worth
+         the office seeing before the client rings about it. */
+      const dressed = String((l.setup && l.setup.title) || "").trim();
+      if (dressed && dressed.toLowerCase() !== look.toLowerCase()) {
+        facts.push(["Dressed for", dressed]);
+      }
+    }
+
+    const eq = o.equipmentPrep;
+    if (eq && typeof eq === "object") {
+      const lines = Array.isArray(eq.checklist) ? eq.checklist.length : 0;
+      const stage = (o.equipmentPickup || {}).stage;
+      facts.push(["Equipment",
+        `${EQUIP_PREP[eq.status] || "Not started"}${
+          lines ? ` · ${lines} line${lines === 1 ? "" : "s"}` : ""}${
+          EQUIP_PICKUP[stage] ? ` · ${EQUIP_PICKUP[stage]}` : ""}`]);
+    }
+
+    if (!look && !facts.length) return "";
+    return `<section class="order-sec">
+      <h4>The room</h4>
+      ${look ? `<div class="order-pkg"><span class="ic">${HP.icon("photo")}</span>
+        <div><small>Table &amp; venue set-up</small><strong>${HP.esc(look)}</strong></div></div>` : ""}
+      ${facts.length ? `<dl class="order-facts">${facts.map(([k, v]) => `
+        <div class="order-fact"><dt>${HP.esc(k)}</dt><dd>${HP.esc(v)}</dd></div>`).join("")}</dl>` : ""}
+    </section>`;
+  }
+
   function dishCard(name, course, pax) {
     const img = dishCache.get(dishKey(name));
     const thumb = img
@@ -1196,8 +1273,8 @@
   }
 
   function sheetBody(o) {
-    return [heroHTML(o), clientHTML(o), paymentHTML(o), timelineHTML(o), menuHTML(o),
-            historyHTML(o), extrasHTML(o)]
+    return [heroHTML(o), clientHTML(o), paymentHTML(o), timelineHTML(o),
+            roomHTML(o), menuHTML(o), historyHTML(o), extrasHTML(o)]
       .filter(Boolean).join("") ||
       `<p class="modal-text">The client left the whole form blank — only the request itself was filed.</p>`;
   }
@@ -1319,6 +1396,7 @@
       ["Venue", (o) => String(o.venue || "")],
       ["Pax", (o) => String(o.pax || "")],
       ["Package", (o) => String(o.package || "")],
+      ["Set-up", (o) => String(o.setupStyle || "")],
       ["Menu", (o) => String(o.menu || "")],
     ];
     const cell = HP.csvCell; // formula-safe, quote-doubled (hp-core.js)

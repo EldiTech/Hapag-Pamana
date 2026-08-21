@@ -82,10 +82,21 @@ class FeaturedCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Every state stands the same height, so the run never has to resize —
+    // the skeleton simply settles into the real cards through [SmoothSwap]
+    // rather than being replaced between one frame and the next.
+    return SizedBox(
+      height: _height,
+      child: SmoothSwap(alignment: Alignment.center, child: _state(context)),
+    );
+  }
+
+  Widget _state(BuildContext context) {
     // Loading or nothing featured yet: a single full-width card (skeleton /
     // placeholder) that still falls back to opening the menu when tapped.
     if (loading || products.isEmpty) {
       return _single(
+        key: ValueKey(loading ? 'featured-loading' : 'featured-empty'),
         child: _FeatureCard(product: null, loading: loading, onTap: onTap),
       );
     }
@@ -94,6 +105,7 @@ class FeaturedCarousel extends StatelessWidget {
     if (products.length == 1) {
       final product = products.first;
       return _single(
+        key: const ValueKey('featured-one'),
         child: _FeatureCard(
           product: product,
           loading: false,
@@ -104,6 +116,7 @@ class FeaturedCarousel extends StatelessWidget {
 
     // Several: an auto-advancing, infinitely-looping carousel.
     return AutoCarousel(
+      key: const ValueKey('featured-carousel'),
       height: _height,
       itemCount: products.length,
       viewportFraction: 0.9,
@@ -120,13 +133,11 @@ class FeaturedCarousel extends StatelessWidget {
   }
 
   /// Wraps a lone card in the screen-edge inset the carousel gets for free.
-  Widget _single({required Widget child}) {
-    return SizedBox(
-      height: _height,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-        child: child,
-      ),
+  Widget _single({required Key key, required Widget child}) {
+    return Padding(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      child: child,
     );
   }
 }
@@ -215,33 +226,41 @@ class CategoryStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return SizedBox(
-        height: 196,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-          itemCount: 4,
-          separatorBuilder: (_, _) => const SizedBox(width: 14),
-          itemBuilder: (_, i) => FadeSlideIn(
-            delay: Duration(milliseconds: 60 * i),
-            child: const _DishCard.skeleton(),
-          ),
-        ),
-      );
-    }
-
+    // Skeleton and real row are the same height, so the strip cross-fades in
+    // place instead of the placeholders vanishing under the tiles.
     return SizedBox(
       height: 196,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-        itemCount: categories.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 14),
-        itemBuilder: (_, i) {
-          final (category, best) = categories[i];
-          return _CategoryTile(category: category, best: best, onTap: onTap);
-        },
+      child: SmoothSwap(
+        alignment: Alignment.center,
+        child: loading
+            ? ListView.separated(
+                key: const ValueKey('categories-loading'),
+                scrollDirection: Axis.horizontal,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+                itemCount: 4,
+                separatorBuilder: (_, _) => const SizedBox(width: 14),
+                itemBuilder: (_, i) => FadeSlideIn(
+                  delay: Duration(milliseconds: 60 * i),
+                  child: const _DishCard.skeleton(),
+                ),
+              )
+            : ListView.separated(
+                key: const ValueKey('categories'),
+                scrollDirection: Axis.horizontal,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+                itemCount: categories.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 14),
+                itemBuilder: (_, i) {
+                  final (category, best) = categories[i];
+                  return _CategoryTile(
+                    category: category,
+                    best: best,
+                    onTap: onTap,
+                  );
+                },
+              ),
       ),
     );
   }
@@ -327,8 +346,15 @@ class KitchenStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The quiet note is shorter than a row of cards, so this swap tweens its
+    // height too — everything below it slides rather than jumps.
+    return SmoothSwap(resize: true, child: _state(context));
+  }
+
+  Widget _state(BuildContext context) {
     if (loading) {
       return SizedBox(
+        key: const ValueKey('kitchen-loading'),
         height: 196,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
@@ -345,6 +371,7 @@ class KitchenStrip extends StatelessWidget {
 
     if (error || picks.isEmpty) {
       return Padding(
+        key: ValueKey(error ? 'kitchen-error' : 'kitchen-empty'),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
         child: _QuietNote(
           icon: error ? Icons.cloud_off_outlined : Icons.restaurant_outlined,
@@ -357,6 +384,7 @@ class KitchenStrip extends StatelessWidget {
     }
 
     return SizedBox(
+      key: const ValueKey('kitchen'),
       height: 196,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
@@ -569,8 +597,15 @@ class ForYouStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A one-row strip, a two-group column and the empty state are all
+    // different heights, so this swap tweens the height as well as the fade.
+    return SmoothSwap(resize: true, child: _state(context));
+  }
+
+  Widget _state(BuildContext context) {
     if (loading) {
       return SizedBox(
+        key: const ValueKey('for-you-loading'),
         height: 196,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
@@ -585,17 +620,77 @@ class ForYouStrip extends StatelessWidget {
       );
     }
 
-    if (set.isEmpty) return const SizedBox.shrink();
+    if (set.isEmpty) {
+      return const SizedBox.shrink(key: ValueKey('for-you-empty'));
+    }
 
+    final packages = set.items.where((i) => i.isPackage).toList();
+    final dishes = set.items.where((i) => !i.isPackage).toList();
+
+    // Only worth a sub-heading once there's an actual split to explain — a
+    // strip that's all dishes (or all packages) stays the single row it was.
+    if (packages.isEmpty || dishes.isEmpty) {
+      return _ForYouRow(
+        key: const ValueKey('for-you-single'),
+        items: set.items,
+        onOpenPackages: onOpenPackages,
+      );
+    }
+
+    return Column(
+      key: const ValueKey('for-you-grouped'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ForYouGroupLabel('RECOMMENDED PACKAGES'),
+        const SizedBox(height: 10),
+        _ForYouRow(items: packages, onOpenPackages: onOpenPackages),
+        const SizedBox(height: AppSpacing.md),
+        _ForYouGroupLabel('RECOMMENDED MENU'),
+        const SizedBox(height: 10),
+        _ForYouRow(items: dishes, onOpenPackages: onOpenPackages),
+      ],
+    );
+  }
+}
+
+class _ForYouGroupLabel extends StatelessWidget {
+  const _ForYouGroupLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      child: Text(
+        text,
+        style: AppTextStyles.engraved(size: 10, color: AppColors.goldDeep),
+      ),
+    );
+  }
+}
+
+class _ForYouRow extends StatelessWidget {
+  const _ForYouRow({
+    super.key,
+    required this.items,
+    required this.onOpenPackages,
+  });
+
+  final List<RecommendedItem> items;
+  final VoidCallback onOpenPackages;
+
+  @override
+  Widget build(BuildContext context) {
     return SizedBox(
       height: 196,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-        itemCount: set.items.length,
+        itemCount: items.length,
         separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (context, i) {
-          final item = set.items[i];
+          final item = items[i];
           return RecommendedCard(
             item,
             onTap: () => item.isPackage

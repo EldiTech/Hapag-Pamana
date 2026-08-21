@@ -88,7 +88,10 @@ service cloud.firestore {
     match /customers/{uid} {
       allow read:   if isModerator()
         || (request.auth != null && request.auth.uid == uid);
-      allow create: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.createdAt == request.time
+        && !request.resource.data.keys().hasAny(
+             ['banned', 'bannedAt', 'recommendations']);
       allow update: if isModerator()
         || (request.auth != null && request.auth.uid == uid
             && !request.resource.data.diff(resource.data)
@@ -185,9 +188,18 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status in ['pending', 'draft']
         && request.resource.data.createdAt == request.time
+        // `paymentStatus` may only ever arrive as 'awaiting' here (see
+        // BookingRepository.submit) — 'paid' is markPaid()'s word alone,
+        // set only after PayMongo confirms, via the update clause below.
+        // Without this a forged create could self-mark a booking paid and
+        // skip payment entirely.
+        && (!('paymentStatus' in request.resource.data)
+            || request.resource.data.paymentStatus != 'paid')
         && !request.resource.data.keys().hasAny(
              ['deleted', 'deletedAt', 'deletedBy', 'history',
-              'statusUpdatedAt', 'updatedAt', 'updatedBy']);
+              'statusUpdatedAt', 'updatedAt', 'updatedBy',
+              'paymentPaid', 'paidAt', 'paymentRef', 'paymentMethod',
+              'checkoutSessionId', 'checkoutUrl']);
       allow read: if isOrderManager() || isMasterChef() || isFinance()
         || isTeamLeader() || isLogistics() || isLayoutDesigner()
         || isCateringEquipment()

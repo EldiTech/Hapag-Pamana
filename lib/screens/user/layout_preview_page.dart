@@ -136,24 +136,41 @@ class _LayoutPreviewPageState extends State<LayoutPreviewPage> {
         flexibleSpace: const ParchmentBackground(weave: true, vignette: false),
         title: Text(widget.eventName, style: AppTextStyles.heading),
       ),
-      body: _error != null
-          ? _ErrorNotice(message: _error!)
-          : Stack(
-              children: [
-                WebViewWidget(controller: _controller),
-                if (_loading)
-                  const ColoredBox(
-                    color: Colors.black12,
-                    child: Center(child: CircularProgressIndicator()),
+      // The room takes a moment to build, so the scrim doesn't vanish the
+      // instant the page reports itself finished — it fades off the WebView,
+      // and an error fades in over it, rather than either one cutting.
+      body: SmoothSwap(
+        alignment: Alignment.center,
+        child: _error != null
+            ? _ErrorNotice(
+                key: const ValueKey('preview-error'),
+                message: _error!,
+              )
+            : Stack(
+                key: const ValueKey('preview'),
+                children: [
+                  WebViewWidget(controller: _controller),
+                  IgnorePointer(
+                    ignoring: !_loading,
+                    child: AnimatedOpacity(
+                      opacity: _loading ? 1 : 0,
+                      duration: Motion.base,
+                      curve: Motion.exit,
+                      child: const ColoredBox(
+                        color: Colors.black12,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ),
                   ),
-              ],
-            ),
+                ],
+              ),
+      ),
     );
   }
 }
 
 class _ErrorNotice extends StatelessWidget {
-  const _ErrorNotice({required this.message});
+  const _ErrorNotice({super.key, required this.message});
 
   final String message;
 

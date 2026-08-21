@@ -228,48 +228,176 @@ class SectionHeading extends StatelessWidget {
 /// A branded push transition: the incoming page fades + settles up a touch
 /// while scaling from 0.96, the outgoing page eases back and dims slightly.
 /// Quieter and warmer than the default platform slide — matches [Motion].
+///
+/// The transition itself lives in [brandPageTransition] so this route and the
+/// theme's `pageTransitionsTheme` play exactly the same motion; a page pushed
+/// either way looks identical.
 class BrandPageRoute<T> extends PageRouteBuilder<T> {
   BrandPageRoute({required WidgetBuilder builder})
       : super(
           transitionDuration: Motion.entrance,
           reverseTransitionDuration: Motion.base,
           pageBuilder: (context, _, _) => builder(context),
-          transitionsBuilder: (context, animation, secondary, child) {
-            final enter = CurvedAnimation(
-              parent: animation,
-              curve: Motion.standard,
-              reverseCurve: Motion.exit,
-            );
-            // The page being covered eases back and dims a little.
-            final leave = CurvedAnimation(
-              parent: secondary,
-              curve: Motion.standard,
-              reverseCurve: Motion.exit,
-            );
-
-            return FadeTransition(
-              opacity: enter,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.04),
-                  end: Offset.zero,
-                ).animate(enter),
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.96, end: 1.0).animate(enter),
-                  child: FadeTransition(
-                    opacity: Tween<double>(begin: 1.0, end: 0.0)
-                        .animate(leave),
-                    child: ScaleTransition(
-                      scale: Tween<double>(begin: 1.0, end: 1.04)
-                          .animate(leave),
-                      child: child,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
+          transitionsBuilder: (context, animation, secondary, child) =>
+              brandPageTransition(animation, secondary, child),
         );
+}
+
+/// Cross-fades between the states of one slot — a skeleton settling into real
+/// content, an error notice giving way to a list, a value being replaced.
+///
+/// Wraps [AnimatedSwitcher] with the app's motion tokens (fade + a whisper of
+/// scale, [Motion.standard] in, [Motion.exit] out) so state changes across the
+/// app read the same instead of every screen hand-rolling its own switcher.
+/// Give each state a distinct `key` — that is what tells the switcher a swap
+/// happened.
+///
+/// [resize] tweens the slot's height so a taller replacement grows into place;
+/// leave it off inside an [Expanded]/sliver, where the slot's height is decided
+/// by the parent and an [AnimatedSize] would fight it.
+class SmoothSwap extends StatelessWidget {
+  const SmoothSwap({
+    super.key,
+    required this.child,
+    this.duration = Motion.base,
+    this.alignment = Alignment.topCenter,
+    this.resize = false,
+    this.scaleFrom = 0.98,
+  });
+
+  final Widget child;
+  final Duration duration;
+
+  /// Where the outgoing and incoming states line up while they overlap.
+  final AlignmentGeometry alignment;
+
+  /// Tween the slot's height between states. See the class doc.
+  final bool resize;
+
+  /// How far the incoming state scales up from. 1.0 is a pure cross-fade.
+  final double scaleFrom;
+
+  @override
+  Widget build(BuildContext context) {
+    final switcher = AnimatedSwitcher(
+      duration: duration,
+      switchInCurve: Motion.standard,
+      switchOutCurve: Motion.exit,
+      layoutBuilder: (current, previous) => Stack(
+        alignment: alignment,
+        children: [
+          ...previous,
+          ?current,
+        ],
+      ),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: scaleFrom == 1.0
+            ? child
+            : ScaleTransition(
+                scale: Tween<double>(begin: scaleFrom, end: 1.0)
+                    .animate(animation),
+                child: child,
+              ),
+      ),
+      child: child,
+    );
+
+    if (!resize) return switcher;
+    return AnimatedSize(
+      duration: duration,
+      curve: Motion.standard,
+      alignment: alignment,
+      child: switcher,
+    );
+  }
+}
+
+/// Fades and grows [child] into place when [visible] turns true, and collapses
+/// it quietly away when it turns false — for the sections a screen shows
+/// conditionally (a recommendation panel that only appears once there is
+/// something to recommend, a filter row that depends on the data).
+///
+/// Use it in place of a bare `if (…) child`, which pops the section in and out
+/// and jerks everything below it. The child stays built while hidden, so keep
+/// it cheap — for an expensive subtree, guard it with the `if` instead.
+class SmoothReveal extends StatelessWidget {
+  const SmoothReveal({
+    super.key,
+    required this.visible,
+    required this.child,
+    this.duration = Motion.base,
+    this.alignment = Alignment.topCenter,
+  });
+
+  final bool visible;
+  final Widget child;
+  final Duration duration;
+  final AlignmentGeometry alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedCrossFade(
+      duration: duration,
+      sizeCurve: Motion.standard,
+      firstCurve: Motion.exit,
+      secondCurve: Motion.standard,
+      alignment: alignment,
+      crossFadeState:
+          visible ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+      firstChild: const SizedBox(width: double.infinity, height: 0),
+      secondChild: child,
+    );
+  }
+}
+
+/// The step-to-step transition for the booking wizards: the arriving step
+/// fades in from the side it came from, so moving forward and stepping back
+/// feel like different directions rather than the same blink.
+///
+/// Mirrors [TabTransition]'s language (a small horizontal travel, no bounce)
+/// one level down, on the form inside a page.
+class StepTransition extends StatelessWidget {
+  const StepTransition({
+    super.key,
+    required this.step,
+    required this.forward,
+    required this.child,
+  });
+
+  /// The index of the step being shown — also the switcher's key.
+  final int step;
+
+  /// True when the wizard advanced to [step], false when it went back.
+  final bool forward;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final dx = forward ? 0.06 : -0.06;
+    return AnimatedSwitcher(
+      duration: Motion.base,
+      switchInCurve: Motion.standard,
+      switchOutCurve: Motion.exit,
+      transitionBuilder: (child, animation) {
+        // The outgoing step is the one whose animation is running backwards;
+        // it leaves the way the incoming one arrives from, so the pair reads
+        // as a single slide rather than two.
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: Offset(dx, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: KeyedSubtree(key: ValueKey<int>(step), child: child),
+    );
+  }
 }
 
 /// Fades + slides its child up on mount, after an optional [delay]. Used to

@@ -146,6 +146,7 @@ class _UserCateringPageState extends State<UserCateringPage> {
         _PackagesSection(
           loading: _pkgLoading,
           error: _pkgError,
+          foodPacks: _showFoodPacks,
           packages: _showFoodPacks ? foodPacks : catering,
           onView: _openPackage,
           emptyLabel: _showFoodPacks
@@ -315,8 +316,15 @@ class _SetupCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Placeholders → the real setups → nothing at all: one cross-fade, with
+    // the strip's height tweened so the sections below never jump.
+    return SmoothSwap(resize: true, child: _state(context));
+  }
+
+  Widget _state(BuildContext context) {
     if (loading) {
       return SizedBox(
+        key: const ValueKey('setups-loading'),
         height: _height,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
@@ -331,9 +339,12 @@ class _SetupCarousel extends StatelessWidget {
       );
     }
 
-    if (setups.isEmpty) return const SizedBox.shrink();
+    if (setups.isEmpty) {
+      return const SizedBox.shrink(key: ValueKey('setups-empty'));
+    }
 
     return AutoCarousel(
+      key: const ValueKey('setups'),
       height: _height,
       itemCount: setups.length,
       viewportFraction: 0.82,
@@ -462,6 +473,7 @@ class _PackagesSection extends StatelessWidget {
   const _PackagesSection({
     required this.loading,
     required this.error,
+    required this.foodPacks,
     required this.packages,
     required this.onView,
     required this.emptyLabel,
@@ -469,6 +481,10 @@ class _PackagesSection extends StatelessWidget {
 
   final bool loading;
   final bool error;
+
+  /// Which family this shelf is showing — the toggle's current side. Only the
+  /// grid's key uses it, so switching families cross-fades the two shelves.
+  final bool foodPacks;
   final List<CateringPackage> packages;
   final void Function(CateringPackage) onView;
 
@@ -482,8 +498,17 @@ class _PackagesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Skeleton pair → the grid → the quiet empty / error card. All three are
+    // different heights, so the swap tweens the section's height as it
+    // cross-fades and the page settles rather than jumping. It also covers
+    // the family toggle, which swaps one shelf of packages for the other.
+    return SmoothSwap(resize: true, child: _state(context));
+  }
+
+  Widget _state(BuildContext context) {
     if (loading) {
       return Padding(
+        key: const ValueKey('packages-loading'),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,6 +528,7 @@ class _PackagesSection extends StatelessWidget {
 
     if (error || packages.isEmpty) {
       return Padding(
+        key: ValueKey(error ? 'packages-error' : 'packages-empty'),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
         child: AppCard(
           width: double.infinity,
@@ -527,6 +553,9 @@ class _PackagesSection extends StatelessWidget {
     }
 
     return Padding(
+      // Keyed by family so flipping the toggle cross-fades one shelf into the
+      // other instead of swapping the tiles' contents in a single frame.
+      key: ValueKey(foodPacks ? 'packages-food' : 'packages-catering'),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
       child: GridView.builder(
         // The page's outer ListView scrolls; the grid just lays out.

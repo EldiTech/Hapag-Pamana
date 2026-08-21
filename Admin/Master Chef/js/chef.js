@@ -190,6 +190,10 @@
     "packageTotal", "addOnsTotal",
     "paymentRef", "paymentMethod", "checkoutSessionId", "checkoutUrl",
     "paymentSource", "paymentTakenBy", "paymentTakenByName",
+    // The table/venue look the client picked off the moderator's Setups
+    // gallery. It's the room, not the meal — the Orders sheet shows it, and
+    // the kitchen must not plan ingredients against it.
+    "setupStyle",
     ...TIMELINE_KEYS,
   ]);
 

@@ -523,28 +523,49 @@ class _Offer {
 /// to the full celebration.
 const List<_Offer> _offers = [
   _Offer(
-    Icons.soup_kitchen_outlined,
-    'Home-Style Filipino Cooking',
-    'Comfort-food classics — adobo, kare-kare, sinigang and kakanin — '
-        'cooked fresh, the way they were handed down.',
+    Icons.assignment_ind_outlined,
+    'Event Coordinator/s',
+    'Assigned on the day to ensure smooth operations during the event.',
   ),
   _Offer(
-    Icons.takeout_dining_outlined,
-    'Party Trays & Bilao',
-    'Generous trays and bilao for fiestas, reunions and office spreads — '
-        'handa na para sa handaan.',
+    Icons.emoji_people_outlined,
+    'Trained Waiters',
+    'Uniformed and trained to assist guests throughout the event.',
   ),
   _Offer(
-    Icons.room_service_outlined,
-    'Full-Service Catering',
-    'From intimate gatherings to grand celebrations, we bring the feast, '
-        'the setup and the heart of the home.',
+    Icons.table_restaurant_outlined,
+    'Dressed-Up Tables',
+    "Tables styled with toppers based on the client's motif.",
   ),
   _Offer(
-    Icons.celebration_outlined,
-    'Event Styling & Setups',
-    'Curated buffet styling and themed table setups that turn any venue '
-        'into a celebration to remember.',
+    Icons.format_list_numbered_outlined,
+    'Table Numbers',
+    'Numbered tables to keep guests organized and seated with ease.',
+  ),
+  _Offer(
+    Icons.local_florist_outlined,
+    'Basic Centerpiece Design',
+    "Simple centerpieces to complete each table's look.",
+  ),
+  _Offer(
+    Icons.event_seat_outlined,
+    'Chairs with Cover & Accent',
+    'Chairs dressed with covers and accents to match the theme.',
+  ),
+  _Offer(
+    Icons.water_drop_outlined,
+    'Purified Water',
+    'Purified drinking water served throughout the event.',
+  ),
+  _Offer(
+    Icons.local_fire_department_outlined,
+    'Roll-Up Chafing Dish',
+    'Chafing dishes to keep the spread warm and ready.',
+  ),
+  _Offer(
+    Icons.restaurant_outlined,
+    'Sanitized Dinnerware & Glassware',
+    'Sanitized dinnerware, glassware and flatware for every guest.',
   ),
 ];
 

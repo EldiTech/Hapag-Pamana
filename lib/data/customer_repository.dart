@@ -120,8 +120,11 @@ class CustomerRepository {
     }
 
     // Surface the name on the auth record too, so it's available without a
-    // Firestore read (e.g. in the member home greeting).
+    // Firestore read (e.g. in the member home greeting). reload() forces
+    // currentUser.displayName to pick up the change immediately — without it
+    // the cached user can keep returning null until the next app restart.
     await user.updateDisplayName(name);
+    await user.reload();
     return customer;
   }
 
@@ -251,12 +254,37 @@ class CustomerRepository {
   }
 
   /// Reads the signed-in customer's `customers/{uid}` profile, or null when
-  /// signed out / the doc is missing. Used by the Account screen.
+  /// signed out. Used by the Account screen.
+  ///
+  /// If the doc is missing — an orphaned auth account left behind when
+  /// [signUp]'s rollback couldn't delete the auth user after a failed
+  /// profile write — it's recreated here from the auth record (email,
+  /// display name) so the account stops showing "Member" / "Not set"
+  /// forever. Phone and join date stay blank until the member fills them in.
+  ///
+  /// Same backfill when the doc DOES exist but `name` is blank (e.g. a
+  /// display-name update that never made it to Firestore) — otherwise a
+  /// once-empty name stays empty forever, since nothing else ever revisits it.
   Future<Customer?> fetchCurrentCustomer() async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) return null;
-    final doc = await _db.collection('customers').doc(uid).get();
-    if (!doc.exists) return null;
-    return Customer.fromDoc(doc);
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    final ref = _db.collection('customers').doc(user.uid);
+    final doc = await ref.get();
+    if (doc.exists) {
+      final existing = Customer.fromDoc(doc);
+      final authName = user.displayName ?? '';
+      if (existing.name.isNotEmpty || authName.isEmpty) return existing;
+      await ref.set({'name': authName}, SetOptions(merge: true));
+      return Customer.fromDoc(await ref.get());
+    }
+
+    final customer = Customer(
+      uid: user.uid,
+      name: user.displayName ?? '',
+      email: user.email ?? '',
+      phone: '',
+    );
+    await ref.set(customer.toCreateMap());
+    return Customer.fromDoc(await ref.get());
   }
 }

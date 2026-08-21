@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
+import 'app_page_transitions.dart';
 import 'app_radius.dart';
 import 'app_text_styles.dart';
 
@@ -122,6 +123,24 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: AppColors.goldDeep),
+      ),
+
+      // ── Page transitions ──────────────────────────────────────────────────
+      // One motion for every route on every platform: the branded fade +
+      // settle from [brandPageTransition]. Screens normally push a
+      // `BrandPageRoute`, which plays that same transition; this makes it the
+      // fallback as well, so a route pushed without one — a plain
+      // [MaterialPageRoute], anything the framework pushes for us — can never
+      // snap in with a stock platform animation instead.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: <TargetPlatform, PageTransitionsBuilder>{
+          TargetPlatform.android: BrandPageTransitionsBuilder(),
+          TargetPlatform.iOS: BrandPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: BrandPageTransitionsBuilder(),
+          TargetPlatform.linux: BrandPageTransitionsBuilder(),
+          TargetPlatform.macOS: BrandPageTransitionsBuilder(),
+          TargetPlatform.windows: BrandPageTransitionsBuilder(),
+        },
       ),
 
       // ── Misc components ───────────────────────────────────────────────────

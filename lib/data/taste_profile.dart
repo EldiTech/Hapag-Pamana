@@ -166,9 +166,9 @@ enum OccasionType {
 
 /// Roughly what the member spends per head. Single choice.
 enum BudgetRange {
-  budget('budget', 'Kuripot-friendly', 'Under ₱350 a head'),
-  mid('mid', 'Just right', '₱350 – ₱700 a head'),
-  premium('premium', 'Bongga', 'Over ₱700 a head');
+  budget('budget', 'Tipid mode', 'Under ₱350 a head'),
+  mid('mid', 'Sakto', '₱350 – ₱700 a head'),
+  premium('premium', 'All-out', 'Over ₱700 a head');
 
   const BudgetRange(this.key, this.label, this.blurb);
 

@@ -55,6 +55,10 @@ window.HPRec = (function () {
     "packageName", "package", "paymentStatus", "paymentRef", "paymentMethod",
     "checkoutUrl", "checkoutSessionId", "paymentSource", "paymentTakenBy",
     "paymentTakenByName",
+    // The chosen table/venue set-up — a photo's title from the Setups gallery,
+    // never food. Left in, a look sharing a name with a dish would file that
+    // dish as ordered by every client who picked the look.
+    "setupStyle",
   ]);
 
   /* Strips a booking line to the bare item name, so it can be matched against

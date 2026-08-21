@@ -110,6 +110,10 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
   static final RegExp _email = RegExp(r'^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$');
 
   int _step = 0;
+
+  /// Which way the wizard last moved — drives the side the arriving step
+  /// slides in from, so advancing and going back feel like different moves.
+  bool _stepForward = true;
   bool _submitting = false;
   bool _submitted = false;
 
@@ -387,7 +391,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     _paintErrors(_step, found);
     if (found.isNotEmpty) return;
     if (_step < _steps.length - 1) {
-      setState(() => _step++);
+      _goToStep(_step + 1);
       return;
     }
     // Last page: re-check every step before filing, so a blank the member
@@ -397,7 +401,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
       final problems = _stepErrors(step);
       _paintErrors(step, problems);
       if (problems.isNotEmpty) {
-        setState(() => _step = step);
+        _goToStep(step);
         return;
       }
     }
@@ -405,7 +409,17 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
   }
 
   void _back() {
-    if (_step > 0) setState(() => _step--);
+    if (_step > 0) _goToStep(_step - 1);
+  }
+
+  /// The one place [_step] moves, so the slide direction can never disagree
+  /// with the step it is animating to — including the jump back to whichever
+  /// step still has a problem on it.
+  void _goToStep(int next) {
+    setState(() {
+      _stepForward = next >= _step;
+      _step = next;
+    });
   }
 
   // ── The downpayment ───────────────────────────────────────────────────────
@@ -619,22 +633,10 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
         const SizedBox(height: AppSpacing.sm),
         // ── The step's form ─────────────────────────────────────────────
         Expanded(
-          child: AnimatedSwitcher(
-            duration: Motion.base,
-            switchInCurve: Motion.standard,
-            switchOutCurve: Motion.exit,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.02),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
-              ),
-            ),
+          child: StepTransition(
+            step: _step,
+            forward: _stepForward,
             child: ListView(
-              key: ValueKey<int>(_step),
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.screen,
                 AppSpacing.md,
