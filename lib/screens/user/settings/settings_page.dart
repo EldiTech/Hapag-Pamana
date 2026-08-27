@@ -11,6 +11,7 @@ import 'contact_us_page.dart';
 import 'dietary_preference_page.dart';
 import 'help_faq_page.dart';
 import 'language_page.dart';
+import 'layout_picker_page.dart';
 import 'privacy_policy_page.dart';
 import 'settings_widgets.dart';
 import 'terms_of_service_page.dart';
@@ -84,6 +85,12 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                   title: 'Order tracking',
                   subtitle: 'Follow every booking you\'ve sent us.',
                   onTap: () => _push(const OrderTrackingPage()),
+                ),
+                SettingsNavRow(
+                  icon: Icons.view_in_ar_outlined,
+                  title: '3D Layout',
+                  subtitle: 'Walk through your event\'s room set-up.',
+                  onTap: () => _push(const LayoutPickerPage()),
                 ),
               ],
             ),

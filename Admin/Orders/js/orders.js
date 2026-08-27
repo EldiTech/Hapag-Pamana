@@ -902,6 +902,53 @@
   const safeImage = (v) =>
     (/^(data:image\/|https?:\/\/)/i.test(String(v || "")) ? String(v) : "");
 
+  /* Room setup photos. `setupStyle` on the booking is the title of a card on
+     the Content Moderator's Setups gallery (`setups` collection, public
+     read) — looked up the same lazy, per-session-cached way as dish photos. */
+  const setupCache = new Map();
+  const setupKey = (n) => String(n || "").trim().toLowerCase();
+
+  async function hydrateSetupPhotos() {
+    if (!db) return;
+    const root = document.querySelector(".order-sheet");
+    if (!root) return;
+    const names = [...new Set(
+      [...root.querySelectorAll("[data-setup]")].map((el) => el.dataset.setup),
+    )].filter((n) => n && !setupCache.has(setupKey(n)));
+    if (!names.length) return;
+
+    const chunks = [];
+    for (let i = 0; i < names.length; i += 10) chunks.push(names.slice(i, i + 10));
+    await Promise.all(chunks.map(async (chunk) => {
+      try {
+        const snap = await db.collection("setups").where("title", "in", chunk).get();
+        snap.forEach((doc) => {
+          const d = doc.data() || {};
+          setupCache.set(setupKey(d.title), safeImage(d.image));
+        });
+      } catch (e) {
+        console.warn("HapagPamana: couldn't fetch the setup photos —", e);
+      }
+      chunk.forEach((n) => { if (!setupCache.has(setupKey(n))) setupCache.set(setupKey(n), ""); });
+    }));
+    paintSetupPhotos();
+  }
+
+  function paintSetupPhotos() {
+    document.querySelectorAll(".order-sheet [data-setup]").forEach((el) => {
+      const img = setupCache.get(setupKey(el.dataset.setup));
+      const thumb = el.querySelector(".setup-thumb");
+      if (!img || !thumb || thumb.classList.contains("has-img")) return;
+      thumb.textContent = "";
+      const tag = document.createElement("img");
+      tag.src = img;
+      tag.alt = "";
+      tag.loading = "lazy";
+      thumb.appendChild(tag);
+      thumb.classList.add("has-img");
+    });
+  }
+
   async function hydrateDishPhotos() {
     if (!db) return;
     const root = document.querySelector(".order-sheet");
@@ -1059,9 +1106,13 @@
     }
 
     if (!look && !facts.length) return "";
+    const lookImg = look ? setupCache.get(setupKey(look)) : "";
+    const thumb = look ? `<span class="setup-thumb${lookImg ? " has-img" : ""}" data-setup="${HP.esc(look)}">${
+      lookImg ? `<img src="${HP.esc(lookImg)}" alt="" loading="lazy">` : `<span class="ic">${HP.icon("photo")}</span>`
+    }</span>` : "";
     return `<section class="order-sec">
       <h4>The room</h4>
-      ${look ? `<div class="order-pkg"><span class="ic">${HP.icon("photo")}</span>
+      ${look ? `<div class="order-pkg">${thumb}
         <div><small>Table &amp; venue set-up</small><strong>${HP.esc(look)}</strong></div></div>` : ""}
       ${facts.length ? `<dl class="order-facts">${facts.map(([k, v]) => `
         <div class="order-fact"><dt>${HP.esc(k)}</dt><dd>${HP.esc(v)}</dd></div>`).join("")}</dl>` : ""}
@@ -1096,14 +1147,24 @@
     }
     const pkg = val(o, "package");
     const addons = val(o, "menuAddOns");
-    if (!cards.length && !pkg && !addons) return "";
+    // Each line is "Dish name × qty — ₱rate/pax" (or "— to be quoted") from
+    // the booking wizard's add-on picker — split on the same " × " separator
+    // _restoreAddOns reads, so each add-on gets its own photo card instead of
+    // one unbroken block of text.
+    const addonCards = String(addons || "").split("\n").map((s) => s.trim()).filter(Boolean)
+      .map((line) => {
+        const sep = line.indexOf(" × ");
+        const name = sep === -1 ? line : line.slice(0, sep).trim();
+        const rest = sep === -1 ? "" : line.slice(sep + 3).trim();
+        return dishCard(name, "Add-on", rest);
+      });
+    if (!cards.length && !pkg && !addonCards.length) return "";
     return `<section class="order-sec">
       <h4>Package &amp; menu</h4>
       ${pkg ? `<div class="order-pkg"><span class="ic">${HP.icon("dish")}</span>
         <div><small>Package</small><strong>${HP.esc(pkg)}</strong></div></div>` : ""}
       ${cards.length ? `<div class="dish-grid">${cards.join("")}</div>` : ""}
-      ${addons ? `<div class="order-addons"><span class="ic">${HP.icon("plus")}</span>
-        <div><small>Add-ons</small><strong>${HP.esc(addons).replace(/\n/g, "<br>")}</strong></div></div>` : ""}
+      ${addonCards.length ? `<div class="dish-grid">${addonCards.join("")}</div>` : ""}
     </section>`;
   }
 
@@ -1346,8 +1407,9 @@
       </div>`,
       sheetFoot(o));
 
-    // Fill in the dish photos as the product lookups land.
+    // Fill in the dish and room-setup photos as the lookups land.
     hydrateDishPhotos();
+    hydrateSetupPhotos();
 
     const wire = (id, fn) => {
       const b = document.getElementById(id);
@@ -1412,4 +1474,33 @@
     URL.revokeObjectURL(a.href);
     HP.toast(`Exported ${list.length} order${list.length === 1 ? "" : "s"}${filtersActive() ? " (matching the active filters)" : ""}.`);
   }
+
+  /* ── Photo lightbox ──────────────────────────────────────────────────────
+     Tap any dish or room-setup thumbnail in the order sheet to see it full
+     size. A standalone overlay rather than HP.openModal — the order sheet is
+     already the modal, and openModal owns a single shared root, so opening a
+     second one would tear down the sheet underneath it. */
+  let lightboxEl = null;
+  function openLightbox(src) {
+    if (!src) return;
+    closeLightbox();
+    const el = document.createElement("div");
+    el.className = "photo-lightbox";
+    el.innerHTML = `<img src="${HP.esc(src)}" alt="">`;
+    el.addEventListener("click", closeLightbox);
+    document.addEventListener("keydown", onLightboxEsc);
+    document.body.appendChild(el);
+    lightboxEl = el;
+  }
+  function closeLightbox() {
+    if (!lightboxEl) return;
+    lightboxEl.remove();
+    lightboxEl = null;
+    document.removeEventListener("keydown", onLightboxEsc);
+  }
+  function onLightboxEsc(e) { if (e.key === "Escape") closeLightbox(); }
+  document.addEventListener("click", (e) => {
+    const img = e.target.closest(".dish-thumb.has-img img, .setup-thumb.has-img img");
+    if (img) openLightbox(img.src);
+  });
 })();

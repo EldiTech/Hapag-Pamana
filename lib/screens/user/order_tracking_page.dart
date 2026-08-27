@@ -521,29 +521,7 @@ class _OrderCard extends StatelessWidget {
                 text: '${order.value('pax')} pax',
               ),
             const SizedBox(height: AppSpacing.md),
-            _StatusTrack(status: order.status),
-            if (order.status == BookingStatus.confirmed &&
-                order.fulfilment != null) ...[
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.local_shipping_outlined,
-                    size: 13,
-                    color: AppColors.brownSoft,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    order.fulfilment!.stage.label,
-                    style: AppTextStyles.sans(
-                      size: 11,
-                      weight: FontWeight.w600,
-                      color: AppColors.brownSoft,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            _StatusTrack(status: order.status, fulfilment: order.fulfilment),
             // An unpaid downpayment is the one thing on this card the member can
             // act on, so it's called out above the quiet footer rather than
             // buried in the detail sheet.
@@ -697,24 +675,61 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-/// Received → Confirmed → Completed as three segments of a thin rule, filled as
-/// far as the order has travelled. A declined order left the track, so it reads
+/// Received → Confirmed → Preparing → Ready → Released → Delivered →
+/// Completed as one thin rule, filled as far as the order has actually
+/// travelled — [status] carries the outer three stages, [fulfilment] (only
+/// ever set while [BookingStatus.confirmed]) narrows the middle four once the
+/// Team Leader desk has started. A declined order left the track, so it reads
 /// as one flat rule in the decline tint instead of a part-filled one.
 class _StatusTrack extends StatelessWidget {
-  const _StatusTrack({required this.status});
+  const _StatusTrack({required this.status, this.fulfilment});
 
   final BookingStatus status;
+  final Fulfilment? fulfilment;
+
+  static const _labels = [
+    'Received',
+    'Confirmed',
+    'Preparing',
+    'Ready',
+    'Released',
+    'Delivered',
+    'Completed',
+  ];
+
+  /// How many of the 7 combined stages are done. [confirmed] alone (no
+  /// fulfilment yet) sits right after "Confirmed"; each [FulfilmentStage]
+  /// advances it one further, and [completed] always means all 7.
+  int get _done {
+    if (status == BookingStatus.completed) return 7;
+    if (status == BookingStatus.confirmed) {
+      return 2 + (fulfilment == null ? 0 : fulfilment!.stage.index + 1);
+    }
+    return status.stagesDone;
+  }
+
+  String get _caption {
+    if (status == BookingStatus.declined) return 'Received · not taken on';
+    if (status == BookingStatus.pending) return 'Received · awaiting confirmation';
+    if (status == BookingStatus.completed) return 'Completed · thank you';
+    // confirmed: name whichever of "Confirmed"/the fulfilment stage is
+    // current, so the caption always matches the segment the track lands on.
+    final stage = fulfilment?.stage;
+    return stage == null
+        ? 'Confirmed · on the calendar'
+        : '${stage.label} · on its way';
+  }
 
   @override
   Widget build(BuildContext context) {
     final declined = status == BookingStatus.declined;
-    final done = status.stagesDone;
+    final done = _done;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            for (var i = 0; i < 3; i++) ...[
+            for (var i = 0; i < _labels.length; i++) ...[
               if (i > 0) const SizedBox(width: 4),
               Expanded(
                 child: AnimatedContainer(
@@ -735,76 +750,7 @@ class _StatusTrack extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        Text(
-          declined
-              ? 'Received · not taken on'
-              : switch (status) {
-                  BookingStatus.pending => 'Received · awaiting confirmation',
-                  BookingStatus.confirmed => 'Confirmed · on the calendar',
-                  _ => 'Completed · thank you',
-                },
-          style: AppTextStyles.bodySmall,
-        ),
-      ],
-    );
-  }
-}
-
-/// The kitchen → delivery rail: Preparing → Ready → Released → Delivered,
-/// filled as far as the order has travelled. Only ever shown on a confirmed
-/// order that the Team Leader desk has actually started — mirrors the same
-/// four stages the dashboards themselves show (see `hp-fulfilment.js`).
-class _FulfilmentRail extends StatelessWidget {
-  const _FulfilmentRail({required this.fulfilment});
-
-  final Fulfilment fulfilment;
-
-  @override
-  Widget build(BuildContext context) {
-    final at = fulfilment.stage.index;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            for (final stage in FulfilmentStage.values) ...[
-              if (stage.index > 0) const SizedBox(width: 4),
-              Expanded(
-                child: Column(
-                  children: [
-                    AnimatedContainer(
-                      duration: Motion.base,
-                      curve: Motion.standard,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        color: stage.index <= at
-                            ? AppColors.gold
-                            : AppColors.hairline,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      stage.label,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.sans(
-                        size: 9.5,
-                        weight: stage.index == at
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: stage.index <= at
-                            ? AppColors.brown
-                            : AppColors.brownSoft,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
+        Text(_caption, style: AppTextStyles.bodySmall),
       ],
     );
   }
@@ -1006,11 +952,8 @@ class _OrderSheet extends StatelessWidget {
           order.status.story(order.fulfilment?.stage),
           style: AppTextStyles.bodySmall,
         ),
-        if (order.status == BookingStatus.confirmed &&
-            order.fulfilment != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          _FulfilmentRail(fulfilment: order.fulfilment!),
-        ],
+        const SizedBox(height: AppSpacing.md),
+        _StatusTrack(status: order.status, fulfilment: order.fulfilment),
         const SizedBox(height: AppSpacing.lg),
 
         _MoneySection(order: order),

@@ -466,4 +466,54 @@ void main() {
       expect(run(), ['Beef Salpicao', 'Roast Beef']);
     });
   });
+
+  group('User-to-User Cosine Similarity Collaborative Filtering', () {
+    test('cosine similarity computes dot product over vector norms', () {
+      // Orthogonal vectors
+      final sim0 = RecommendationEngine.cosineSimilarity(
+        {'dish_a': 2},
+        {'dish_b': 3},
+      );
+      expect(sim0, 0.0);
+
+      // Identical vectors
+      final sim1 = RecommendationEngine.cosineSimilarity(
+        {'dish_a': 3, 'dish_b': 4},
+        {'dish_a': 3, 'dish_b': 4},
+      );
+      expect(sim1, closeTo(1.0, 0.0001));
+
+      // Partial overlap: A = [3, 4], B = [1, 2] -> 11 / (5 * sqrt(5))
+      final sim = RecommendationEngine.cosineSimilarity(
+        {'dish_a': 3, 'dish_b': 4},
+        {'dish_a': 1, 'dish_b': 2},
+      );
+      expect(sim, closeTo(11.0 / (5.0 * 2.236067977), 0.0001));
+    });
+
+    test('computeUserBasedCF recommends items from most similar historical user', () {
+      final userA = {'beef_caldereta': 2, 'pork_bbq': 1};
+      final userB = {'beef_caldereta': 3, 'pork_bbq': 2, 'lechon_belly': 5}; // High similarity
+      final userC = {'fish_fillet': 4}; // Zero similarity
+
+      final set = RecommendationEngine.computeUserBasedCF(
+        targetUser: userA,
+        historicalUsers: {
+          'user_b': userB,
+          'user_c': userC,
+        },
+        products: [
+          dish('Beef Caldereta'),
+          dish('Pork BBQ'),
+          dish('Lechon Belly'),
+          dish('Fish Fillet'),
+        ],
+        packages: const [],
+      );
+
+      expect(set.source, RecommendationSource.cf);
+      expect(set.items.map((i) => i.name), ['Lechon Belly']);
+    });
+  });
 }
+

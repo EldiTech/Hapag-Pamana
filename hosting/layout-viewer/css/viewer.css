@@ -187,4 +187,122 @@ body {
   font-size: 0.95rem;
   background: var(--paper);
 }
+
+/* ── Walkthrough (js/simulate.js), narrow phones ──────────────────────────
+   js/simulate.js and css/layout.css are copied verbatim from the Layout
+   Designer desk (Admin/Layout Designer) — built for the desk's own desktop
+   screen, where the "Guide"/"Quality" popovers (.hp-sim-pop) anchor with
+   `right: 0` against whichever toolbar button opened them. On a phone-width
+   viewport the button row wraps onto several lines, so that button can sit
+   anywhere across the screen and the popover — anchored relative to it —
+   routinely opens off past the left edge instead of over the room. Fixed
+   here rather than in the copied files: js/viewer.js tags the walkthrough
+   overlay with .hp-sim-touchfix right after HPSim.enter() creates it, and
+   these rules key off that class to win the cascade without touching the copy.
+
+   Winning is on SPECIFICITY, not order: index.html loads this file BEFORE
+   layout.css, so on a tie the copy wins. Every override here must therefore
+   out-specify its counterpart (the extra .hp-sim-touchfix class does that) or
+   carry !important. Do not add a bare .hp-sim-* rule below and expect it to
+   take — it will lose to layout.css silently. */
+@media (max-width: 480px) {
+  .hp-sim-touchfix .hp-sim-foot {
+    padding: 10px 10px 14px;
+    gap: 8px;
+  }
+  .hp-sim-touchfix .hp-sim-tools {
+    justify-content: center;
+    gap: 6px;
+  }
+  .hp-sim-touchfix .hp-sim-btn {
+    min-width: 0;
+    flex: 1 1 calc(33.333% - 6px);
+    padding: 9px 6px;
+    font-size: 0.52rem;
+  }
+  /* Pinned to the left edge and width-clamped against the viewport instead of
+     anchored to the triggering button, so it can never open past either edge.
+     Left rather than centred to sit over the control strip, which the
+     customer-view rules below move to that side. */
+  .hp-sim-touchfix .hp-sim-pop {
+    position: fixed;
+    left: 10px;
+    right: auto;
+    bottom: 96px;
+    transform: none;
+    width: min(88vw, 280px);
+    max-height: 50vh;
+  }
+}
+
+/* ── Walkthrough, customer view ───────────────────────────────────────────
+   The desk's walkthrough is a planning instrument: Guide routes to the buffet,
+   Analyse for clearance reports, Reset, a keyboard legend. A member opening
+   this from the app is not planning the room — they are looking at it — and
+   every one of those controls is either meaningless without the desk's context
+   or a way to end up somewhere confusing with no obvious way back.
+
+   So the strip is cut to what exploring actually needs:
+
+     1st person / 3rd person   the one genuinely useful choice
+     Quality                   phones vary enough that this earns its place
+     Exit                      never hide this; it is the only way out
+
+   Everything else goes, along with the "Simulation Mode" badge and status
+   panel (desk vocabulary) and the WASD legend (no keyboard on a phone).
+
+   Hidden with CSS on the .hp-sim-touchfix hook rather than by editing
+   simulate.js, for the same reason the popover fix above is: that module is a
+   verbatim copy of the desk's own (docs/mobile-3d-preview.md), and the desk
+   still wants all of these. Nothing here is load-bearing for the walkthrough —
+   the buttons keep working, they are simply not shown, so no handler in the
+   copied module is left reaching for a node that no longer exists.
+
+   Not inside the 480px media query above: this applies at every width the app
+   can present, and the walkthrough now runs landscape. */
+   Guide is the one control with no id of its own, so it is reached by
+   position: it is the third and last <div class="hp-sim-tool"> in the strip,
+   after Quality and the 1st/3rd-person toggle (simulate.js ~1685-1714).
+   :has([data-pop="guide"]) would say this far more plainly, but :has() is
+   unsupported on the older Android System WebViews this app still meets, and
+   there it fails silently — leaving Guide on screen with no sign anything is
+   wrong. If a tool is ever added to that strip ahead of Guide, this number
+   moves with it. */
+.hp-sim-touchfix .hp-sim-keys,
+.hp-sim-touchfix .hp-sim-badge,
+.hp-sim-touchfix .hp-sim-status-wrap,
+.hp-sim-touchfix .hp-sim-tools .hp-sim-tool:nth-of-type(3),
+.hp-sim-touchfix #hpSimAnalyze,
+.hp-sim-touchfix #hpSimReset,
+.hp-sim-touchfix #hpSimHide,
+.hp-sim-touchfix #hpSimFull {
+  display: none !important;
+}
+
+/* Only HIGH and ULTRA are offered. LOW and MEDIUM exist for the desk's older
+   laptops; to a member they mostly read as "make my room look worse". This
+   hides the OPTIONS, not the setting — autoQuality() still picks from all four
+   on entry, so a modest phone can open on MEDIUM with neither remaining button
+   lit. That is fine: both on offer are upgrades from there. */
+.hp-sim-touchfix .hp-sim-opt[data-quality="LOW"],
+.hp-sim-touchfix .hp-sim-opt[data-quality="MEDIUM"] {
+  display: none !important;
+}
+
+/* The strip sits against the left edge. With the legend gone it would
+   otherwise be held right by the footer's space-between. */
+.hp-sim-touchfix .hp-sim-foot,
+.hp-sim-touchfix .hp-sim-tools {
+  justify-content: flex-start;
+}
+
+/* Three buttons instead of eight: the 33% basis from the narrow-phone rules
+   above would leave them stretched across the row. Sized to their text. */
+@media (max-width: 480px) {
+  .hp-sim-touchfix .hp-sim-btn {
+    flex: 0 1 auto;
+    padding: 9px 14px;
+    font-size: 0.6rem;
+  }
+}
 .lv-status[hidden] { display: none; }

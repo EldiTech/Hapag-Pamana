@@ -206,7 +206,7 @@ class _UserHomePageState extends State<UserHomePage> {
               ],
 
               // ── Featured highlight ─────────────────────────────────────────
-              if (settings.featuredOnHome) ...[
+              if (settings.featuredOnHome && (_loading || featured.isNotEmpty)) ...[
                 FadeSlideIn(
                   delay: _d(120),
                   child: Padding(

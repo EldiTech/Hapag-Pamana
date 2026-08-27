@@ -104,6 +104,81 @@ window.HPNav = (function () {
     return out;
   }
 
+  /* ── 2D & 3D Collision Detection Formulas ─────────────────────────────
+     1. 2D Circle vs Circle:
+        (x2 - x1)^2 + (y2 - y1)^2 <= (r1 + r2)^2
+     2. 2D Rectangle vs Rectangle (AABB):
+        x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2
+     3. 2D Circle vs Rectangle:
+        Cx = max(x, min(xc, x + w)), Cy = max(y, min(yc, y + h))
+        (xc - Cx)^2 + (yc - Cy)^2 <= r^2
+     4. 3D Sphere vs Sphere:
+        (x2 - x1)^2 + (y2 - y1)^2 + (z2 - z1)^2 <= (r1 + r2)^2
+     5. 3D Box vs Box (AABB):
+        x1 < x2 + w2 && x1 + w1 > x2 &&
+        y1 < y2 + h2 && y1 + h1 > y2 &&
+        z1 < z2 + d2 && z1 + d1 > z2
+     6. 3D Sphere vs Box (AABB):
+        Cx = max(xmin, min(xs, xmax)), Cy = max(ymin, min(ys, ymax)), Cz = max(zmin, min(zs, zmax))
+        (xs - Cx)^2 + (ys - Cy)^2 + (zs - Cz)^2 <= r^2
+  ──────────────────────────────────────────────────────────────────────── */
+  const Collision = {
+    // 2D Circle vs Circle
+    circleVsCircle(c1, c2) {
+      const dx = c2.x - c1.x;
+      const dy = c2.y - c1.y;
+      const rSum = c1.r + c2.r;
+      return (dx * dx + dy * dy) <= (rSum * rSum);
+    },
+
+    // 2D Rectangle vs Rectangle (AABB)
+    rectVsRect(r1, r2) {
+      return r1.x < r2.x + r2.w &&
+             r1.x + r1.w > r2.x &&
+             r1.y < r2.y + r2.h &&
+             r1.y + r1.h > r2.y;
+    },
+
+    // 2D Circle vs Rectangle
+    circleVsRect(circle, rect) {
+      const cx = Math.max(rect.x, Math.min(circle.x, rect.x + rect.w));
+      const cy = Math.max(rect.y, Math.min(circle.y, rect.y + rect.h));
+      const dx = circle.x - cx;
+      const dy = circle.y - cy;
+      return (dx * dx + dy * dy) <= (circle.r * circle.r);
+    },
+
+    // 3D Sphere vs Sphere
+    sphereVsSphere(s1, s2) {
+      const dx = s2.x - s1.x;
+      const dy = s2.y - s1.y;
+      const dz = s2.z - s1.z;
+      const rSum = s1.r + s2.r;
+      return (dx * dx + dy * dy + dz * dz) <= (rSum * rSum);
+    },
+
+    // 3D Box vs Box (AABB)
+    boxVsBox(b1, b2) {
+      return b1.x < b2.x + b2.w &&
+             b1.x + b1.w > b2.x &&
+             b1.y < b2.y + b2.h &&
+             b1.y + b1.h > b2.y &&
+             b1.z < b2.z + b2.d &&
+             b1.z + b1.d > b2.z;
+    },
+
+    // 3D Sphere vs Box (AABB)
+    sphereVsBox(sphere, box) {
+      const cx = Math.max(box.xmin, Math.min(sphere.x, box.xmax));
+      const cy = Math.max(box.ymin, Math.min(sphere.y, box.ymax));
+      const cz = Math.max(box.zmin, Math.min(sphere.z, box.zmax));
+      const dx = sphere.x - cx;
+      const dy = sphere.y - cy;
+      const dz = sphere.z - cz;
+      return (dx * dx + dy * dy + dz * dz) <= (sphere.r * sphere.r);
+    },
+  };
+
   /* ── AABB resolution ──────────────────────────────────────────────────
      A step from `from` to `to` for a body of radius `r`, resolved one axis at
      a time. Axis separation is what produces sliding: blocked northward, the
@@ -243,16 +318,25 @@ window.HPNav = (function () {
     return null;
   }
 
-  /* ── A* ───────────────────────────────────────────────────────────────
-     Eight-way A* with an octile heuristic — the exact distance metric of
-     eight-way movement, so it never overestimates and the route it returns is
-     genuinely the shortest. Diagonals are refused when either orthogonal
-     neighbour is blocked, which is what stops a path slipping through the
-     corner where two tables touch.
+  /* ── A* Heuristic functions: h(n) ──────────────────────────────────
+     Core formula: f(n) = g(n) + h(n)
+       · Manhattan: |x1 - x2| + |y1 - y2| (4-directional movement)
+       · Euclidean: sqrt((x1 - x2)^2 + (y1 - y2)^2) (straight-line distance)
+       · Octile / Diagonal: (dx + dy) + (sqrt(2) - 2) * min(dx, dy) (8-way grid movement) */
+  const HEURISTICS = {
+    manhattan: (x1, y1, x2, y2) => Math.abs(x1 - x2) + Math.abs(y1 - y2),
+    euclidean: (x1, y1, x2, y2) => Math.hypot(x1 - x2, y1 - y2),
+    octile: (x1, y1, x2, y2) => {
+      const dx = Math.abs(x1 - x2), dy = Math.abs(y1 - y2);
+      return (dx + dy) + (SQRT2 - 2) * Math.min(dx, dy);
+    },
+  };
 
-     Open set is a binary heap: a 24 × 18 m room at quarter-metre cells is
-     ~7000 nodes, and a linear scan for the lowest f would turn a route query
-     into something you can feel.  */
+  /* ── A* ───────────────────────────────────────────────────────────────
+     Eight-way A* pathfinding using f(n) = g(n) + h(n):
+     - g(n): exact traversal cost from start to node n
+     - h(n): heuristic estimate from node n to goal
+     - f(n): total estimated path cost through node n */
   function findPath(g, from, to, opts) {
     if (!g) return null;
     const o = opts || {};
@@ -267,11 +351,8 @@ window.HPNav = (function () {
     const closed = new Uint8Array(n);
 
     const start = g.idx(a.i, a.j), goal = g.idx(b.i, b.j);
-    // Octile distance: the true cost of moving on an 8-connected grid.
-    const H = (i, j) => {
-      const dx = Math.abs(i - b.i), dy = Math.abs(j - b.j);
-      return (dx + dy) + (SQRT2 - 2) * Math.min(dx, dy);
-    };
+    const hFunc = HEURISTICS[o.heuristic] || HEURISTICS.octile;
+    const H = (i, j) => hFunc(i, j, b.i, b.j);
 
     const heap = [];
     const push = (node, f) => {
@@ -304,7 +385,7 @@ window.HPNav = (function () {
     };
 
     gScore[start] = 0;
-    fScore[start] = H(a.i, a.j);
+    fScore[start] = H(a.i, a.j); // f(start) = g(start) + h(start)
     push(start, fScore[start]);
 
     const NB = [[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],
@@ -327,12 +408,15 @@ window.HPNav = (function () {
 
         const nIdx = g.idx(ni, nj);
         if (closed[nIdx]) continue;
-        const tentative = gScore[cur] + cost;
-        if (tentative >= gScore[nIdx]) continue;
+        const g_n = gScore[cur] + cost; // g(n): exact cost to reach node n
+        if (g_n >= gScore[nIdx]) continue;
+
         cameFrom[nIdx] = cur;
-        gScore[nIdx] = tentative;
-        fScore[nIdx] = tentative + H(ni, nj);
-        push(nIdx, fScore[nIdx]);
+        gScore[nIdx] = g_n;
+        const h_n = H(ni, nj);          // h(n): estimated cost to goal
+        const f_n = g_n + h_n;          // f(n) = g(n) + h(n)
+        fScore[nIdx] = f_n;
+        push(nIdx, f_n);
       }
     }
     return null;
@@ -587,5 +671,7 @@ window.HPNav = (function () {
     widthField,
     traffic,
     hotspots,
+    HEURISTICS,
+    Collision,
   };
 })();

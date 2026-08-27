@@ -202,16 +202,56 @@
   tab2d.addEventListener("click", () => show("2d"));
   tab3d.addEventListener("click", () => { if (!tab3d.disabled) show("3d"); });
 
+  /* The walkthrough is a first-person room, and a phone held upright shows a
+     sliver of it with the wrapped button row eating what's left. The page
+     cannot rotate the device itself — `screen.orientation.lock()` is refused
+     inside an Android WebView — so the app is told, and
+     lib/screens/user/layout_preview_page.dart calls
+     SystemChrome.setPreferredOrientations() on its behalf.
+
+     Reported both ways, not just on enter: the lock has to be lifted again
+     when the member steps back out to the 2D/3D tabs, which stay portrait.
+     Guarded on the channel existing at all — in a plain browser there is no
+     HPOrient, and nothing there needs rotating. */
+  function orient(mode) {
+    if (window.HPOrient && window.HPOrient.postMessage) {
+      window.HPOrient.postMessage(mode);
+    }
+  }
+
   walkBtn.addEventListener("click", () => {
     if (!layout || !window.HPSim || !window.HPSim.available()) return;
+    orient("landscape");
     window.HPSim.enter(layout, {
       pax,
       event: eventType,
       title: clientName,
       onExit: () => {
+        orient("portrait");
         window.HPScene.resize();
       },
     });
+    // HPSim.enter() builds and appends its overlay synchronously, so it's in
+    // the DOM immediately after this call returns. Tagged here rather than
+    // inside simulate.js itself — that module is a verbatim copy of the
+    // Layout Designer desk's own (see index.html's comment on the walkBtn's
+    // <script> block) — so the narrow-phone popover fix in css/viewer.css
+    // can target it without editing the copy.
+    const sim = document.querySelector(".hp-sim");
+    if (sim) sim.classList.add("hp-sim-touchfix");
+    /* Fullscreen on entry, so the room gets the whole screen without the
+       member having to find a button for it — the copied Fullscreen button is
+       hidden in the customer view (see css/viewer.css).
+
+       Requested synchronously inside this click: requestFullscreen() is only
+       granted while a user gesture is being handled, and deferring it even by
+       a 0 ms timeout ends that window on some browsers. HPSim.enter() above
+       appends the overlay synchronously, so it is already in the DOM.
+
+       Failure is quiet by design — a browser that refuses simply leaves the
+       page as it was, and the walkthrough is still perfectly usable. Leaving
+       fullscreen is already handled: HPSim.exit() calls exitFullscreen(). */
+    if (sim && sim.requestFullscreen) sim.requestFullscreen().catch(() => {});
   });
 
   window.addEventListener("resize", () => {

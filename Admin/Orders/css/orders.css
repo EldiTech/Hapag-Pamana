@@ -171,6 +171,14 @@
 .order-addons { margin-top: 10px; background: transparent; }
 .order-pkg > .ic, .order-addons > .ic { display: inline-flex; margin-top: 2px; color: var(--gold-deep); }
 .order-pkg .ic svg, .order-addons .ic svg { width: 16px; height: 16px; }
+.setup-thumb {
+  flex: 0 0 56px; width: 56px; height: 56px; overflow: hidden;
+  display: grid; place-items: center;
+  border-radius: var(--r); border: 1px solid var(--gold-hair2);
+  background: var(--vellum); color: var(--gold-deep);
+}
+.setup-thumb .ic svg { width: 20px; height: 20px; }
+.setup-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .order-pkg small, .order-addons small {
   display: block; margin-bottom: 2px; font-family: var(--engraved); font-size: 0.54rem;
   font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-faint);
@@ -192,6 +200,21 @@
   font-family: var(--display); font-weight: 700; font-size: 1.15rem;
 }
 .dish-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dish-thumb.has-img, .setup-thumb.has-img { cursor: zoom-in; }
+
+.photo-lightbox {
+  position: fixed; inset: 0; z-index: 10050;
+  display: grid; place-items: center; padding: 32px;
+  background: rgba(10, 6, 2, 0.86);
+  cursor: zoom-out;
+  animation: photoLightboxIn 0.15s ease both;
+}
+.photo-lightbox img {
+  max-width: min(92vw, 900px); max-height: 88vh;
+  border-radius: var(--r-lg); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  object-fit: contain;
+}
+@keyframes photoLightboxIn { from { opacity: 0; } to { opacity: 1; } }
 .dish-txt { flex: 1; min-width: 0; }
 .dish-txt small {
   display: block; margin-bottom: 1px; font-family: var(--engraved); font-size: 0.54rem;

@@ -201,16 +201,14 @@ class _UserCateringPageState extends State<UserCateringPage> {
 
   /// The two booking flows, side by side — catering's event form vs the food
   /// packs' quotation wizard — for when "Book Us Now" is tapped without a
-  /// package to say which one the member means.
+  /// package to say which one the member means. Opens package picker first.
   void _pickBookingKind(BuildContext context) {
     showCenterDialog<void>(
       context: context,
       builder: (dialogContext) {
-        void open(Widget page) {
+        void chooseKind(bool isFoodPack) {
           Navigator.of(dialogContext).pop();
-          Navigator.of(context).push(
-            BrandPageRoute<void>(builder: (_) => page),
-          );
+          _pickPackageForKind(context, isFoodPack: isFoodPack);
         }
 
         return AppDialogShell(
@@ -229,18 +227,138 @@ class _UserCateringPageState extends State<UserCateringPage> {
               icon: Icons.restaurant_outlined,
               title: 'Catering Service',
               line: 'A full event — courses, set-up and service.',
-              onTap: () => open(const BookingPage()),
+              onTap: () => chooseKind(false),
             ),
             const SizedBox(height: AppSpacing.sm),
             _BookingKindRow(
               icon: Icons.takeout_dining_outlined,
               title: 'Food Packs',
               line: 'Packed meals delivered — build a menu, pax per dish.',
-              onTap: () => open(const FoodPackBookingPage()),
+              onTap: () => chooseKind(true),
             ),
           ],
         );
       },
+    );
+  }
+
+  /// Lets the member pick from published packages for the chosen category
+  /// before proceeding to the booking wizard.
+  void _pickPackageForKind(BuildContext context, {required bool isFoodPack}) {
+    final list = _packages.where((p) => p.isFoodPack == isFoodPack).toList();
+    if (list.isEmpty) {
+      Navigator.of(context).push(
+        BrandPageRoute<void>(
+          builder: (_) => isFoodPack
+              ? const FoodPackBookingPage()
+              : const BookingPage(),
+        ),
+      );
+      return;
+    }
+
+    showCenterDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AppDialogShell(
+          children: [
+            Text(
+              isFoodPack ? 'FOOD PACKS' : 'CATERING PACKAGES',
+              style: AppTextStyles.eyebrow,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Select a package', style: AppTextStyles.title),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              isFoodPack
+                  ? 'Choose a food pack package to begin your order.'
+                  : 'Choose a catering package to begin your booking.',
+              style: AppTextStyles.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            for (final pkg in list) ...[
+              _PackagePickRow(
+                pkg: pkg,
+                onTap: () {
+                  Navigator.of(dialogContext).pop();
+                  _openBooking(context, pkg: pkg);
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// One package option inside the package picker dialog.
+class _PackagePickRow extends StatelessWidget {
+  const _PackagePickRow({required this.pkg, required this.onTap});
+
+  final CateringPackage pkg;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final price = pkg.price > 0
+        ? '${peso(pkg.price)} ${_priceUnit(pkg)}'
+        : null;
+    final minPax = pkg.minPax > 0
+        ? (pkg.isFoodPack
+            ? 'Min. ${pkg.minPax} orders'
+            : 'Min. ${pkg.minPax} pax')
+        : null;
+
+    return PressableScale(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: AppColors.hairline),
+        ),
+        child: Row(
+          children: [
+            _PackageMedallion(pkg: pkg, size: 48),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    pkg.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.sans(
+                      size: 13,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                  if (price != null || minPax != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      [if (price != null) price, if (minPax != null) minPax]
+                          .join(' · '),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.goldDeep,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: AppColors.brown.withValues(alpha: 0.35),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

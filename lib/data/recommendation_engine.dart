@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'booking.dart';
 import 'catering.dart';
 import 'co_occurrence_repository.dart';
@@ -42,6 +44,127 @@ import 'taste_profile.dart';
 /// what they themselves see, which harms nobody.
 class RecommendationEngine {
   const RecommendationEngine._();
+
+  /// Computes the Cosine Similarity between target user vector [userA] and
+  /// historical user vector [userB]:
+  ///
+  /// Cosine Similarity(A, B) = \sum(A_i * B_i) / (\sqrt{\sum A_i^2} * \sqrt{\sum B_i^2})
+  ///
+  /// Where A_i and B_i represent the exact frequency count of item i ordered by User A and User B.
+  static double cosineSimilarity(
+    Map<String, num> userA,
+    Map<String, num> userB,
+  ) {
+    if (userA.isEmpty || userB.isEmpty) return 0.0;
+    var dotProduct = 0.0;
+    var normA = 0.0;
+    var normB = 0.0;
+
+    for (final entry in userA.entries) {
+      final a = entry.value.toDouble();
+      normA += a * a;
+      final b = (userB[entry.key] ?? 0).toDouble();
+      if (b > 0) {
+        dotProduct += a * b;
+      }
+    }
+    for (final entry in userB.entries) {
+      final b = entry.value.toDouble();
+      normB += b * b;
+    }
+
+    if (normA == 0.0 || normB == 0.0) return 0.0;
+    return dotProduct / (math.sqrt(normA) * math.sqrt(normB));
+  }
+
+  /// User-to-User Collaborative Filtering:
+  /// Identifies similar historical users using [cosineSimilarity] and computes
+  /// candidate item recommendation scores weighted by user similarity.
+  static RecommendationSet computeUserBasedCF({
+    required Map<String, num> targetUser,
+    required Map<String, Map<String, num>> historicalUsers,
+    required List<Product> products,
+    required List<CateringPackage> packages,
+    int limit = 5,
+    int kNearest = 5,
+    double minSimilarity = 0.0,
+  }) {
+    if (targetUser.isEmpty || historicalUsers.isEmpty) {
+      return RecommendationEngine.compute(
+        history: const [],
+        profile: const TasteProfile(),
+        products: products,
+        packages: packages,
+        limit: limit,
+      );
+    }
+
+    // 1. Calculate cosine similarity against all historical users.
+    final similarities = <String, double>{};
+    historicalUsers.forEach((userId, userVector) {
+      final sim = cosineSimilarity(targetUser, userVector);
+      if (sim > minSimilarity) {
+        similarities[userId] = sim;
+      }
+    });
+
+    if (similarities.isEmpty) {
+      return RecommendationEngine.compute(
+        history: const [],
+        profile: const TasteProfile(),
+        products: products,
+        packages: packages,
+        limit: limit,
+      );
+    }
+
+    // 2. Select top-K nearest neighbors.
+    final sortedNeighbors = similarities.keys.toList()
+      ..sort((a, b) => similarities[b]!.compareTo(similarities[a]!));
+    final topNeighbors = sortedNeighbors.take(kNearest).toList();
+
+    // 3. Score candidate items not yet in targetUser's basket.
+    final itemScores = <String, double>{};
+    final items = <String, RecommendedItem>{};
+    final byProductId = {for (final p in products) p.id: p};
+    final byPackageId = {for (final p in packages) p.id: p};
+
+    for (final neighborId in topNeighbors) {
+      final sim = similarities[neighborId]!;
+      final neighborItems = historicalUsers[neighborId]!;
+
+      neighborItems.forEach((itemId, freq) {
+        if ((targetUser[itemId] ?? 0) > 0) return; // already ordered
+        final contribution = sim * freq.toDouble();
+        itemScores[itemId] = (itemScores[itemId] ?? 0.0) + contribution;
+
+        final product = byProductId[itemId];
+        if (product != null && product.available) {
+          items[itemId] = RecommendedItem.dish(product);
+        } else {
+          final package = byPackageId[itemId];
+          if (package != null && package.active && !package.isInstitutional) {
+            items[itemId] = RecommendedItem.package(package);
+          }
+        }
+      });
+    }
+
+    if (itemScores.isEmpty) {
+      return RecommendationEngine.compute(
+        history: const [],
+        profile: const TasteProfile(),
+        products: products,
+        packages: packages,
+        limit: limit,
+      );
+    }
+
+    return RecommendationSet(
+      items: _rank(itemScores, items, limit),
+      source: RecommendationSource.cf,
+    );
+  }
 
   /// Scores the live menu for one member and returns the best [limit] items.
   ///

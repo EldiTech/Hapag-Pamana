@@ -220,10 +220,68 @@ window.HPRec = (function () {
     }
   }
 
+  /* Computes the Cosine Similarity between user item-frequency vectors A and B:
+     Cosine Similarity(A, B) = \sum(A_i * B_i) / (\sqrt{\sum A_i^2} * \sqrt{\sum B_i^2}) */
+  function cosineSimilarity(userA, userB) {
+    if (!userA || !userB) return 0;
+    const keysA = Object.keys(userA);
+    const keysB = Object.keys(userB);
+    if (!keysA.length || !keysB.length) return 0;
+
+    let dot = 0;
+    let normA = 0;
+    let normB = 0;
+
+    keysA.forEach((k) => {
+      const a = Number(userA[k]) || 0;
+      normA += a * a;
+      const b = Number(userB[k]) || 0;
+      if (b > 0) dot += a * b;
+    });
+    keysB.forEach((k) => {
+      const b = Number(userB[k]) || 0;
+      normB += b * b;
+    });
+
+    if (!normA || !normB) return 0;
+    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  }
+
+  /* User-based collaborative filtering:
+     Ranks unpurchased items for targetUser by similarity-weighted neighbor frequencies. */
+  function userBasedRecommendations(targetUser, historicalUsers, limit = 5) {
+    if (!targetUser || !historicalUsers) return [];
+    const neighbors = [];
+    Object.keys(historicalUsers).forEach((uid) => {
+      const other = historicalUsers[uid];
+      const sim = cosineSimilarity(targetUser, other);
+      if (sim > 0) neighbors.push({ uid, sim, items: other });
+    });
+
+    neighbors.sort((a, b) => b.sim - a.sim);
+
+    const scores = {};
+    neighbors.forEach(({ sim, items }) => {
+      Object.keys(items).forEach((itemId) => {
+        if ((Number(targetUser[itemId]) || 0) > 0) return; // already ordered
+        const freq = Number(items[itemId]) || 0;
+        scores[itemId] = (scores[itemId] || 0) + sim * freq;
+      });
+    });
+
+    return Object.keys(scores)
+      .map((id) => ({ id, score: scores[id] }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+  }
+
   return {
     recordCompletion,
+    cosineSimilarity,
+    userBasedRecommendations,
     // Exposed for eyeballing in the console; the resolution rules are the part
     // most likely to need checking against a real booking.
     _internals: { normaliseName, basketFor, pairsIn, pairKey, loadIndexes },
   };
 })();
+

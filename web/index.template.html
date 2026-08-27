@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
   <!--
@@ -31,6 +31,17 @@
 
   <title>hapag_pamana</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- The address picker's embedded map needs the Maps JS API loaded before
+       google_maps_flutter's web plugin runs, or it throws
+       "Cannot read properties of undefined (reading 'maps')".
+       This file is the committed template -- tool/inject_maps_key.ps1 reads
+       GOOGLE_MAPS_API_KEY out of .env (same key as build.gradle.kts and
+       AppDelegate.swift use for Android/iOS) and writes web/index.html from
+       this template with the key substituted. web/index.html itself is
+       gitignored, so the real key never lands in source control. Run that
+       script before `flutter run -d chrome` or `flutter build web`. -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=$GOOGLE_MAPS_API_KEY" async></script>
 </head>
 <body>
   <!--

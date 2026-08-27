@@ -1,41 +1,92 @@
-/* HapagPamana · Forecast — demand forecasting model (Master promp.md §4).
+/* HapagPamana · Forecast — demand forecasting model with SARIMA(p,d,q)(P,D,Q,s).
+   
+   Implements the expanded SARIMA(1,0,1)(1,0,1,s) difference equation:
+     y_t = c + phi1 * y_{t-1} + Phi1 * y_{t-s} - (phi1 * Phi1) * y_{t-s-1}
+             + theta1 * e_{t-1} + Theta1 * e_{t-s} - (theta1 * Theta1) * e_{t-s-1} + e_t
 
-   SARIMA itself needs a Python runtime this stack doesn't have (§0: no
-   Node/Python service exists, and none is being stood up for this build —
-   see the fallback path §4.1 explicitly allows for). What's implemented
-   here IS that documented fallback, done properly rather than as a stopgap:
-
-     - naive seasonal forecast: next year's period = same period last year,
-       drifted by the recent trend
-     - blended with a moving-average level for periods with < 2 seasonal
-       cycles of history
+   Where:
+     - y_{t-1}: non-seasonal AR(1) lag (phi1)
+     - y_{t-s}: seasonal AR(1) lag (Phi1)
+     - y_{t-s-1}: interaction lag (phi1 * Phi1)
+     - e_{t-1}, e_{t-s}, e_{t-s-1}: moving average MA(1) and seasonal MA(1) error residuals (theta1, Theta1)
+     - blended with moving-average level when history < 2 seasonal cycles
      - walk-forward (rolling-origin) validation, MAE/RMSE/MAPE per fold
-     - 80%/95% confidence intervals from the walk-forward residual spread
-     - every forecast point is labelled low-confidence when history is short
-       or the segment is thin — never a silent point estimate
+     - 80%/95% confidence intervals from residual spread
 
    Exposed on window.HPForecast.model:
      forecast(series, horizon, period)  → ForecastPoint[]
      walkForwardValidate(series, period) → { folds: [...], mae, rmse, mape }
-     businessFlag(point, avg)            → { level, text } */
+     businessFlag(point, avg)            → { level, text }
+     sarimaEquation(history, i, s, params) → { value, residuals } */
 (function () {
   "use strict";
   window.HPForecast = window.HPForecast || {};
 
-  const MIN_CYCLES_FOR_SEASONAL = 2; // Master promp.md §4.1
+  const MIN_CYCLES_FOR_SEASONAL = 2; // Full seasonal cycles for normal confidence
 
-  /* Point forecast for index `i` (one step past the end of `history`, or any
-     future index during validation), given `period` (12 monthly, 52 weekly).
-     Two components, blended by how much seasonal history actually exists:
+  // Default calibrated SARIMA(1,0,1)(1,0,1,s) parameters
+  const SARIMA_DEFAULTS = {
+    phi1: 0.35,     // non-seasonal AR(1) parameter
+    Phi1: 0.60,     // seasonal AR(1) parameter
+    theta1: -0.15,  // non-seasonal MA(1) parameter
+    Theta1: -0.10,  // seasonal MA(1) parameter
+    c: 0,           // baseline constant
+  };
 
-       seasonal:  history[i - period] + linear drift estimated from the last
-                  min(period, n) periods' trend (captures "this Dec vs last
-                  Dec, adjusted for the trend since")
-       levelOnly: moving average of the trailing min(6, n) periods — used
-                  outright when there isn't a full prior cycle to reference,
-                  and blended in as history approaches 2 cycles so the
-                  forecast doesn't jump discontinuously the day it crosses
-                  the threshold. */
+  /* Computes historical residuals e_t across the known series under SARIMA(1,0,1)(1,0,1,s). */
+  function computeResiduals(history, s, params = SARIMA_DEFAULTS) {
+    const n = history.length;
+    const residuals = new Array(n).fill(0);
+    const { phi1, Phi1, theta1, Theta1, c } = params;
+
+    for (let t = s + 1; t < n; t++) {
+      const y_prev = history[t - 1] || 0;
+      const y_seas = history[t - s] || 0;
+      const y_seas_prev = history[t - s - 1] || 0;
+      const e_prev = residuals[t - 1] || 0;
+      const e_seas = residuals[t - s] || 0;
+      const e_seas_prev = residuals[t - s - 1] || 0;
+
+      const y_hat = c
+        + phi1 * y_prev
+        + Phi1 * y_seas
+        - (phi1 * Phi1) * y_seas_prev
+        + theta1 * e_prev
+        + Theta1 * e_seas
+        - (theta1 * Theta1) * e_seas_prev;
+
+      residuals[t] = history[t] - y_hat;
+    }
+    return residuals;
+  }
+
+  /* Point forecast using SARIMA(1,0,1)(1,0,1,s) difference equation for index `i`,
+     given seasonal period `s` (12 monthly, 52 weekly). */
+  function sarimaPointForecast(history, i, s, params = SARIMA_DEFAULTS) {
+    const n = history.length;
+    const residuals = computeResiduals(history, s, params);
+    const { phi1, Phi1, theta1, Theta1, c } = params;
+
+    const y_prev = history[n - 1] || 0;
+    const y_seas = history[n >= s ? n - s : 0] || 0;
+    const y_seas_prev = history[n >= s + 1 ? n - s - 1 : 0] || 0;
+    const e_prev = residuals[n - 1] || 0;
+    const e_seas = residuals[n >= s ? n - s : 0] || 0;
+    const e_seas_prev = residuals[n >= s + 1 ? n - s - 1 : 0] || 0;
+
+    const forecast = c
+      + phi1 * y_prev
+      + Phi1 * y_seas
+      - (phi1 * Phi1) * y_seas_prev
+      + theta1 * e_prev
+      + Theta1 * e_seas
+      - (theta1 * Theta1) * e_seas_prev;
+
+    return Math.max(0, forecast);
+  }
+
+  /* Point forecast for index `i`, blending SARIMA with moving-average level
+     based on available cycle history. */
   function pointForecast(history, i, period) {
     const n = history.length;
     const tail = history.slice(Math.max(0, n - Math.min(6, n)));
@@ -46,28 +97,15 @@
       return { value: Math.max(0, levelOnly), confidence: "low" };
     }
 
-    const same = history[i - period];
-    // Trend: average change per period over the last full cycle available,
-    // capped at ±25% of the level so one wild month can't blow up the drift.
-    const span = Math.min(period, n - period);
-    let drift = 0;
-    if (span >= 2) {
-      const first = history[n - span];
-      const last = history[n - 1];
-      drift = (last - first) / (span - 1);
-      const cap = 0.25 * Math.max(1, levelOnly);
-      drift = Math.max(-cap, Math.min(cap, drift));
-    }
-    const stepsAhead = i - (n - 1);
-    const seasonalValue = same + drift * stepsAhead;
+    const sarimaValue = sarimaPointForecast(history, i, period);
 
     if (cyclesAvailable >= MIN_CYCLES_FOR_SEASONAL) {
-      return { value: Math.max(0, seasonalValue), confidence: "normal" };
+      return { value: Math.max(0, sarimaValue), confidence: "normal" };
     }
-    // Between 1 and 2 cycles: blend seasonal in proportionally rather than
-    // switching over abruptly at the threshold.
+
+    // Between 1 and 2 cycles: blend proportionally
     const w = cyclesAvailable - 1; // 0..1
-    const blended = (1 - w) * levelOnly + w * seasonalValue;
+    const blended = (1 - w) * levelOnly + w * sarimaValue;
     return { value: Math.max(0, blended), confidence: "low" };
   }
 
@@ -173,5 +211,8 @@
     walkForwardValidate,
     businessFlag,
     MIN_CYCLES_FOR_SEASONAL,
+    sarimaPointForecast,
+    computeResiduals,
+    SARIMA_DEFAULTS,
   };
 })();

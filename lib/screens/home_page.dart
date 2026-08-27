@@ -130,7 +130,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: AppSpacing.sm),
 
             // ── Featured highlight ─────────────────────────────────────────
-            if (settings.featuredOnHome) ...[
+            if (settings.featuredOnHome && (_loading || featured.isNotEmpty)) ...[
               FadeSlideIn(
                 delay: _d(120),
                 child: Padding(

@@ -75,3 +75,8 @@ node_modules/
 # .env.example for the keys the app expects and lib/env.dart for how
 # they're read. Never commit the real .env.
 .env
+
+# Generated from web/index.template.html by tool/inject_maps_key.ps1, with
+# the real Maps key baked in — the template is what's tracked. Regenerate
+# with that script before `flutter run -d chrome` / `flutter build web`.
+/web/index.html
