@@ -127,6 +127,9 @@
               <span class="ic" data-icon="search"></span>
               <input type="search" id="globalSearch" placeholder="Search…" autocomplete="off" />
             </label>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle theme" title="Toggle theme">
+              <span class="ic" id="themeIcon"></span>
+            </button>
             <button class="btn btn-primary" id="primaryAction" hidden></button>
           </div>
         </header>
@@ -156,6 +159,12 @@
     document.getElementById("menuToggle").addEventListener("click", () => app.classList.toggle("nav-open"));
     document.getElementById("scrim").addEventListener("click", () => app.classList.remove("nav-open"));
     if (EXP && EXP.fn) document.getElementById("exportBtn").addEventListener("click", () => EXP.fn());
+
+    const themeBtn = document.getElementById("themeToggle");
+    if (themeBtn) {
+      themeBtn.addEventListener("click", () => HP.toggleTheme());
+    }
+    HP.initTheme();
 
     // Lift the topbar with a shadow once the page is scrolled.
     const topbar = app.querySelector(".topbar");

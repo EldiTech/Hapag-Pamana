@@ -1,3 +1,12 @@
+/* HapagPamana · Early Theme Synchronization (prevents flash across all pages) */
+(function () {
+  try {
+    var stored = localStorage.getItem("hp_admin_theme");
+    var isDark = stored ? stored === "dark" : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+  } catch (e) {}
+})();
+
 /* HapagPamana · Firebase Web config (shared by the login + Content Moderator).
    Values from Firebase console → Project settings → Your apps → Web. */
 window.firebaseConfig = {

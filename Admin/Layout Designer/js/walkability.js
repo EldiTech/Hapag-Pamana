@@ -198,7 +198,7 @@ window.HPWalk = (function () {
         if (ox > 0.02 && oy > 0.02) {
           add("high", "Two pieces overlap",
             `${kindLabel(A.item)} and ${kindLabel(B.item)} are standing in the same place — they overlap by ${round2(Math.min(ox, oy))} m.`,
-            0, round2(Math.min(ox, oy)), A.item, { otherItem: B.item });
+            0, round2(Math.min(ox, oy)), A.item, { otherItem: B.item, pair: [A.item, B.item] });
         }
       }
     }
@@ -238,7 +238,7 @@ window.HPWalk = (function () {
       add(t.gap < CLEAR.guest ? "high" : "medium", "Not enough room between pieces",
         `${kindLabel(t.A.item)} and ${kindLabel(t.B.item)} are ${round2(t.gap)} m apart.` +
         (seated ? " With chairs pulled out on both sides, nobody gets through." : ""),
-        need, round2(t.gap), t.A.item);
+        need, round2(t.gap), t.A.item, { otherItem: t.B.item, pair: [t.A.item, t.B.item] });
     });
 
     /* ── 5 · Against the wall ──────────────────────────────────────────

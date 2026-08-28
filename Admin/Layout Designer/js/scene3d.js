@@ -680,21 +680,30 @@ window.HPScene = (function () {
   // Chairs down the two long sides of a rectangular table, split evenly.
   function sideChairs(g, w, d, n, type, oneSide) {
     if (!n) return;
-    // A head table is sat at from one side only — the party faces the room.
+    const isVert = w < d;
+    const longLen = isVert ? d : w;
+    const shortLen = isVert ? w : d;
     const sides = oneSide ? 1 : 2;
     const perSide = Math.ceil(n / sides);
     let placed = 0;
+
     for (let side = 0; side < sides && placed < n; side++) {
-      const z = (side ? 1 : -1) * (d / 2 + 0.34);
       const count = Math.min(perSide, n - placed);
-      // Same floor as ringChairs: don't let the plan's seat count pack
-      // chairs closer than a body actually is.
-      const span = Math.max(w - 0.5, (count - 1) * 0.6);
+      const span = Math.max(0.2, Math.min(longLen - 0.4, (count - 1) * 0.6));
       for (let i = 0; i < count; i++) {
         const t = count === 1 ? 0.5 : i / (count - 1);
         const c = chair(type);
-        c.position.set((t - 0.5) * span, 0, z);
-        c.rotation.y = side ? Math.PI : 0;
+        if (isVert) {
+          const x = (side ? 1 : -1) * (shortLen / 2 + 0.32);
+          const z = (t - 0.5) * span;
+          c.position.set(x, 0, z);
+          c.rotation.y = side ? -Math.PI / 2 : Math.PI / 2;
+        } else {
+          const x = (t - 0.5) * span;
+          const z = (side ? 1 : -1) * (shortLen / 2 + 0.32);
+          c.position.set(x, 0, z);
+          c.rotation.y = side ? Math.PI : 0;
+        }
         g.add(c);
         placed++;
       }
@@ -755,17 +764,30 @@ window.HPScene = (function () {
 
   function sideSettings(g, w, d, n, top, oneSide) {
     if (!n) return;
+    const isVert = w < d;
+    const longLen = isVert ? d : w;
+    const shortLen = isVert ? w : d;
     const sides = oneSide ? 1 : 2;
     const perSide = Math.ceil(n / sides);
     let placed = 0;
+
     for (let side = 0; side < sides && placed < n; side++) {
-      const z = (side ? 1 : -1) * (d / 2 - 0.2);
       const count = Math.min(perSide, n - placed);
+      const span = Math.max(0.2, Math.min(longLen - 0.4, (count - 1) * 0.6));
       for (let i = 0; i < count; i++) {
         const t = count === 1 ? 0.5 : i / (count - 1);
         const s = placeSetting();
-        s.position.set((t - 0.5) * (w - 0.5), top, z);
-        s.rotation.y = side ? Math.PI : 0;
+        if (isVert) {
+          const x = (side ? 1 : -1) * (shortLen / 2 - 0.2);
+          const z = (t - 0.5) * span;
+          s.position.set(x, top, z);
+          s.rotation.y = side ? -Math.PI / 2 : Math.PI / 2;
+        } else {
+          const x = (t - 0.5) * span;
+          const z = (side ? 1 : -1) * (shortLen / 2 - 0.2);
+          s.position.set(x, top, z);
+          s.rotation.y = side ? Math.PI : 0;
+        }
         g.add(s);
         placed++;
       }
@@ -881,24 +903,31 @@ window.HPScene = (function () {
 
     rect(it) {
       const g = new T.Group();
-      // A head table is laid and sat at from one side only.
-      const oneSide = it.kind === "head";
+      const isVert = it.w < it.h;
+      const longLen = Math.max(it.w, it.h);
+      const shortLen = Math.min(it.w, it.h);
+      const oneSide = it.kind === "head" || (it.label && (it.label.toLowerCase().includes("head") || it.label.toLowerCase().includes("classroom"))) || (it.seats <= 3 && longLen >= 1.5);
+
       const top = mesh(new T.BoxGeometry(it.w, 0.06, it.h), M.cloth);
       top.position.y = 0.75;
       g.add(top);
       const skirt = mesh(new T.BoxGeometry(it.w, 0.75, it.h), M.cloth);
       skirt.position.y = 0.375;
       g.add(skirt);
-      // A runner of blooms down a long table, spaced about every 1.2 m.
-      const n = Math.max(1, Math.round(it.w / 1.2));
-      for (let i = 0; i < n; i++) {
-        const c = centrepiece(0.85);
-        // On a one-sided table the flowers sit on the guests' far edge, so
-        // they dress the side the room sees rather than block the party.
-        c.position.set((n === 1 ? 0 : (i / (n - 1) - 0.5) * (it.w - 0.6)), 0.78,
-                       oneSide ? it.h / 2 - 0.2 : 0);
+
+      // Tasteful centerpiece down the table
+      const nBlooms = Math.max(1, Math.floor(longLen / 1.8));
+      for (let i = 0; i < nBlooms; i++) {
+        const c = centrepiece(0.75);
+        const t = nBlooms === 1 ? 0 : (i / (nBlooms - 1) - 0.5) * (longLen - 0.8);
+        if (isVert) {
+          c.position.set(oneSide ? (shortLen / 2 - 0.18) : 0, 0.78, t);
+        } else {
+          c.position.set(t, 0.78, oneSide ? -(shortLen / 2 - 0.18) : 0);
+        }
         g.add(c);
       }
+
       sideChairs(g, it.w, it.h, it.seats, it.chair, oneSide);
       sideSettings(g, it.w, it.h, it.seats, 0.785, oneSide);
       return g;

@@ -1226,13 +1226,96 @@ html:active-view-transition .nav-item.active::before { animation: none; }
    handful of surfaces that hard-code light values (body gradient, topbar,
    skeleton, inset highlights, the select chevron) are overridden below.
    ═════════════════════════════════════════════════════════════════ */
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  --paper:      #181109;   /* espresso canvas        */
+  --paper-2:    #241A0E;   /* raised card / panel     */
+  --paper-3:    #2B2012;   /* inputs & inner surfaces */
+  --vellum:     #332714;   /* table header / wells    */
+  --ink:        #F1E6C9;   /* warm cream text         */
+  --ink-soft:   #CBB88A;
+  --ink-faint:  #9C8A60;
+
+  --brown:      #3A2710;
+  --brown-deep: #1A1006;
+  --olive:      #9AA15C;
+
+  --gold:       #C9A24C;
+  --gold-deep:  #D9BB78;   /* lifted: gold TEXT must read on dark */
+  --gold-light: #E0C268;
+  --gilt:       #E8C877;
+
+  --ok:         #9FBE63;
+  --warn:       #D6A23C;
+  --danger:     #D9755B;
+
+  --hair:       rgba(220, 182, 97, 0.20);
+  --hair-soft:  rgba(220, 182, 97, 0.10);
+  --gold-hair:  rgba(220, 182, 97, 0.34);
+  --gold-hair2: rgba(220, 182, 97, 0.18);
+
+  --shadow-sm:  0 2px 12px -7px rgba(0, 0, 0, 0.6);
+  --shadow-md:  0 22px 48px -30px rgba(0, 0, 0, 0.7);
+  --shadow-lg:  0 40px 90px -38px rgba(0, 0, 0, 0.75);
+  --inset-top:  inset 0 1px 0 rgba(255, 244, 214, 0.06);
+}
+
+:root[data-theme="dark"] body,
+[data-theme="dark"] body,
+body[data-theme="dark"] {
+  background-color: var(--paper);
+  background-image:
+    var(--grain),
+    radial-gradient(135% 120% at 50% -10%, #2A1E10 0%, var(--paper) 50%, #100A04 100%);
+}
+:root[data-theme="dark"] .topbar,
+[data-theme="dark"] .topbar {
+  background: linear-gradient(180deg, rgba(36, 26, 14, 0.92), rgba(24, 17, 9, 0.86));
+}
+:root[data-theme="dark"] .skeleton,
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, var(--vellum) 25%, #43331B 37%, var(--vellum) 63%);
+}
+:root[data-theme="dark"] .thumb,
+[data-theme="dark"] .thumb {
+  box-shadow: inset 0 0 0 2px rgba(255, 244, 214, 0.08);
+}
+:root[data-theme="dark"] .prod-price-flag,
+[data-theme="dark"] .prod-price-flag {
+  color: #3a2710;
+}
+:root[data-theme="dark"] .uploader-preview,
+[data-theme="dark"] .uploader-preview {
+  box-shadow: inset 0 0 0 2px rgba(255, 244, 214, 0.08);
+}
+:root[data-theme="dark"] select.control,
+[data-theme="dark"] select.control {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23D9BB78' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] .btn-ghost,
+[data-theme="dark"] .btn-ghost {
+  color: var(--ink);
+}
+:root[data-theme="dark"] .btn-ghost:hover,
+[data-theme="dark"] .btn-ghost:hover {
+  color: #FFF7E2;
+}
+:root[data-theme="dark"] .stat-ic,
+:root[data-theme="dark"] .cat-card .cat-ic,
+[data-theme="dark"] .stat-ic,
+[data-theme="dark"] .cat-card .cat-ic {
+  background: radial-gradient(circle at 40% 30%, #5A4424, var(--vellum));
+  color: var(--gilt);
+}
+
+/* System preference fallback (only when no data-theme is forced) */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --paper:      #181109;   /* espresso canvas        */
-    --paper-2:    #241A0E;   /* raised card / panel     */
-    --paper-3:    #2B2012;   /* inputs & inner surfaces */
-    --vellum:     #332714;   /* table header / wells    */
-    --ink:        #F1E6C9;   /* warm cream text         */
+  :root:not([data-theme="light"]) {
+    --paper:      #181109;
+    --paper-2:    #241A0E;
+    --paper-3:    #2B2012;
+    --vellum:     #332714;
+    --ink:        #F1E6C9;
     --ink-soft:   #CBB88A;
     --ink-faint:  #9C8A60;
 
@@ -1241,7 +1324,7 @@ html:active-view-transition .nav-item.active::before { animation: none; }
     --olive:      #9AA15C;
 
     --gold:       #C9A24C;
-    --gold-deep:  #D9BB78;   /* lifted: gold TEXT must read on dark */
+    --gold-deep:  #D9BB78;
     --gold-light: #E0C268;
     --gilt:       #E8C877;
 
@@ -1260,42 +1343,64 @@ html:active-view-transition .nav-item.active::before { animation: none; }
     --inset-top:  inset 0 1px 0 rgba(255, 244, 214, 0.06);
   }
 
-  body {
+  :root:not([data-theme="light"]) body {
     background-color: var(--paper);
     background-image:
       var(--grain),
       radial-gradient(135% 120% at 50% -10%, #2A1E10 0%, var(--paper) 50%, #100A04 100%);
   }
-  .topbar { background: linear-gradient(180deg, rgba(36, 26, 14, 0.92), rgba(24, 17, 9, 0.86)); }
-  .skeleton { background: linear-gradient(90deg, var(--vellum) 25%, #43331B 37%, var(--vellum) 63%); }
-
-  /* Tone down the bright printed-edge highlights so they don't read as white rules. */
-  .thumb { box-shadow: inset 0 0 0 2px rgba(255, 244, 214, 0.08); }
-
-  /* --gold-deep is lifted for dark mode so gold TEXT reads on dark paper —
-     but this badge sets it as the text color ON TOP of a gold fill
-     (--gold-light), so the lift makes the label vanish into its own
-     background. Pin it back to a dark ink here so the pill stays readable. */
-  .prod-price-flag { color: #3a2710; }
-  .uploader-preview { box-shadow: inset 0 0 0 2px rgba(255, 244, 214, 0.08); }
-
-  /* Select chevron: lighter stroke so it shows on the dark input. */
-  select.control {
+  :root:not([data-theme="light"]) .topbar { background: linear-gradient(180deg, rgba(36, 26, 14, 0.92), rgba(24, 17, 9, 0.86)); }
+  :root:not([data-theme="light"]) .skeleton { background: linear-gradient(90deg, var(--vellum) 25%, #43331B 37%, var(--vellum) 63%); }
+  :root:not([data-theme="light"]) .thumb { box-shadow: inset 0 0 0 2px rgba(255, 244, 214, 0.08); }
+  :root:not([data-theme="light"]) .prod-price-flag { color: #3a2710; }
+  :root:not([data-theme="light"]) .uploader-preview { box-shadow: inset 0 0 0 2px rgba(255, 244, 214, 0.08); }
+  :root:not([data-theme="light"]) select.control {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23D9BB78' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
-
-  /* Ghost buttons: the light mode puts dark ink on a light plate; on dark we
-     flip to a light label so it stays readable on the dark plate. */
-  .btn-ghost { color: var(--ink); }
-  .btn-ghost:hover { color: #FFF7E2; }
-
-  /* Icon medallions hard-code a light radial fill — on dark that reads as a
-     glossy white orb. Recast them as a muted bronze coin with a gilt glyph. */
-  .stat-ic,
-  .cat-card .cat-ic {
+  :root:not([data-theme="light"]) .btn-ghost { color: var(--ink); }
+  :root:not([data-theme="light"]) .btn-ghost:hover { color: #FFF7E2; }
+  :root:not([data-theme="light"]) .stat-ic,
+  :root:not([data-theme="light"]) .cat-card .cat-ic {
     background: radial-gradient(circle at 40% 30%, #5A4424, var(--vellum));
     color: var(--gilt);
   }
+}
+
+/* ───────────────────────── Theme Toggle Button ───────────────────────── */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--r);
+  border: 1px solid var(--gold-hair);
+  background: var(--paper-3);
+  color: var(--gold-deep);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s var(--ease);
+}
+.theme-toggle:hover {
+  border-color: var(--gold);
+  background: var(--vellum);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+.theme-toggle:active {
+  transform: translateY(0);
+}
+.theme-toggle .ic {
+  display: inline-flex;
+  transition: transform 0.3s var(--ease);
+}
+.theme-toggle:hover .ic {
+  transform: rotate(18deg);
+}
+.theme-toggle .ic svg {
+  width: 17px;
+  height: 17px;
 }
 
 /* ═══ Print: only the open modal (booking sheet / plan sheet / shopping list).

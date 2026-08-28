@@ -231,8 +231,6 @@ window.HPOptimise = (function () {
     const slot = solids.length - 1;
 
     const list = candidates(it, from, room, others);
-    let currentRing = 0;
-    let bestInRing = null;
 
     for (let k = 0; k < list.length; k++) {
       const c = list[k];
@@ -249,29 +247,16 @@ window.HPOptimise = (function () {
       const mine = N.solidsOf({ room: room, items: [it] }, { includePassable: true });
       solids[slot] = mine.length ? mine[0] : null;
       const live = solids[slot] ? solids : others;
-      const score = cost(work, live, itemId) + (c.dist * 1.5); // distance penalty
+      const rawCost = cost(work, live, itemId);
+      const score = rawCost + (c.dist * 1.5); // distance penalty
 
       // Restore before the next candidate
       it.x = from.x; it.y = from.y; it.rot = from.rot;
 
-      if (c.dist !== currentRing) {
-        if (bestInRing && bestInRing.score < 100) { // clean solution without overlaps or tight spots
-          best = bestInRing;
-          break;
-        }
-        currentRing = c.dist;
-        bestInRing = null;
+      if (score < baseline - 0.1 && (!best || score < best.score)) {
+        best = { score, rawCost, dx: nx - from.x, dy: ny - from.y, rot: c.rot, to: { x: nx, y: ny }, dist: c.dist };
+        if (rawCost === 0 && c.dist <= 1.0) break;
       }
-
-      if (score < baseline - 0.5 && (!bestInRing || score < bestInRing.score)) {
-        bestInRing = { score, dx: nx - from.x, dy: ny - from.y, rot: c.rot, to: { x: nx, y: ny }, dist: c.dist };
-      }
-      if (score < baseline - 0.5 && (!best || score < best.score)) {
-        best = { score, dx: nx - from.x, dy: ny - from.y, rot: c.rot, to: { x: nx, y: ny }, dist: c.dist };
-      }
-    }
-    if (bestInRing && (!best || bestInRing.score < best.score)) {
-      best = bestInRing;
     }
     return best;
   }
@@ -294,24 +279,50 @@ window.HPOptimise = (function () {
     for (let pass = 0; pass < maxPasses && out.length < OPT.maxSuggestions; pass++) {
       let madeProgressInPass = false;
       const findings = (report.findings || []).slice();
-      if (!findings.length || report.score >= 95) break;
+      if (!findings.length || report.score >= 98) break;
 
       for (let fi = 0; fi < findings.length && out.length < OPT.maxSuggestions; fi++) {
         const f = findings[fi];
-        if (!f.item || !f.item.id) continue;
-        if (touched[f.item.id]) continue;
+        const candidateItems = [];
+        if (f.item && f.item.id) candidateItems.push(f.item);
+        if (f.otherItem && f.otherItem.id && !candidateItems.some((c) => c.id === f.otherItem.id)) {
+          candidateItems.push(f.otherItem);
+        }
+        if (f.pair && Array.isArray(f.pair)) {
+          f.pair.forEach((p) => {
+            if (p && p.id && !candidateItems.some((c) => c.id === p.id)) candidateItems.push(p);
+          });
+        }
+        if (!candidateItems.length || (candidateItems[0] && roleOf(candidateItems[0].kind) === "access")) {
+          const pt = f.at || (f.congestion && { x: f.congestion.x, y: f.congestion.y });
+          if (pt) {
+            const nearby = work.items.filter((i) => roleOf(i.kind) !== "access" && !touched[i.id]);
+            nearby.sort((a, b) => {
+              const ca = centreOf(a), cb = centreOf(b);
+              return Math.hypot(ca.x - pt.x, ca.y - pt.y) - Math.hypot(cb.x - pt.x, cb.y - pt.y);
+            });
+            if (nearby.length && Math.hypot(centreOf(nearby[0]).x - pt.x, centreOf(nearby[0]).y - pt.y) < 3.0) {
+              candidateItems.push(nearby[0]);
+            }
+          }
+        }
 
-        const move = relocate(work, f.item.id, baseline, f);
-        if (!move) continue;
+        if (!candidateItems.length) continue;
 
-        const it = layout.items.find((i) => i.id === f.item.id);
-        if (!it) continue;
+        let bestChoice = null;
 
-        const staged = work.items.find((i) => i.id === f.item.id);
-        const revert = staged
-          ? { x: staged.x, y: staged.y, rot: staged.rot, w: staged.w, h: staged.h }
-          : null;
-        if (staged) {
+        for (let ci = 0; ci < candidateItems.length; ci++) {
+          const cand = candidateItems[ci];
+          if (!cand || !cand.id || touched[cand.id]) continue;
+
+          const move = relocate(work, cand.id, baseline, f);
+          if (!move) continue;
+
+          const it = layout.items.find((i) => i.id === cand.id);
+          const staged = work.items.find((i) => i.id === cand.id);
+          if (!it || !staged) continue;
+
+          const revert = { x: staged.x, y: staged.y, rot: staged.rot, w: staged.w, h: staged.h };
           staged.x = move.to.x;
           staged.y = move.to.y;
           if (move.rot) {
@@ -320,21 +331,40 @@ window.HPOptimise = (function () {
               const t = staged.w; staged.w = staged.h; staged.h = t;
             }
           }
+
+          const verdict = W.analyse(work, { pax: o.pax, event: o.event });
+          const improvedScore = verdict.score > liveScore;
+          const reducedWarnings = (verdict.counts.high + verdict.counts.medium) < (report.counts.high + report.counts.medium);
+          const reducedTotalFindings = verdict.findings.length < report.findings.length;
+          const isProgress = verdict.score >= liveScore && (move.score < baseline - 0.5 || reducedTotalFindings);
+
+          // Revert staged copy
+          Object.assign(staged, revert);
+
+          if (improvedScore || reducedWarnings || isProgress) {
+            const gain = (verdict.score - liveScore) * 10 + (baseline - move.score);
+            if (!bestChoice || gain > bestChoice.gain) {
+              bestChoice = { cand, it, staged, move, verdict, gain };
+            }
+          }
         }
 
-        const verdict = W.analyse(work, { pax: o.pax, event: o.event });
-        const improvedScore = verdict.score > liveScore;
-        const reducedWarnings = (verdict.counts.high + verdict.counts.medium) < (report.counts.high + report.counts.medium);
-        const isProgress = verdict.score >= liveScore && move.score < baseline - 5;
-        if (!improvedScore && !reducedWarnings && !isProgress) {
-          if (staged && revert) Object.assign(staged, revert);
-          continue;
+        if (!bestChoice) continue;
+
+        const { cand, it, staged, move, verdict, gain } = bestChoice;
+        staged.x = move.to.x;
+        staged.y = move.to.y;
+        if (move.rot) {
+          staged.rot = ((Number(staged.rot) || 0) + move.rot) % 360;
+          if (Math.abs(move.rot % 180) === 90) {
+            const t = staged.w; staged.w = staged.h; staged.h = t;
+          }
         }
 
-        touched[f.item.id] = 1;
+        touched[cand.id] = 1;
         madeProgressInPass = true;
         liveScore = Math.max(liveScore, verdict.score);
-        baseline = move.score;
+        baseline = move.rawCost !== undefined ? move.rawCost : move.score;
         report = verdict;
 
         const dist = Math.hypot(move.dx, move.dy);
@@ -360,7 +390,7 @@ window.HPOptimise = (function () {
             rot: move.rot ? ((Number(it.rot) || 0) + move.rot) % 360 : Math.round(Number(it.rot) || 0),
           },
           move: { dx: round2(move.dx), dy: round2(move.dy), rot: move.rot || 0, metres: round2(dist) },
-          gain: round2(baseline - move.score),
+          gain: round2(gain),
         });
       }
 

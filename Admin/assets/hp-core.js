@@ -101,6 +101,8 @@ window.HP = (function () {
     skewer: P('<path d="M5 19 19 5"/><path d="m18.2 5.8 2-2M4.8 19.2l-2 2"/><circle cx="8.6" cy="15.4" r="2.1"/><circle cx="12" cy="12" r="2.1"/><circle cx="15.4" cy="8.6" r="2.1"/>'),
     // Sandwich — dome top bread, two filling layers, flat bottom bread.
     sandwich: P('<path d="M3 11C3 7 7 5 12 5s9 2 9 6"/><path d="M3 11h18"/><path d="M3 14.5h18"/><path d="M3 17h18"/><path d="M3 17v2.5c0 .8.7 1.5 1.5 1.5h15c.8 0 1.5-.7 1.5-1.5V17"/>'),
+    sun: P('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>'),
+    moon: P('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'),
   };
   // A dashboard may bring icons of its own: { name: [paths, extraPaths] }.
   Object.keys(CFG.icons || {}).forEach((k) => {
@@ -371,6 +373,71 @@ window.HP = (function () {
     }
   });
 
+  /* ── Theme (Light / Dark mode) ───────────────────────────────────────── */
+  const THEME_KEY = "hp_admin_theme";
+
+  function getSavedTheme() {
+    try {
+      return localStorage.getItem(THEME_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getActiveTheme() {
+    const saved = getSavedTheme();
+    if (saved === "dark" || saved === "light") return saved;
+    return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+  }
+
+  function applyTheme(theme) {
+    const isDark = theme === "dark";
+    document.documentElement.setAttribute("data-theme", theme);
+    if (document.body) document.body.setAttribute("data-theme", theme);
+
+    // Sync all theme buttons on the page
+    document.querySelectorAll(".theme-toggle, #themeToggle, .theme-toggle-login").forEach((btn) => {
+      btn.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
+      btn.setAttribute("title", isDark ? "Switch to light mode" : "Switch to dark mode");
+      const ic = btn.querySelector("#themeIcon") || btn.querySelector(".ic");
+      if (ic) {
+        ic.innerHTML = isDark ? ICONS.sun : ICONS.moon;
+      }
+    });
+
+    window.dispatchEvent(new CustomEvent("hp-theme-change", { detail: { theme } }));
+  }
+
+  function setTheme(theme) {
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch (e) {}
+    applyTheme(theme);
+  }
+
+  function toggleTheme() {
+    const current = getActiveTheme();
+    const next = current === "dark" ? "light" : "dark";
+    setTheme(next);
+    return next;
+  }
+
+  function initTheme() {
+    const active = getActiveTheme();
+    applyTheme(active);
+
+    if (window.matchMedia) {
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+        if (!getSavedTheme()) {
+          applyTheme(e.matches ? "dark" : "light");
+        }
+      });
+    }
+  }
+
+  // Run early theme check
+  initTheme();
+
   /* ── Public API ──────────────────────────────────────────────────────── */
   return {
     ONLINE,
@@ -396,5 +463,10 @@ window.HP = (function () {
     setErr,
     applyUser,
     get user() { return user; },
+    get theme() { return getActiveTheme(); },
+    getTheme: getActiveTheme,
+    setTheme,
+    toggleTheme,
+    initTheme,
   };
 })();

@@ -175,31 +175,9 @@ window.HPPresets = (function () {
     const tables = Math.ceil(pax / ROUND_SEATS);
     const pitch = snapUp(ROUND_D + AISLE);            // centre-to-centre
     const usableW = fx.rightBand - WALL_GAP;
-
-    /* A banquet floor is laid in two blocks with a centre aisle, not as one
-       continuous field of tables. The aisle is the route the couple walk in
-       along, the route service works from, and the route the walkability check
-       measures as the main spine — without it, A* threads the 1.25 m gap
-       between two table columns and reports the room as tight, because it is.
-
-       Rows are centred on each half, so a short last row sits balanced rather
-       than shoved against the aisle. */
-    /* The aisle is cut a quarter-metre over the minimum. Laid at exactly SPINE
-       it survives snapping with nothing to spare, and A* — which measures the
-       corridor a body can actually occupy — reads it as fractionally under and
-       routes around the block instead of down it. Margin here is cheaper than
-       a repair pass afterwards. */
     const centreAisle = snapUp(SPINE + GRID);
     let halfCols = Math.max(1, Math.floor((usableW - centreAisle) / 2 / pitch));
 
-    /* A split floor needs two table columns a side to read as two blocks with
-       an aisle between them. Below that the "aisle" is just the gap beside a
-       single column, and A* walks around the block rather than down it — which
-       is the room being genuinely tight, not the check being fussy.
-
-       The room is widened until the split fits. Floor is the cheap thing to
-       add; the alternative is dropping the aisle, and a banquet hall without a
-       centre aisle is not the arrangement this preset is named for. */
     if (halfCols < 2) {
       const margin = room.w - fx.rightBand;      // buffet band + its queue
       const wantW = snapUp(WALL_GAP * 2 + centreAisle + pitch * 4 + margin);
@@ -207,11 +185,9 @@ window.HPPresets = (function () {
       if (gained > 0) {
         room.w = round2(room.w + gained);
         fx.rightBand = snap(room.w - margin);
-        // The buffet is fixed to the right WALL, so it travels with it.
         items.filter((it) => it.kind === "buffet").forEach((b) => {
           b.x = round2(snap(b.x + gained));
         });
-        // The stage and dance floor are centred on the room, not on a wall.
         items.filter((it) => it.kind === "stage" || it.kind === "dance").forEach((c) => {
           c.x = round2(snap((room.w - c.w) / 2));
         });
@@ -221,24 +197,37 @@ window.HPPresets = (function () {
       }
       halfCols = 2;
     }
-    const perRowSplit = halfCols * 2;
+
     const blockW = halfCols * pitch - AISLE;
-    // Re-read the usable width: widening for the split above moved the wall.
     const usable = fx.rightBand - WALL_GAP;
     const leftX = snap(WALL_GAP + (usable - centreAisle - blockW * 2) / 2);
     const rightX = snap(leftX + blockW + centreAisle);
 
-    let placed = 0;
-    const rowsSplit = Math.ceil(tables / perRowSplit);
-    for (let r = 0; r < rowsSplit && placed < tables; r++) {
+    const leftCount = Math.ceil(tables / 2);
+    const rightCount = Math.floor(tables / 2);
+    const maxRows = Math.ceil(Math.max(leftCount, rightCount) / halfCols);
+
+    let leftPlaced = 0, rightPlaced = 0;
+    let placedTotal = 0;
+    let remainingPax = pax;
+
+    for (let r = 0; r < maxRows; r++) {
       const y = snap(fx.topBand) + r * pitch;
-      for (let c = 0; c < perRowSplit && placed < tables; c++, placed++) {
-        const half = c < halfCols ? leftX : rightX;
-        const col = c < halfCols ? c : c - halfCols;
-        const seats = Math.min(ROUND_SEATS, pax - placed * ROUND_SEATS);
-        items.push(piece("round", "Table " + (placed + 1),
-          half + col * pitch, y, ROUND_D, ROUND_D,
-          Math.max(2, seats)));
+      for (let c = 0; c < halfCols && leftPlaced < leftCount; c++) {
+        leftPlaced++;
+        placedTotal++;
+        const seats = Math.min(ROUND_SEATS, remainingPax);
+        remainingPax = Math.max(0, remainingPax - seats);
+        items.push(piece("round", "Table " + placedTotal,
+          leftX + c * pitch, y, ROUND_D, ROUND_D, Math.max(1, seats)));
+      }
+      for (let c = 0; c < halfCols && rightPlaced < rightCount; c++) {
+        rightPlaced++;
+        placedTotal++;
+        const seats = Math.min(ROUND_SEATS, remainingPax);
+        remainingPax = Math.max(0, remainingPax - seats);
+        items.push(piece("round", "Table " + placedTotal,
+          rightX + c * pitch, y, ROUND_D, ROUND_D, Math.max(1, seats)));
       }
     }
     return grow(room, items, fx.bars);
@@ -252,33 +241,40 @@ window.HPPresets = (function () {
     const fx = fixtures(room, { dance: pax >= 60, bar: pax >= 70 });
     const items = fx.items.concat(corners(room));
 
-    // The head table: as many trestles as fit down the centre, six a length.
-    const runLen = Math.min(room.h - fx.topBand - WALL_GAP, BANQ_W * Math.ceil(pax / 14));
-    const trestles = Math.max(2, Math.round(runLen / BANQ_W));
+    // Head table down center: 2 to 4 trestles based on pax
+    const trestles = pax <= 40 ? 2 : pax <= 70 ? 3 : 4;
     const headSeats = Math.min(pax, trestles * 6);
     const cx = (fx.rightBand + WALL_GAP) / 2;
     const headPitch = snapUp(BANQ_W);
+
+    let remHead = headSeats;
     for (let i = 0; i < trestles; i++) {
-      // Rotated 90°: the run goes DOWN the room, so width is the depth here.
+      const s = Math.min(6, remHead);
+      remHead = Math.max(0, remHead - s);
       items.push(piece("rect", i ? "Head table" : "Head table (head)",
         snap(cx - BANQ_D / 2), snap(fx.topBand) + i * headPitch,
-        BANQ_D, BANQ_W, Math.min(6, headSeats - i * 6) > 0 ? Math.min(6, headSeats - i * 6) : 0));
+        BANQ_D, BANQ_W, s));
     }
 
-    // Everyone else on rounds, split evenly left and right of the run.
+    // Flanking rounds: evenly split between left and right flanks
     let rest = Math.max(0, pax - headSeats);
-    const tables = Math.ceil(rest / ROUND_SEATS);
-    const pitch = snapUp(ROUND_D + AISLE * 0.9);
-    const leftX = snap(WALL_GAP);
-    const rightX = snap(Math.min(fx.rightBand - ROUND_D, cx + BANQ_D / 2 + AISLE));
+    const totalRounds = Math.ceil(rest / ROUND_SEATS);
+    const roundsPerSide = Math.ceil(totalRounds / 2);
+    const flankPitch = snapUp(ROUND_D + AISLE * 0.9);
+    const leftX = snap(WALL_GAP + 0.5);
+    const rightX = snap(Math.min(fx.rightBand - ROUND_D - 0.5, cx + BANQ_D / 2 + AISLE + 0.5));
     const y0 = snap(fx.topBand);
-    for (let i = 0; i < tables; i++) {
-      const side = i % 2 ? rightX : leftX;
-      const row = Math.floor(i / 2);
-      const seats = Math.min(ROUND_SEATS, rest);
-      rest -= seats;
-      items.push(piece("round", "Guest " + (i + 1),
-        side, y0 + row * pitch, ROUND_D, ROUND_D, Math.max(2, seats)));
+
+    let gIndex = 1;
+    for (let r = 0; r < roundsPerSide; r++) {
+      const y = y0 + r * flankPitch;
+      const sLeft = Math.min(ROUND_SEATS, rest);
+      rest = Math.max(0, rest - sLeft);
+      items.push(piece("round", "Guest " + (gIndex++), leftX, y, ROUND_D, ROUND_D, Math.max(1, sLeft)));
+
+      const sRight = Math.min(ROUND_SEATS, rest);
+      rest = Math.max(0, rest - sRight);
+      items.push(piece("round", "Guest " + (gIndex++), rightX, y, ROUND_D, ROUND_D, Math.max(1, sRight)));
     }
     return grow(room, items, fx.bars);
   }
@@ -287,106 +283,93 @@ window.HPPresets = (function () {
      Corporate lunches and seminars: trestles in a U, everyone facing the
      stage, no dance floor and no rounds. */
   function ushape(pax) {
-    const room = roomFor(pax, 1.25);
+    const seatsPerTrestle = 3;            // 3 seats on outside edge of a standard 1.8m trestle
+    const totalTrestles = Math.ceil(pax / seatsPerTrestle);
+
+    const headN = Math.max(2, Math.min(8, Math.round(totalTrestles * 0.28)));
+    const armN = Math.max(2, Math.ceil((totalTrestles - headN) / 2));
+
+    const headW = headN * BANQ_W + (headN - 1) * GRID;
+    const armH = armN * BANQ_W + (armN - 1) * GRID;
+
+    const minRoomW = snapUp(headW + WALL_GAP * 2 + BUFFET_QUEUE + 2.0);
+    const minRoomH = snapUp(armH + STAGE_APPROACH + WALL_GAP * 2 + 3.0);
+
+    const room = {
+      w: Math.max(minRoomW, snapUp(Math.sqrt(pax * 1.5 + 40) * 1.35)),
+      h: Math.max(minRoomH, snapUp(Math.sqrt(pax * 1.5 + 40))),
+    };
+
     const fx = fixtures(room, { dance: false, bar: false });
     const items = fx.items.concat(corners(room));
 
-    const seatsPerTrestle = 3;            // outside edge only, on a U
-    const need = Math.ceil(pax / seatsPerTrestle);
-    const top = fx.topBand;
-    const left = WALL_GAP;
-    const right = Math.min(fx.rightBand, room.w - WALL_GAP) - BANQ_D;
-    const bottom = room.h - WALL_GAP - BANQ_D;
+    const leftX = snap(WALL_GAP + 0.5);
+    const rightX = snap(leftX + headW - BANQ_D);
+    const topY = snap(fx.topBand);
+    const armTopY = snap(topY + BANQ_D + NEIGHBOUR);
 
-    // Split the run between the head of the U and its two arms, proportional
-    // to the space each has, so the U closes rather than trailing off.
-    const armLen = bottom - top;
-    const headLen = right - left;
-    const perM = need / (headLen + armLen * 2);
-
-    /* A trestle is a piece of furniture, not a slice of one. Without this cap
-       a large headcount divides the run into forty 25 cm stubs — which seats
-       the same guests, but draws as a row of blocks and reads to the
-       walkability check as forty pieces crowding each other. Capping the
-       count keeps each segment at least a real trestle long; the seats simply
-       sit closer together along it, which is what happens at a packed table. */
-    const MIN_SEG = 1.2;
-    const headN = Math.max(1, Math.min(Math.round(headLen * perM), Math.floor(headLen / MIN_SEG)));
-    const armCap = Math.max(1, Math.floor(armLen / MIN_SEG));
-    const armN = Math.max(1, Math.min(Math.ceil((need - headN) / 2), armCap));
-
-    /* Seats are shared out across the segments that actually got laid, not
-       fixed at three a trestle: the cap above can leave fewer, longer
-       segments, and a fixed rate would then seat fewer guests than the
-       preset is named for. Longer trestle, more covers along it — which is
-       what a packed head table looks like anyway. */
     let n = 0;
-    let left_ = pax;
-    const segs = headN + armN * 2;
-    const perSeg = Math.max(seatsPerTrestle, Math.ceil(pax / segs));
-    const take = () => { const s = Math.min(perSeg, left_); left_ -= Math.max(0, s); return Math.max(0, s); };
+    let remSeats = pax;
+    const takeSeats = () => {
+      const s = Math.min(seatsPerTrestle, remSeats);
+      remSeats = Math.max(0, remSeats - s);
+      return Math.max(1, s);
+    };
 
-    /* Each trestle is laid on a snapped PITCH and drawn slightly shorter than
-       that pitch. The gap is what makes a run of tables read as a run of
-       tables rather than one long slab — and it is what guarantees no two of
-       them can round into each other on the grid. */
-    const GAP = GRID;
-    const headPitch = Math.max(GRID * 2, snap(headLen / headN));
-    const headSeg = headPitch - GAP;
-    const armPitch = Math.max(GRID * 2, snap(armLen / armN));
-    const armSeg = armPitch - GAP;
-    /* The arms start a full neighbour's clearance below the head row, not a
-       token gap. A U is set out as three runs a guest walks between, so the
-       inside corner has to be a corner you can turn — at 0.4 of an aisle the
-       first arm trestle sat 0.75 m off the head, which is a wall, not a turn. */
-    const armTop = snap(top + BANQ_D + NEIGHBOUR);
-    const topY = snap(top);
-    const leftX = snap(left);
-    const rightX = snap(right);
-
-    for (let i = 0; i < headN; i++) {          // the head, across the top
+    for (let i = 0; i < headN; i++) {
       items.push(piece("rect", "Table " + (++n),
-        leftX + i * headPitch, topY, headSeg, BANQ_D, take()));
+        leftX + i * (BANQ_W + GRID), topY, BANQ_W, BANQ_D, takeSeats()));
     }
-    for (let i = 0; i < armN; i++) {           // left arm, running down
+    for (let i = 0; i < armN; i++) {
       items.push(piece("rect", "Table " + (++n),
-        leftX, armTop + i * armPitch, BANQ_D, armSeg, take()));
+        leftX, armTopY + i * (BANQ_W + GRID), BANQ_D, BANQ_W, takeSeats()));
     }
-    for (let i = 0; i < armN; i++) {           // right arm, running down
+    for (let i = 0; i < armN; i++) {
       items.push(piece("rect", "Table " + (++n),
-        rightX, armTop + i * armPitch, BANQ_D, armSeg, take()));
+        rightX, armTopY + i * (BANQ_W + GRID), BANQ_D, BANQ_W, takeSeats()));
     }
     return grow(room, items, fx.bars);
   }
 
   /* ── Style 4 · Classroom / seminar ────────────────────────────────────
      Training days and seminars: trestles in straight rows facing the stage,
-     seated on the audience side only so every sightline is clear — the
-     layout a U-shape is NOT, past about 40 heads, because a U that big
-     puts half the room side-on to the front. */
+     seated on the audience side only so every sightline is clear. */
   function classroom(pax) {
-    const room = roomFor(pax, 1.3);
+    const room = roomFor(pax, 1.35);
     const fx = fixtures(room, { dance: false, bar: false });
     const items = fx.items.concat(corners(room));
 
-    const seatsPerTrestle = 3;               // one side only, facing front
+    const seatsPerTrestle = 3;
     const tables = Math.ceil(pax / seatsPerTrestle);
-    const pitchX = snapUp(BANQ_W + GRID * 2);     // trestle + a hair of air
-    const usableW = fx.rightBand - WALL_GAP;
-    const perRow = Math.max(2, Math.floor(usableW / pitchX));
-    const rowPitch = snapUp(BANQ_D + NEIGHBOUR);  // row-to-row, room to sit and pass
+    const centreAisle = snapUp(SPINE);
+    const pitchX = snapUp(BANQ_W + 0.4);
+    const rowPitch = snapUp(BANQ_D + NEIGHBOUR);
 
-    const x0 = snap(WALL_GAP + (usableW - perRow * pitchX) / 2);
+    const usableW = fx.rightBand - WALL_GAP;
+    let halfCols = Math.max(1, Math.floor((usableW - centreAisle) / 2 / pitchX));
+    if (halfCols < 1) halfCols = 1;
+
+    const perRow = halfCols * 2;
+    const blockW = halfCols * pitchX - 0.4;
+    const leftX = snap(WALL_GAP + (usableW - centreAisle - blockW * 2) / 2);
+    const rightX = snap(leftX + blockW + centreAisle);
     const y0 = snap(fx.topBand);
 
     let placed = 0;
+    let remSeats = pax;
     const rows = Math.ceil(tables / perRow);
+
     for (let r = 0; r < rows && placed < tables; r++) {
       const y = y0 + r * rowPitch;
-      for (let c = 0; c < perRow && placed < tables; c++, placed++) {
-        const seats = Math.min(seatsPerTrestle, pax - placed * seatsPerTrestle);
-        items.push(piece("rect", "Table " + (placed + 1),
-          x0 + c * pitchX, y, BANQ_W, BANQ_D, Math.max(1, seats)));
+      for (let c = 0; c < perRow && placed < tables; c++) {
+        placed++;
+        const isLeft = c < halfCols;
+        const col = isLeft ? c : c - halfCols;
+        const x = isLeft ? leftX + col * pitchX : rightX + col * pitchX;
+        const seats = Math.min(seatsPerTrestle, remSeats);
+        remSeats = Math.max(0, remSeats - seats);
+        items.push(piece("rect", "Table " + placed,
+          x, y, BANQ_W, BANQ_D, Math.max(1, seats)));
       }
     }
     return grow(room, items, fx.bars);
@@ -394,33 +377,32 @@ window.HPPresets = (function () {
 
   /* ── Style 5 · Cocktail standing ──────────────────────────────────────
      Launches and receptions: poseur tables scattered on a loose grid, a big
-     dance floor, two bars, and seating for only about a third of the guests —
-     which is the point of the arrangement. */
+     dance floor, two bars, and seating for about 40% of the guests. */
   function cocktail(pax) {
-    const room = roomFor(pax, 1.1);
-    const fx = fixtures(room, { bar: true, bars: 2 });
+    const room = roomFor(pax, 1.15);
+    const fx = fixtures(room, { bar: true, bars: pax >= 60 ? 2 : 1 });
     const items = fx.items.concat(corners(room));
 
-    const poseurs = Math.max(4, Math.round(pax / 6));   // ~6 guests a table
-    const seated = Math.round(pax / 3);                 // a third get a stool
-    const pitch = snapUp(COCKTAIL_D + AISLE * 0.85);
+    const poseurs = Math.max(4, Math.ceil(pax / 6));
+    const seatedCount = Math.round(pax * 0.4);
+    const pitch = snapUp(COCKTAIL_D + AISLE * 0.9);
     const halfPitch = snap(pitch / 2);
     const usableW = fx.rightBand - WALL_GAP;
     const perRow = Math.max(2, Math.floor(usableW / pitch));
-    const x0 = snap(WALL_GAP);
+    const x0 = snap(WALL_GAP + 0.5);
     const y0 = snap(fx.topBand);
 
+    let remSeated = seatedCount;
     for (let i = 0; i < poseurs; i++) {
       const r = Math.floor(i / perRow);
       const c = i % perRow;
-      // Every other row is nudged half a pitch, so the floor reads as a
-      // scatter rather than a car park.
       const x = x0 + (r % 2) * halfPitch + c * pitch;
       const y = y0 + r * pitch;
       if (x + COCKTAIL_D > fx.rightBand) continue;
+      const seats = Math.min(3, remSeated);
+      remSeated = Math.max(0, remSeated - seats);
       items.push(piece("round", "Poseur " + (i + 1),
-        x, y, COCKTAIL_D, COCKTAIL_D,
-        Math.max(0, Math.min(3, seated - i * 3))));
+        x, y, COCKTAIL_D, COCKTAIL_D, seats));
     }
     return grow(room, items, fx.bars);
   }

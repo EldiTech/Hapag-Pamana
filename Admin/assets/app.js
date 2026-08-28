@@ -15,8 +15,34 @@
   const forgot = document.getElementById("forgot");
   const capsHint = document.getElementById("capsHint");
   const remember = document.getElementById("remember");
+  const themeToggle = document.getElementById("themeToggle");
   const label = submitBtn.querySelector(".label");
   const originalLabel = label.textContent;
+
+  // ── Theme toggle ────────────────────────────────────────────────────────
+  const THEME_KEY = "hp_admin_theme";
+  function getActiveTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === "dark" || saved === "light") return saved;
+    return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+  }
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    if (document.body) document.body.setAttribute("data-theme", theme);
+    if (themeToggle) {
+      const isDark = theme === "dark";
+      themeToggle.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
+      themeToggle.setAttribute("title", isDark ? "Switch to light mode" : "Switch to dark mode");
+    }
+  }
+  if (themeToggle) {
+    applyTheme(getActiveTheme());
+    themeToggle.addEventListener("click", () => {
+      const next = getActiveTheme() === "dark" ? "light" : "dark";
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+      applyTheme(next);
+    });
+  }
 
   // Fallback when ROLE_HOMES is missing (older firebase-config.js).
   const MOD_PAGE = "Content%20Moderator/html/index.html";
