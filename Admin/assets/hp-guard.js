@@ -72,6 +72,11 @@
     }).catch((e) => {
       if (e && e.code === "permission-denied") return void auth.signOut().finally(bounce);
       console.warn("HapagPamana: couldn't verify access —", e);
+      if (sessionStorage.getItem(VERIFIED_KEY) === "1") {
+        indicator.remove();
+        removeGate();
+        return;
+      }
       showRetryGate(user);
     });
   }
@@ -84,8 +89,12 @@
     gate = document.createElement("div");
     gate.className = "auth-gate";
     gate.innerHTML = '<div class="ag-card"><p>Couldn\'t verify your access — check your connection.</p>' +
-      '<button class="btn btn-primary" type="button">Try again</button></div>';
-    gate.querySelector("button").addEventListener("click", () => { removeGate(); verify(user); });
+      '<div style="display:flex;gap:10px;justify-content:center;margin-top:14px;">' +
+      '<button class="btn btn-primary" type="button" id="hpGateRetry">Try again</button>' +
+      '<button class="btn btn-ghost" type="button" id="hpGateLogin">Sign in again</button>' +
+      '</div></div>';
+    gate.querySelector("#hpGateRetry").addEventListener("click", () => { removeGate(); verify(user); });
+    gate.querySelector("#hpGateLogin").addEventListener("click", bounce);
     (document.body || document.documentElement).appendChild(gate);
   }
 

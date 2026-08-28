@@ -68,8 +68,21 @@
   const redoBtn = document.getElementById("ldRedo");
   const zoomSel = document.getElementById("ldZoom");
   const gridToggleBtn = document.getElementById("ldGridToggle");
+  const zoomVal = document.getElementById("ldZoomVal");
+  const zoomInBtn = document.getElementById("ldZoomIn");
+  const zoomOutBtn = document.getElementById("ldZoomOut");
+  const resetViewBtn = document.getElementById("ldResetView");
+  const panToggleBtn = document.getElementById("ldPanToggle");
+  const canvasWrap = document.querySelector(".ld-canvas-wrap");
+  const resizerEl = document.getElementById("ldResizer");
+  const cornerResizerEl = document.getElementById("ldCornerResizer");
+  const edgeE = document.getElementById("ldEdgeE");
+  const edgeS = document.getElementById("ldEdgeS");
+  const edgeSE = document.getElementById("ldEdgeSE");
 
   let zoomLevel = 1.0;
+  let liveWarnItems = [];
+  let liveWarnTimer = 0;
 
   const db = HP.ONLINE ? firebase.firestore() : null;
   const LIVE_LIMIT = 250;
@@ -88,6 +101,12 @@
      where the rules file failed to load still draws a plan rather than an
      empty drawer. */
   const RULES = window.HPRules;
+  const WALK = window.HPWalk;
+  const OPT = window.HPOptimise;
+  const SIM = window.HPSim;
+  const S = window.HPScene;
+  const PR = window.HPPresets;
+  const TH = window.HPTheme;
   const PIECES = (RULES && RULES.PIECES) || [
     { kind: "round",  icon: "roundTable", label: "Round Table",  shape: "round", w: 1.5, h: 1.5, seats: 8, group: "Tables" },
     { kind: "rect",   icon: "longTable",  label: "Long Table",   shape: "rect",  w: 1.8, h: 0.75, seats: 6, group: "Tables" },
@@ -108,6 +127,26 @@
     const d = pieceOf(kind);
     return !!d.noSeats || d.kind === "door" || d.kind === "spawn";
   };
+
+  function dateKey(o) {
+    const t = Date.parse(String((o && o.functionDate) || ""));
+    return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
+  }
+  function byFunctionDate(a, b) { return dateKey(a) - dateKey(b); }
+  function clientName(o) { return String((o && o.clientName) || "").trim() || "Unnamed client"; }
+  function paxOf(o) {
+    if (!o) return 0;
+    const n = parseInt(String(o.pax || "").replace(/\D/g, ""), 10);
+    return Number.isFinite(n) ? n : 0;
+  }
+  function planOf(o) { return (o && o.layout) || null; }
+  function isDrawn(o) {
+    const l = planOf(o);
+    return !!(l && Array.isArray(l.items) && l.items.length);
+  }
+  function seatsOf(list) {
+    return (Array.isArray(list) ? list : []).reduce((n, i) => n + (noSeats(i.kind) ? 0 : Number(i.seats) || 0), 0);
+  }
 
   const DEFAULT_ROOM = { w: 24, h: 18 };
   const GRID = 0.25;      // pieces land on a quarter-metre, so plans stay tidy
@@ -213,14 +252,11 @@
   /* ── Loading the confirmed orders ─────────────────────────────────────── */
   function boot() {
     handleHash();
+    ensureDraft();
     renderPalette();
     renderProps();
     renderTally();
     fitCanvas();
-    // Nothing to stand up, analyse or walk through until an event is chosen.
-    [tab3d, simBtn, walkBtn, optBtn, scnBtn, evtBtn]
-      .forEach((b) => { if (b) b.disabled = true; });
-
     renderThemeBtn();
 
     if (!HP.ONLINE) {
@@ -273,24 +309,6 @@
     if (unsub) unsub();
     if (dirty) { e.preventDefault(); e.returnValue = ""; }
   });
-
-  // Soonest event first; undated events sink. MAX_SAFE_INTEGER rather than
-  // Infinity — two undated events would compare Infinity - Infinity = NaN.
-  const dateKey = (o) => {
-    const t = Date.parse(String(o.functionDate || ""));
-    return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
-  };
-  const byFunctionDate = (a, b) => dateKey(a) - dateKey(b);
-  const clientName = (o) => String(o.clientName || "").trim() || "Unnamed client";
-  const paxOf = (o) => {
-    const n = parseInt(String(o.pax || "").replace(/\D/g, ""), 10);
-    return Number.isFinite(n) ? n : 0;
-  };
-  const planOf = (o) => (o && o.layout) || null;
-  const isDrawn = (o) => {
-    const l = planOf(o);
-    return !!(l && Array.isArray(l.items) && l.items.length);
-  };
 
   let activeNav = "overview";
 
@@ -441,15 +459,59 @@
     };
     const chip = (key, label) =>
       `<button class="seg-btn ${filter === key ? "active" : ""}" data-chip="${key}">${label} <span class="seg-count">${counts[key]}</span></button>`;
+    
+    const seated = seatsOf(items);
+    const booked = current ? paxOf(current) : 0;
+    const short = booked && seated < booked;
+    const tallyBadge = current
+      ? `<span class="badge ${short ? "badge-warn" : "badge-ok"}" id="ldChipCoversBadge" style="margin-left:4px">${seated}${booked ? ` / ${booked}` : ""}</span>`
+      : `<span class="badge badge-muted" id="ldChipCoversBadge" style="margin-left:4px">${seated}</span>`;
+
     chipsEl.innerHTML = chip("todo", "Awaiting a plan") + chip("drawn", "Drawn") +
       chip("all", "Every event") +
       `<span class="chip-sep"></span>
-       <button class="chip-filter" id="ldChipPick"><span class="ic">${HP.icon("calendar")}</span>Choose event</button>`;
+       <button class="chip-filter" id="ldChipPick"><span class="ic">${HP.icon("calendar")}</span>Choose event</button>
+       <button class="chip-filter" id="ldChipProps"><span class="ic">${HP.icon("pin")}</span>Item properties</button>
+       <button class="chip-filter" id="ldChipCovers"><span class="ic">${HP.icon("plan")}</span>Covers ${tallyBadge}</button>`;
+
     chipsEl.querySelectorAll("[data-chip]").forEach((b) =>
       b.addEventListener("click", () => { filter = b.dataset.chip; renderChips(); openPicker(); }));
     const cp = document.getElementById("ldChipPick");
     if (cp) cp.addEventListener("click", openPicker);
+    const cpp = document.getElementById("ldChipProps");
+    if (cpp) cpp.addEventListener("click", openPropsModal);
+    const cpc = document.getElementById("ldChipCovers");
+    if (cpc) cpc.addEventListener("click", openCoversModal);
     HP.hydrateIcons(chipsEl);
+  }
+
+  function openPropsModal() {
+    const it = items.find((i) => i.id === selectedId);
+    const title = it ? `${HP.esc(it.label || "Piece")} · Properties` : "Item properties";
+    HP.openModal(title, `<div id="ldProps"></div>`, `<button class="btn btn-ghost" data-close>Close</button>`);
+    const modal = document.querySelector(".modal");
+    if (modal) HP.hydrateIcons(modal);
+    renderProps();
+  }
+
+  function openCoversModal() {
+    HP.openModal(
+      "Covers & Seating",
+      `<div id="ldTally"></div>`,
+      `<button class="btn btn-ghost" id="ldTallyRoomBtn">Adjust room size</button><button class="btn btn-primary" data-close>Close</button>`
+    );
+    const modal = document.querySelector(".modal");
+    if (modal) {
+      HP.hydrateIcons(modal);
+      const roomBtnInModal = modal.querySelector("#ldTallyRoomBtn");
+      if (roomBtnInModal) {
+        roomBtnInModal.addEventListener("click", () => {
+          HP.closeModal();
+          setTimeout(() => roomBtn.click(), 50);
+        });
+      }
+    }
+    renderTally();
   }
 
   function visible() {
@@ -638,8 +700,17 @@
       b.addEventListener("click", () => addPiece(b.dataset.kind)));
   }
 
+  function ensureDraft() {
+    if (!current) {
+      current = { id: "draft", clientName: "Draft Plan", kindOfFunction: "General Function", venue: "Grand Ballroom", functionDate: "Draft", pax: 50 };
+      renderHead();
+      [saveBtn, roomBtn, printBtn, resetBtn, tab3d, presetBtn, simBtn, walkBtn, themeBtn, optBtn, scnBtn, evtBtn]
+        .forEach((b) => { if (b) b.disabled = false; });
+    }
+  }
+
   function addPiece(kind) {
-    if (!current) return HP.toast("Choose an event first.", "warn");
+    ensureDraft();
     const def = pieceOf(kind);
     /* Some pieces there can only be one of. A room has one place the
        walkthrough starts from — a second start point would make "where does
@@ -676,15 +747,13 @@
   // a 9 m function room both fill the sheet instead of one overflowing it.
   function fitCanvas() {
     const stage = canvasEl.closest(".ld-stage");
-    const avail = Math.max(320, (stage ? stage.clientWidth : 900) - 60 - 22);
-    // Budget off where the stage actually sits, not a flat share of the
-    // window — the stat strip, chip row and plan header above it all eat
-    // into the same viewport, and their heights change with content (e.g.
-    // an event with a long address wraps the header to two lines).
-    const bottomPad = document.body.classList.contains("ld-fullscreen") ? 16 : 40;
-    const stageTop = stage ? stage.getBoundingClientRect().top : 260;
-    const maxH = Math.max(260, Math.round(window.innerHeight - stageTop - bottomPad));
-    scale = Math.max(8, Math.min(avail / room.w, maxH / room.h)) * zoomLevel;
+    if (!stage) return;
+    const padW = 40 + 22; // stage horizontal padding + left dimension ruler
+    const padH = 40 + 22; // stage vertical padding + top ruler
+    const availW = Math.max(160, stage.clientWidth - padW);
+    const availH = Math.max(160, stage.clientHeight - padH);
+
+    scale = Math.max(6, Math.min(availW / room.w, availH / room.h)) * zoomLevel;
 
     canvasEl.style.width = room.w * scale + "px";
     canvasEl.style.height = room.h * scale + "px";
@@ -694,6 +763,39 @@
     drawItems();
   }
   window.addEventListener("resize", debounce(fitCanvas, 150));
+  if (typeof ResizeObserver !== "undefined" && stage2d) {
+    new ResizeObserver(debounce(() => {
+      fitCanvas();
+      if (mode === "3d" && sceneReady && window.HPScene) window.HPScene.resize();
+    }, 50)).observe(stage2d);
+  }
+
+  let panOffset = { x: 0, y: 0 };
+  let panMode = false;
+  let isPanning = false;
+  let panStart = { x: 0, y: 0, startOffsetX: 0, startOffsetY: 0 };
+
+  function updateZoom(newZoom) {
+    zoomLevel = Math.max(0.25, Math.min(3.0, Math.round(newZoom * 100) / 100));
+    if (zoomVal) zoomVal.textContent = Math.round(zoomLevel * 100) + "%";
+    if (zoomSel) {
+      const opt = Array.from(zoomSel.options).find((o) => parseFloat(o.value) === zoomLevel);
+      if (opt) zoomSel.value = String(zoomLevel);
+    }
+    fitCanvas();
+  }
+
+  function applyPan() {
+    if (canvasWrap) {
+      canvasWrap.style.transform = `translate(${panOffset.x}px, ${panOffset.y}px)`;
+    }
+  }
+
+  function resetPOV() {
+    panOffset = { x: 0, y: 0 };
+    applyPan();
+    updateZoom(1.0);
+  }
 
   if (undoBtn) undoBtn.addEventListener("click", undo);
   if (redoBtn) redoBtn.addEventListener("click", redo);
@@ -701,10 +803,261 @@
     canvasEl.classList.toggle("no-grid");
     gridToggleBtn.classList.toggle("active");
   });
-  if (zoomSel) zoomSel.addEventListener("change", () => {
-    zoomLevel = parseFloat(zoomSel.value) || 1.0;
-    fitCanvas();
+  if (zoomInBtn) zoomInBtn.addEventListener("click", () => updateZoom(zoomLevel + 0.15));
+  if (zoomOutBtn) zoomOutBtn.addEventListener("click", () => updateZoom(zoomLevel - 0.15));
+  if (zoomSel) zoomSel.addEventListener("change", () => updateZoom(parseFloat(zoomSel.value) || 1.0));
+  if (resetViewBtn) resetViewBtn.addEventListener("click", resetPOV);
+
+  if (panToggleBtn) {
+    panToggleBtn.addEventListener("click", () => {
+      panMode = !panMode;
+      panToggleBtn.classList.toggle("active", panMode);
+      if (stage2d) stage2d.classList.toggle("is-panning-mode", panMode);
+    });
+  }
+
+  // Panning handlers on 2D stage
+  if (stage2d) {
+    stage2d.addEventListener("pointerdown", (e) => {
+      if (e.target.closest(".ld-item, .ld-canvas-edge, .ld-canvas-corner, button, select, input")) return;
+      const isMiddle = e.button === 1;
+      const isLeftWithPan = e.button === 0 && (panMode || e.altKey);
+      if (!isMiddle && !isLeftWithPan) return;
+
+      isPanning = true;
+      panStart = { x: e.clientX, y: e.clientY, startOffsetX: panOffset.x, startOffsetY: panOffset.y };
+      stage2d.classList.add("is-panning-active");
+      e.preventDefault();
+    });
+
+    window.addEventListener("pointermove", (e) => {
+      if (!isPanning) return;
+      panOffset.x = panStart.startOffsetX + (e.clientX - panStart.x);
+      panOffset.y = panStart.startOffsetY + (e.clientY - panStart.y);
+      applyPan();
+    });
+
+    window.addEventListener("pointerup", () => {
+      if (isPanning) {
+        isPanning = false;
+        stage2d.classList.remove("is-panning-active");
+      }
+    });
+
+    stage2d.addEventListener("wheel", (e) => {
+      if (e.ctrlKey || e.metaKey || panMode) {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.1 : -0.1;
+        updateZoom(zoomLevel + delta);
+      }
+    }, { passive: false });
+  }
+
+  // Global drag safety cleanup
+  window.addEventListener("pointerup", () => {
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    if (resizerEl) resizerEl.classList.remove("is-dragging");
+    if (edgeE) edgeE.classList.remove("is-dragging");
+    if (edgeS) edgeS.classList.remove("is-dragging");
+    if (edgeSE) edgeSE.classList.remove("is-dragging");
   });
+
+  // ── Splitter Resizer (Canvas vs Sidebar) ──────────────────────────────────
+  const savedRailWidth = localStorage.getItem("hp_ld_rail_width");
+  let railWidth = savedRailWidth ? parseInt(savedRailWidth, 10) : 322;
+
+  function applyRailWidth(w) {
+    const work = document.querySelector(".ld-work");
+    railWidth = Math.max(160, Math.min(650, Math.round(w)));
+    if (work) {
+      work.style.setProperty("grid-template-columns", `minmax(0, 1fr) 14px ${railWidth}px`, "important");
+    }
+    localStorage.setItem("hp_ld_rail_width", String(railWidth));
+    fitCanvas();
+  }
+
+  if (savedRailWidth) applyRailWidth(railWidth);
+
+  if (resizerEl) {
+    resizerEl.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startW = railWidth;
+      resizerEl.classList.add("is-dragging");
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+
+      const onMove = (ev) => {
+        ev.preventDefault();
+        const delta = startX - ev.clientX;
+        applyRailWidth(startW + delta);
+      };
+
+      const onUp = () => {
+        resizerEl.classList.remove("is-dragging");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
+
+      window.addEventListener("pointermove", onMove, { passive: false });
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    });
+  }
+
+  // ── Canvas Side & Corner Dimension Adjusters (Room W & H) ─────────────────
+  function clampRoomDim(v) {
+    return clamp(Math.round(v * 2) / 2, 2, MAX_ROOM);
+  }
+
+  // Right Edge: Room Width Adjuster
+  if (edgeE) {
+    edgeE.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      pushUndo();
+      const startX = e.clientX;
+      const startW = room.w;
+      const curScale = scale || 20;
+      edgeE.classList.add("is-dragging");
+      document.body.style.cursor = "ew-resize";
+      document.body.style.userSelect = "none";
+
+      const onMove = (ev) => {
+        ev.preventDefault();
+        const deltaM = (ev.clientX - startX) / curScale;
+        const newW = clampRoomDim(startW + deltaM);
+        if (newW !== room.w) {
+          room.w = newW;
+          dimXEl.textContent = fmtM(room.w);
+          canvasEl.style.width = room.w * curScale + "px";
+          canvasEl.style.backgroundSize = `${curScale}px ${curScale}px, ${curScale}px ${curScale}px`;
+          setDirty(true);
+          drawItems();
+          if (window.HP_3D && window.HP_3D.setRoom) window.HP_3D.setRoom(room);
+        }
+      };
+
+      const onUp = () => {
+        edgeE.classList.remove("is-dragging");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        fitCanvas();
+        renderProps();
+        renderTally();
+      };
+
+      window.addEventListener("pointermove", onMove, { passive: false });
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    });
+  }
+
+  // Bottom Edge: Room Depth Adjuster
+  if (edgeS) {
+    edgeS.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      pushUndo();
+      const startY = e.clientY;
+      const startH = room.h;
+      const curScale = scale || 20;
+      edgeS.classList.add("is-dragging");
+      document.body.style.cursor = "ns-resize";
+      document.body.style.userSelect = "none";
+
+      const onMove = (ev) => {
+        ev.preventDefault();
+        const deltaM = (ev.clientY - startY) / curScale;
+        const newH = clampRoomDim(startH + deltaM);
+        if (newH !== room.h) {
+          room.h = newH;
+          dimYEl.textContent = fmtM(room.h);
+          canvasEl.style.height = room.h * curScale + "px";
+          canvasEl.style.backgroundSize = `${curScale}px ${curScale}px, ${curScale}px ${curScale}px`;
+          setDirty(true);
+          drawItems();
+          if (window.HP_3D && window.HP_3D.setRoom) window.HP_3D.setRoom(room);
+        }
+      };
+
+      const onUp = () => {
+        edgeS.classList.remove("is-dragging");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        fitCanvas();
+        renderProps();
+        renderTally();
+      };
+
+      window.addEventListener("pointermove", onMove, { passive: false });
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    });
+  }
+
+  // Bottom-Right Corner: Room Width & Depth Adjuster
+  if (edgeSE) {
+    edgeSE.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      pushUndo();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startW = room.w;
+      const startH = room.h;
+      const curScale = scale || 20;
+      edgeSE.classList.add("is-dragging");
+      document.body.style.cursor = "nwse-resize";
+      document.body.style.userSelect = "none";
+
+      const onMove = (ev) => {
+        ev.preventDefault();
+        const deltaW = (ev.clientX - startX) / curScale;
+        const deltaH = (ev.clientY - startY) / curScale;
+        const newW = clampRoomDim(startW + deltaW);
+        const newH = clampRoomDim(startH + deltaH);
+        if (newW !== room.w || newH !== room.h) {
+          room.w = newW;
+          room.h = newH;
+          dimXEl.textContent = fmtM(room.w);
+          dimYEl.textContent = fmtM(room.h);
+          canvasEl.style.width = room.w * curScale + "px";
+          canvasEl.style.height = room.h * curScale + "px";
+          canvasEl.style.backgroundSize = `${curScale}px ${curScale}px, ${curScale}px ${curScale}px`;
+          setDirty(true);
+          drawItems();
+          if (window.HP_3D && window.HP_3D.setRoom) window.HP_3D.setRoom(room);
+        }
+      };
+
+      const onUp = () => {
+        edgeSE.classList.remove("is-dragging");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        fitCanvas();
+        renderProps();
+        renderTally();
+      };
+
+      window.addEventListener("pointermove", onMove, { passive: false });
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    });
+  }
 
   function drawItems() {
     // Keep the empty-state note, replace everything else.
@@ -744,6 +1097,7 @@
       </span>
       <span class="ld-grip ld-grip--rot" data-grip="rot" title="Rotate"></span>
       <span class="ld-grip ld-grip--size" data-grip="size" title="Resize"></span>`;
+    el.addEventListener("dblclick", () => openPropsModal());
     wireItem(el, it);
     return el;
   }
@@ -860,14 +1214,16 @@
 
   /* ── Properties of the selected piece ─────────────────────────────────── */
   function renderProps() {
+    const propsTarget = document.getElementById("ldProps");
+    if (!propsTarget) return;
     const it = items.find((i) => i.id === selectedId);
     if (!it) {
-      propsEl.innerHTML = `
+      propsTarget.innerHTML = `
         <div class="ld-prop-empty">
           <span class="ic">${HP.icon("pin")}</span>
-          <p>${current ? "Select a piece on the plan" : "No event chosen"}</p>
+          <p>${current ? "Select a piece on the plan to inspect or adjust its properties." : "No event chosen"}</p>
         </div>`;
-      HP.hydrateIcons(propsEl);
+      HP.hydrateIcons(propsTarget);
       return;
     }
     const def = pieceOf(it.kind);
@@ -882,7 +1238,7 @@
     const able = RULES && def.seatRule ? RULES.capacityOf(it) : 0;
     // Chair types are offered only where chairs are actually drawn.
     const chairable = !!(RULES && def.seatRule);
-    propsEl.innerHTML = `
+    propsTarget.innerHTML = `
       <div class="ld-props ld-prop">
         <div class="ld-prop-id">
           <span class="ld-prop-swatch"><span class="ic">${HP.icon(def.icon)}</span></span>
@@ -956,7 +1312,7 @@
           <button class="btn btn-danger btn-sm" id="ldDel"><span class="ic">${HP.icon("trash")}</span>Delete item</button>
         </div>
       </div>`;
-    HP.hydrateIcons(propsEl);
+    HP.hydrateIcons(propsTarget);
     // `round && seatable` — a round piece only locks width to height when it
     // is a table. A start point is round but is sized freely, and its depth
     // box must therefore be wired like any rectangle's.
@@ -1057,7 +1413,14 @@
       setDirty(true);
     });
 
-    document.getElementById("ldDel").addEventListener("click", () => removeItem(it.id));
+    const delBtn = document.getElementById("ldDel");
+    if (delBtn) {
+      delBtn.addEventListener("click", () => {
+        removeItem(it.id);
+        const modal = document.querySelector(".modal");
+        if (modal) HP.closeModal();
+      });
+    }
     document.getElementById("ldDup").addEventListener("click", () => {
       pushUndo();
       const copy = Object.assign({}, it, {
@@ -1088,9 +1451,6 @@
   }
 
   /* ── The cover count ──────────────────────────────────────────────────── */
-  const seatsOf = (list) => (Array.isArray(list) ? list : [])
-    .reduce((n, i) => n + (Number(i.seats) || 0), 0);
-
   function renderTally() {
     const seated = seatsOf(items);
     const booked = current ? paxOf(current) : 0;
@@ -1101,7 +1461,16 @@
     const pct = booked ? Math.min(100, Math.round((seated / booked) * 100)) : (seated ? 100 : 0);
     const short = booked && seated < booked;
 
-    tallyEl.innerHTML = `
+    const chipBadge = document.getElementById("ldChipCoversBadge");
+    if (chipBadge) {
+      chipBadge.className = `badge ${current ? (short ? "badge-warn" : "badge-ok") : "badge-muted"}`;
+      chipBadge.textContent = current ? `${seated}${booked ? ` / ${booked}` : ""}` : `${seated}`;
+    }
+
+    const tallyTarget = document.getElementById("ldTally");
+    if (!tallyTarget) return;
+
+    tallyTarget.innerHTML = `
       <div class="ld-tally">
         <div class="ld-tally-row"><span>Seated by this plan</span><strong>${seated}</strong></div>
         <div class="ld-tally-bar ${short ? "is-short" : ""}"><span style="width:${pct}%"></span></div>
@@ -1118,7 +1487,7 @@
 
   /* ── Room size ────────────────────────────────────────────────────────── */
   roomBtn.addEventListener("click", () => {
-    if (!current) return;
+    ensureDraft();
     HP.openModal("Room size", `
       <p class="modal-text">The venue's usable floor, in metres. Everything on the
         plan is drawn to this — pieces already outside the new bounds are pulled back in.</p>
@@ -1158,7 +1527,7 @@
   // starts over from an empty sheet. Undoable like any other edit, and — like
   // every edit here — only reaches the booking once Save is pressed.
   resetBtn.addEventListener("click", () => {
-    if (!current) return;
+    ensureDraft();
     if (!items.length) return;
     if (!window.confirm("Clear every piece off the floor? This can be undone with Ctrl+Z until you save.")) return;
     pushUndo();
@@ -1171,11 +1540,12 @@
   });
 
   /* ── Fullscreen ───────────────────────────────────────────────────────────
-     Hands .ld-work to the Fullscreen API; ld-fullscreen (CSS) hides the
-     sidebar/topbar/stat strip around it, same layout either way. */
-  const workEl = document.querySelector(".ld-work");
+     Hands document.documentElement to the Fullscreen API; ld-fullscreen (CSS)
+     hides the sidebar and topbar while keeping toolbar, modals, and canvas
+     fully functional. */
   const setFsIcon = (on) => {
-    fsBtn.querySelector(".ic").dataset.icon = on ? "contract" : "expand";
+    const ic = fsBtn.querySelector(".ic");
+    if (ic) ic.dataset.icon = on ? "contract" : "expand";
     HP.hydrateIcons(fsBtn);
     fsBtn.title = on ? "Exit fullscreen" : "Fullscreen";
     fsBtn.setAttribute("aria-label", fsBtn.title);
@@ -1183,22 +1553,29 @@
   const applyFsState = (on) => {
     document.body.classList.toggle("ld-fullscreen", on);
     setFsIcon(on);
-    fitCanvas();
-    if (mode === "3d" && sceneReady && window.HPScene) window.HPScene.resize();
+    const triggerResize = () => {
+      fitCanvas();
+      if (mode === "3d" && sceneReady && window.HPScene) window.HPScene.resize();
+    };
+    requestAnimationFrame(triggerResize);
+    setTimeout(triggerResize, 60);
+    setTimeout(triggerResize, 200);
   };
   document.addEventListener("fullscreenchange", () => {
-    applyFsState(document.fullscreenElement === workEl);
+    applyFsState(!!document.fullscreenElement);
   });
   fsBtn.addEventListener("click", () => {
-    // Once the CSS-only fallback is active there is no fullscreenElement to
-    // exit, so the class itself is the source of truth for which way to go.
-    if (document.body.classList.contains("ld-fullscreen")) {
-      if (document.fullscreenElement) document.exitFullscreen();
-      else applyFsState(false);
+    if (document.fullscreenElement || document.body.classList.contains("ld-fullscreen")) {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => applyFsState(false));
+      } else {
+        applyFsState(false);
+      }
       return;
     }
-    if (workEl.requestFullscreen) {
-      workEl.requestFullscreen().catch(() => applyFsState(true));
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().then(() => applyFsState(true)).catch(() => applyFsState(true));
     } else {
       applyFsState(true);
     }
@@ -1404,11 +1781,8 @@
      editor untouched — the simulator holds no editor state to restore, which
      is the reason it can't lose any.
      ═══════════════════════════════════════════════════════════════════════ */
-  const SIM = window.HPSim;
-  const WALK = window.HPWalk;
-
   function startSimulation() {
-    if (!current) return HP.toast("Choose an event first.", "warn");
+    ensureDraft();
     if (!SIM || !SIM.available()) {
       return HP.toast("The 3D viewer couldn't load — check the connection.", "danger");
     }
@@ -1488,7 +1862,6 @@
      decides. The optimiser goes one step further and proposes the move — but
      only proposes it, and only applies one when [APPLY] is pressed.
      ═══════════════════════════════════════════════════════════════════════ */
-  const OPT = window.HPOptimise;
 
   /* Run the analysis against the live plan. Cheap enough to re-run whenever
      the plan changes while ANALYSE is on — a report describing the plan as
@@ -1566,9 +1939,11 @@
     const worst = Object.create(null);
     const rank = { high: 3, medium: 2, low: 1 };
     analysis.findings.forEach((f) => {
-      if (!f.item || !f.item.id) return;
-      const cur = worst[f.item.id];
-      if (!cur || rank[f.severity] > rank[cur]) worst[f.item.id] = f.severity;
+      [f.item, f.otherItem].forEach((it) => {
+        if (!it || !it.id) return;
+        const cur = worst[it.id];
+        if (!cur || rank[f.severity] > rank[cur]) worst[it.id] = f.severity;
+      });
     });
     Object.keys(worst).forEach((id) => {
       const el = canvasEl.querySelector(`.ld-item[data-id="${CSS.escape(id)}"]`);
@@ -1606,10 +1981,6 @@
      Skipped while ANALYSE is already on: the full report already marks
      these same pieces (among others), and running both would just repaint
      the same boxes twice with two different code paths deciding severity. */
-  let liveWarnItems = [];   // ids of pieces currently marked, so a toast only
-                             // fires when the SET of problems actually changed
-  let liveWarnTimer = 0;
-
   function scheduleLiveWarnings() {
     if (analyzeOn) return;             // the full report already covers this
     clearTimeout(liveWarnTimer);
@@ -1634,15 +2005,18 @@
        finding (the other is mentioned in the sentence, not on the object), so
        reading it back here would leave half of every collision unmarked. */
     let overlapMsg = null;
+    let overlapCount = 0;
     if (window.HPNav) {
-      const solids = window.HPNav.solidsOf(liveLayout());
-      for (let a = 0; a < solids.length && !overlapMsg; a++) {
+      const solids = window.HPNav.solidsOf(liveLayout(), { includePassable: true });
+      for (let a = 0; a < solids.length; a++) {
         for (let b = a + 1; b < solids.length; b++) {
           const A = solids[a], B = solids[b];
           const ox = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0);
           const oy = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0);
           if (ox > 0.02 && oy > 0.02) {
-            mark(A.item && A.item.id); mark(B.item && B.item.id);
+            mark(A.item && A.item.id);
+            mark(B.item && B.item.id);
+            overlapCount++;
             if (!overlapMsg) {
               overlapMsg = `${A.item.label || "A piece"} and ${B.item.label || "another piece"} ` +
                 `are standing in the same place — they overlap by ${Math.round(Math.min(ox, oy) * 100) / 100} m.`;
@@ -1652,25 +2026,45 @@
       }
     }
 
+    if (overlapCount > 1) {
+      overlapMsg = `${overlapCount} pairs of pieces are overlapping on the floor.`;
+    }
+
     const r = WALK.analyse(liveLayout(), { pax: paxOf(current), event: eventType, heat: false });
-    const blocked = r.findings.find((f) => f.title === "Tables can't be walked to");
-    if (blocked && blocked.item && blocked.item.id) mark(blocked.item.id);
+    const blocked = r.findings.filter((f) => f.title === "Tables can't be walked to");
+    blocked.forEach((f) => {
+      if (f.item && f.item.id) mark(f.item.id);
+    });
 
     // Only the pieces newly in trouble get a toast — an edit that leaves an
     // already-flagged table exactly as blocked as it was a moment ago isn't
     // news, and re-announcing it on every nudge would just be noise.
     const isNew = ids.some((id) => liveWarnItems.indexOf(id) < 0);
     liveWarnItems = ids;
-    if (isNew) HP.toast(overlapMsg || (blocked && blocked.detail), "danger");
+    if (isNew) HP.toast(overlapMsg || (blocked.length && blocked[0].detail), "danger");
   }
 
   /* The report itself, as a panel. Clicking a finding selects the piece it
      names and scrolls the sheet to it — §16's "click an issue and focus on
      the affected object", done the way a 2D sheet can. */
   function openWalkability() {
-    if (!current) return HP.toast("Choose an event first.", "warn");
+    ensureDraft();
     if (!WALK) return HP.toast("The walkability check couldn't load.", "danger");
-    if (!items.length) return HP.toast("Nothing to check — the floor is empty.", "warn");
+    if (!items.length) {
+      HP.openModal("Layout analysis", `
+        <div class="ld-walk-clean">
+          <span class="ic">${HP.icon("plan")}</span>
+          <p><strong>The drafting floor is empty.</strong><br>
+             Add tables and fixtures from the right palette, or apply a preset to analyse routes and clearances.</p>
+        </div>`,
+        `<button class="btn btn-ghost" data-close>Close</button>
+         <button class="btn btn-primary" id="ldWalkPresets">Start from a preset</button>`);
+      const modal = document.querySelector(".modal");
+      HP.hydrateIcons(modal);
+      const pb = document.getElementById("ldWalkPresets");
+      if (pb) pb.addEventListener("click", () => { HP.closeModal(); openPresets(); });
+      return;
+    }
 
     const r = runAnalysis();
     if (!r) return;
@@ -1782,8 +2176,23 @@
      The header shows what the plan would score if every suggestion were
      taken, so [Apply all] is a decision with a stated outcome. */
   function openOptimiser() {
+    ensureDraft();
     if (!OPT) return HP.toast("The optimiser couldn't load.", "danger");
-    if (!items.length) return HP.toast("Nothing to optimise — the floor is empty.", "warn");
+    if (!items.length) {
+      HP.openModal("Optimise layout", `
+        <div class="ld-walk-clean">
+          <span class="ic">${HP.icon("plan")}</span>
+          <p><strong>The drafting floor is empty.</strong><br>
+             Add pieces or choose a layout preset to run automated spatial optimisation.</p>
+        </div>`,
+        `<button class="btn btn-ghost" data-close>Close</button>
+         <button class="btn btn-primary" id="ldOptPresets">Start from a preset</button>`);
+      const modal = document.querySelector(".modal");
+      HP.hydrateIcons(modal);
+      const pb = document.getElementById("ldOptPresets");
+      if (pb) pb.addEventListener("click", () => { HP.closeModal(); openPresets(); });
+      return;
+    }
 
     const before = analysis || runAnalysis(false);
     if (!before) return;
@@ -1905,7 +2314,7 @@
 
      Loading one replaces the live plan, and says so before it does. */
   function openScenarios() {
-    if (!current) return HP.toast("Choose an event first.", "warn");
+    ensureDraft();
 
     const rows = scenarios.map((s) => {
       const m = s.metrics || {};
@@ -2123,25 +2532,13 @@
 
   /* ═══════════════════════════════════════════════════════════════════════
      The preset book (js/presets.js).
-
-     The house's standard settings for the headcounts actually booked, so a
-     designer starts a 50-pax reception from a floor that already works rather
-     than from nothing. A preset LANDS AS AN ORDINARY PLAN: it fills `room`
-     and `items` exactly as a loaded one would, and is editable, saveable and
-     3D-viewable from that moment. Nothing about it stays special — which is
-     the property that stops the presets becoming a second kind of layout the
-     rest of the desk has to know about.
-
-     Applying one replaces the floor, so it asks first when there is work to
-     lose.
      ═══════════════════════════════════════════════════════════════════════ */
-  const PR = window.HPPresets;
-
   /* A preset's thumbnail is drawn from its own items — the same rectangles and
      circles the 2D sheet draws, at gallery size. Rendering the real plan (and
      not a stock illustration) is what makes the gallery honest: what is
      pressed is what lands. */
   function presetSVG(plan) {
+    if (!plan || !plan.room) return "";
     const W = 200, H = 150, pad = 6;
     const k = Math.min((W - pad * 2) / plan.room.w, (H - pad * 2) / plan.room.h);
     const ox = (W - plan.room.w * k) / 2;
@@ -2152,31 +2549,28 @@
       dance: "rgba(123,89,31,.3)", bar: "rgba(140,51,32,.3)",
       decor: "rgba(92,122,51,.4)", other: "var(--vellum)",
     };
-    const shapes = plan.items.map((i) => {
+    const shapes = (plan.items || []).map((i) => {
       const x = ox + i.x * k, y = oy + i.y * k, w = i.w * k, h = i.h * k;
       const f = fill[i.kind] || "var(--paper-3)";
       return i.kind === "round" || i.kind === "decor"
         ? `<ellipse cx="${(x + w / 2).toFixed(1)}" cy="${(y + h / 2).toFixed(1)}" rx="${(w / 2).toFixed(1)}" ry="${(h / 2).toFixed(1)}" fill="${f}" stroke="var(--gold-deep)" stroke-width=".7"/>`
         : `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${f}" stroke="var(--gold-deep)" stroke-width=".7"/>`;
     }).join("");
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-hidden="true">
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-hidden="true" style="width:100%;height:100%;display:block">
       <rect x="${ox.toFixed(1)}" y="${oy.toFixed(1)}" width="${(plan.room.w * k).toFixed(1)}" height="${(plan.room.h * k).toFixed(1)}"
         fill="var(--vellum)" stroke="var(--gold-hair)" stroke-width="1"/>${shapes}</svg>`;
   }
 
-  // The headcount the gallery opens on: whatever the booking actually says,
-  // rounded to the nearest standard setting, so the first thing a designer
-  // sees is the one they were going to pick.
   function nearestCount(pax) {
     if (!pax) return 50;
-    return PR.COUNTS.reduce((best, c) =>
-      Math.abs(c - pax) < Math.abs(best - pax) ? c : best, PR.COUNTS[0]);
+    return (PR && PR.COUNTS ? PR.COUNTS : [30, 40, 50, 60, 70, 80, 90, 100]).reduce((best, c) =>
+      Math.abs(c - pax) < Math.abs(best - pax) ? c : best, 50);
   }
 
   let presetCount = null;
 
   function openPresets() {
-    if (!current) return HP.toast("Choose an event first.", "warn");
+    ensureDraft();
     if (!PR) return HP.toast("The preset book couldn't load.", "danger");
     presetCount = presetCount || nearestCount(paxOf(current));
 
@@ -2196,14 +2590,14 @@
   function renderPresetCounts() {
     const el = document.getElementById("ldCounts");
     if (!el) return;
-    const booked = paxOf(current);
-    el.innerHTML = PR.COUNTS.map((c) => `
+    const booked = current ? paxOf(current) : 0;
+    el.innerHTML = (PR && PR.COUNTS ? PR.COUNTS : [30, 40, 50, 60, 70, 80, 90, 100]).map((c) => `
       <button class="ld-count ${c === presetCount ? "active" : ""}" data-count="${c}">
         ${c}<small>${c === nearestCount(booked) && booked ? "booked" : "pax"}</small>
       </button>`).join("");
     el.querySelectorAll("[data-count]").forEach((b) =>
       b.addEventListener("click", () => {
-        presetCount = Number(b.dataset.count);
+        presetCount = parseInt(b.dataset.count, 10);
         renderPresetCounts();
         renderPresetGrid();
       }));
@@ -2211,7 +2605,7 @@
 
   function renderPresetGrid() {
     const el = document.getElementById("ldPresetGrid");
-    if (!el) return;
+    if (!el || !PR) return;
     const cards = PR.list(presetCount);
     el.innerHTML = cards.map((c) => `
       <button class="ld-preset" data-style="${HP.esc(c.key)}">
@@ -2268,7 +2662,6 @@
      tables and three hundred chairs mid-drag would stutter the very gesture
      it was meant to illustrate.
      ═══════════════════════════════════════════════════════════════════════ */
-  const S = window.HPScene;
 
   // The live plan, in the shape scene3d.js reads.
   const liveLayout = () => ({

@@ -189,15 +189,16 @@ window.HPWalk = (function () {
     }
 
     /* ── 3 · Overlaps ──────────────────────────────────────────────────── */
-    for (let a = 0; a < solids.length; a++) {
-      for (let b = a + 1; b < solids.length; b++) {
-        const A = solids[a], B = solids[b];
+    const allSolids = N.solidsOf(layout, { includePassable: true });
+    for (let a = 0; a < allSolids.length; a++) {
+      for (let b = a + 1; b < allSolids.length; b++) {
+        const A = allSolids[a], B = allSolids[b];
         const ox = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0);
         const oy = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0);
         if (ox > 0.02 && oy > 0.02) {
           add("high", "Two pieces overlap",
             `${kindLabel(A.item)} and ${kindLabel(B.item)} are standing in the same place — they overlap by ${round2(Math.min(ox, oy))} m.`,
-            0, round2(Math.min(ox, oy)), A.item);
+            0, round2(Math.min(ox, oy)), A.item, { otherItem: B.item });
         }
       }
     }

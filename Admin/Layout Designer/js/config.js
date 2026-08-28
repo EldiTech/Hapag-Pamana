@@ -72,6 +72,22 @@ window.HP_DASHBOARD = {
     redo: [
       '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>',
     ],
+    // Minus zoom icon
+    minus: [
+      '<path d="M5 12h14"/>',
+    ],
+    // Plus zoom icon
+    plus: [
+      '<path d="M12 5v14M5 12h14"/>',
+    ],
+    // Pan hand tool
+    hand: [
+      '<path d="M18 11V6a2 2 0 0 0-4 0v4"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.9-2.3L3.7 17.3a1.5 1.5 0 0 1 .3-2.1l1.6-1.2a1.5 1.5 0 0 1 2.1.3L10 16"/>',
+    ],
+    // Reset view / refresh
+    refresh: [
+      '<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/>',
+    ],
   },
 
   shell: {

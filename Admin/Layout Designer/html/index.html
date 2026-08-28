@@ -60,26 +60,42 @@
               <button class="ld-viewtab" data-view2d="3d" id="ldTab3d"><span class="ic" data-icon="cube"></span>3D View</button>
             </span>
             <button class="btn btn-primary btn-sm" id="ldPick">Choose event</button>
-            <button class="btn btn-ghost btn-sm" id="ldPreset" disabled>Presets</button>
-            <button class="btn btn-ghost btn-sm" id="ldRoom" disabled>Room size</button>
+            <button class="btn btn-ghost btn-sm" id="ldPreset">Presets</button>
+            <button class="btn btn-ghost btn-sm" id="ldRoom">Room size</button>
             <!-- What the room is dressed for. Steers the analysis and the
                  walkthrough's lighting; never moves anything on the plan. -->
-            <button class="btn btn-ghost btn-sm" id="ldEvent" disabled>Event type</button>
+            <button class="btn btn-ghost btn-sm" id="ldEvent">Event type</button>
             <!-- Dresses the 3D room in a setup photo's own colours. Enabled
                  with the rest once an event is open — see js/designer.js. -->
-            <button class="btn btn-ghost btn-sm ld-theme" id="ldTheme" disabled>
+            <button class="btn btn-ghost btn-sm ld-theme" id="ldTheme">
               <span class="ld-theme-name">Theme</span>
               <span class="ld-theme-strip" hidden></span>
             </button>
             <!-- DESIGN → ANALYZE → OPTIMIZE → SIMULATE, in that order, so the
                  toolbar reads as the workflow it is. -->
-            <button class="btn btn-ghost btn-sm" id="ldWalk" disabled>Analyse</button>
-            <button class="btn btn-ghost btn-sm" id="ldOptimise" disabled>Optimise</button>
-            <button class="btn btn-ghost btn-sm" id="ldScenarios" disabled>Layouts</button>
-            <button class="btn btn-ghost btn-sm" id="ldPrint" disabled>Print</button>
-            <button class="btn btn-ghost btn-sm" id="ldReset" disabled><span class="ic" data-icon="undo"></span>Reset layout</button>
-            <button class="btn btn-ghost btn-sm" id="ldSave" disabled><span class="ic" data-icon="plan"></span>Save plan</button>
-            <button class="btn btn-primary btn-sm" id="ldSimulate" disabled>▶ Simulate</button>
+            <button class="btn btn-ghost btn-sm" id="ldWalk">Analyse</button>
+            <button class="btn btn-ghost btn-sm" id="ldOptimise">Optimise</button>
+            <button class="btn btn-ghost btn-sm" id="ldScenarios">Layouts</button>
+            <button class="btn btn-ghost btn-sm" id="ldPrint">Print</button>
+            <button class="btn btn-ghost btn-sm" id="ldReset"><span class="ic" data-icon="undo"></span>Reset layout</button>
+            <button class="btn btn-ghost btn-sm" id="ldSave"><span class="ic" data-icon="plan"></span>Save plan</button>
+            <button class="btn btn-primary btn-sm" id="ldSimulate">▶ Simulate</button>
+            <span class="ld-tool-sep"></span>
+            <button class="btn btn-ghost btn-sm ld-icon-tool" id="ldUndo" title="Undo (Ctrl+Z)"><span class="ic" data-icon="undo"></span></button>
+            <button class="btn btn-ghost btn-sm ld-icon-tool" id="ldRedo" title="Redo (Ctrl+Y)"><span class="ic" data-icon="redo"></span></button>
+            <span class="ld-tool-sep"></span>
+            <select class="ld-tool-select" id="ldZoom" title="Zoom level">
+              <option value="0.25">25%</option>
+              <option value="0.5">50%</option>
+              <option value="0.75">75%</option>
+              <option value="1" selected>100%</option>
+              <option value="1.25">125%</option>
+              <option value="1.5">150%</option>
+              <option value="2">200%</option>
+            </select>
+            <span class="ld-tool-sep"></span>
+            <button class="btn btn-ghost btn-sm ld-icon-tool" id="ldGridToggle" title="Toggle Grid"><span class="ic" data-icon="grid"></span></button>
+            <button class="btn btn-ghost btn-sm ld-icon-tool" id="ldFullscreen" title="Fullscreen" aria-label="Fullscreen"><span class="ic" data-icon="expand"></span></button>
           </div>
         </div>
 
@@ -93,21 +109,15 @@
                 <p>Choose a confirmed event, then add pieces from the right.</p>
               </div>
             </div>
-          </div>
-          <div class="ld-canvas-float">
-            <button class="ld-float-btn" id="ldUndo" title="Undo"><span class="ic" data-icon="undo"></span></button>
-            <button class="ld-float-btn" id="ldRedo" title="Redo"><span class="ic" data-icon="redo"></span></button>
-            <span class="ld-float-sep"></span>
-            <select class="ld-float-select" id="ldZoom" title="Zoom level">
-              <option value="0.5">50%</option>
-              <option value="0.75">75%</option>
-              <option value="1" selected>100%</option>
-              <option value="1.25">125%</option>
-              <option value="1.5">150%</option>
-            </select>
-            <span class="ld-float-sep"></span>
-            <button class="ld-float-btn" id="ldGridToggle" title="Toggle Grid"><span class="ic" data-icon="grid"></span></button>
-            <button class="ld-float-btn" id="ldFullscreen" title="Fullscreen" aria-label="Fullscreen"><span class="ic" data-icon="expand"></span></button>
+            <div class="ld-canvas-edge ld-canvas-edge--e" id="ldEdgeE" title="Drag to adjust room width (m)">
+              <div class="ld-edge-grip-v"></div>
+            </div>
+            <div class="ld-canvas-edge ld-canvas-edge--s" id="ldEdgeS" title="Drag to adjust room depth (m)">
+              <div class="ld-edge-grip-h"></div>
+            </div>
+            <div class="ld-canvas-corner" id="ldEdgeSE" title="Drag to adjust room dimensions (m)">
+              <div class="ld-corner-grip"></div>
+            </div>
           </div>
         </div>
 
@@ -122,20 +132,14 @@
 
       </section>
 
+      <div class="ld-resizer" id="ldResizer" title="Drag to adjust sidebar & canvas view">
+        <div class="ld-resizer-grip"></div>
+      </div>
+
       <div class="ld-rail">
         <section class="panel panel-pad ld-drawer">
           <div class="ld-drawer-head"><h3>Add pieces</h3></div>
           <div class="ld-palette" id="ldPalette"></div>
-        </section>
-
-        <section class="panel panel-pad ld-drawer">
-          <div class="ld-drawer-head"><h3>Item properties</h3></div>
-          <div id="ldProps"></div>
-        </section>
-
-        <section class="panel panel-pad ld-drawer">
-          <div class="ld-drawer-head"><h3>Covers</h3></div>
-          <div id="ldTally"></div>
         </section>
       </div>
     </div>

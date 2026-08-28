@@ -128,6 +128,7 @@
   border-bottom: 1px solid var(--gold-hair2);
   color: var(--ink-soft);
   vertical-align: middle;
+}
 
 /* Chair styling mirroring table appearance */
 .chair {
@@ -152,7 +153,6 @@
   color: var(--ink-soft);
   vertical-align: middle;
 }
-}
 .ld-overview-table tr:hover td {
   background: var(--paper-3);
 }
@@ -173,13 +173,53 @@
 /* ── The workspace: plan on the left, drafting drawers on the right ────── */
 .ld-work {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 322px;
-  gap: 20px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) 14px 322px;
+  gap: 0;
+  align-items: stretch;
+  height: calc(100vh - 140px);
+  min-height: 540px;
+  overflow: hidden;
+}
+
+/* ── Splitter Resizer (Canvas vs Sidebar) ─────────────────────────────── */
+.ld-resizer {
+  width: 14px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  user-select: none;
+  touch-action: none;
+  z-index: 25;
+  transition: background 0.15s var(--ease);
+}
+.ld-resizer:hover,
+.ld-resizer.is-dragging {
+  background: var(--gold-hair2);
+}
+.ld-resizer-grip {
+  width: 4px;
+  height: 36px;
+  border-left: 1.5px solid var(--gold-deep);
+  border-right: 1.5px solid var(--gold-deep);
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 0.15s var(--ease);
+}
+.ld-resizer:hover .ld-resizer-grip,
+.ld-resizer.is-dragging .ld-resizer-grip {
+  opacity: 1;
 }
 
 /* ── The plan panel ───────────────────────────────────────────────────── */
-.ld-plan { display: flex; flex-direction: column; gap: 0; overflow: hidden; }
+.ld-plan {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
 
 .ld-plan-head {
   display: flex;
@@ -211,69 +251,55 @@
 }
 .ld-plan-tools { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; width: 100%; }
 
-/* Floating Stage Canvas Toolbar */
-.ld-canvas-float {
-  position: absolute;
-  left: 20px;
-  bottom: 20px;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  background: var(--paper-2);
-  background: color-mix(in srgb, var(--paper-2) 90%, transparent);
-  border: 1px solid var(--gold-hair2);
-  border-radius: 8px;
-  box-shadow: var(--shadow-md);
-  backdrop-filter: blur(8px);
+.ld-tool-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--gold-hair2);
+  margin: 0 3px;
+  flex-shrink: 0;
 }
-.ld-float-btn {
+.ld-icon-tool {
+  padding: 6px 9px !important;
+  min-width: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ink-soft);
-  cursor: pointer;
-  transition: background 0.15s var(--ease), color 0.15s var(--ease);
 }
-.ld-float-btn:hover {
+.ld-icon-tool .ic svg {
+  width: 15px;
+  height: 15px;
+}
+.ld-tool-select {
+  border: 1px solid var(--gold-hair2);
+  border-radius: var(--r);
   background: var(--paper-3);
-  color: var(--brown);
-}
-.ld-float-btn.active {
-  background: var(--gold-hair2);
-  color: var(--gold-deep);
-}
-.ld-float-btn .ic svg { width: 16px; height: 16px; }
-.ld-float-sep {
-  width: 1px;
-  height: 18px;
-  background: var(--gold-hair2);
-  margin: 0 4px;
-}
-.ld-float-select {
-  border: 0;
-  background: transparent;
-  color: var(--ink-soft);
+  color: var(--ink);
   font-family: var(--engraved);
   font-size: 0.65rem;
   font-weight: 700;
-  padding: 4px 6px;
+  padding: 5px 8px;
   cursor: pointer;
   outline: none;
-  border-radius: 4px;
+  transition: all 0.15s var(--ease);
 }
-.ld-float-select:hover {
-  background: var(--paper-3);
+.ld-tool-select:hover {
+  background: var(--paper-2);
+  border-color: var(--gold);
   color: var(--brown);
 }
 .ld-canvas.no-grid {
   background-image: none !important;
+}
+
+.ld-stage.is-panning-mode,
+.ld-stage.is-panning-mode .ld-canvas,
+.ld-stage.is-panning-mode .ld-item {
+  cursor: grab !important;
+}
+.ld-stage.is-panning-active,
+.ld-stage.is-panning-active .ld-canvas,
+.ld-stage.is-panning-active .ld-item {
+  cursor: grabbing !important;
 }
 
 /* Save state — quiet until it has something to say. */
@@ -295,10 +321,15 @@
 /* ── The canvas: a ruled sheet the room is drawn on ───────────────────── */
 .ld-stage {
   position: relative;
-  padding: 30px 30px 26px;
+  padding: 20px;
   background:
     radial-gradient(120% 120% at 50% 0%, var(--paper-3), var(--paper-2) 70%);
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Dimension rules along the top and left edge of the floor. */
@@ -510,6 +541,10 @@
 /* The two stages occupy the same slot; only one is mounted at a time. */
 .ld-stage--3d {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   padding: 0;
   background: var(--vellum);
   overflow: hidden;
@@ -517,7 +552,9 @@
 .ld-3d-host {
   position: relative;
   width: 100%;
-  height: clamp(360px, 58vh, 680px);
+  flex: 1 1 auto;
+  min-height: 280px;
+  height: 100%;
 }
 .ld-3d-canvas {
   display: block;
@@ -570,10 +607,28 @@
 .ld-cams {
   display: flex;
   gap: 10px;
-  padding: 13px 16px;
+  padding: 12px 16px;
   overflow-x: auto;
+  overflow-y: hidden;
   border-top: 1px solid var(--gold-hair2);
   background: var(--paper-2);
+  flex-shrink: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-hair) rgba(0, 0, 0, 0.25);
+}
+.ld-cams::-webkit-scrollbar {
+  height: 5px;
+}
+.ld-cams::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+}
+.ld-cams::-webkit-scrollbar-thumb {
+  background: var(--gold-hair);
+  border-radius: 4px;
+}
+.ld-cams::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
 }
 .ld-cam {
   flex: 0 0 auto;
@@ -881,6 +936,12 @@
    The preset book — the house's standard settings for 30 through 100 pax
    (js/presets.js), chosen from a gallery of real thumbnails.
    ═══════════════════════════════════════════════════════════════════════ */
+
+/* Modal wide variant for preset book, analysis, optimizer, etc. */
+.modal--wide {
+  max-width: min(1040px, 94vw);
+  width: 100%;
+}
 
 /* The headcount rail: 30 … 100, one press each. */
 .ld-counts {
@@ -2168,47 +2229,210 @@ body.hp-sim-open .app { visibility: hidden; }
 .ld-cmp-wrap { overflow-x: auto; }
 
 /* ── Fullscreen ─────────────────────────────────────────────────────────
-   ldFullscreen (js/designer.js) puts .ld-work itself into the Fullscreen
-   API and toggles body.ld-fullscreen alongside it — the class covers
-   browsers where requestFullscreen() is unsupported or denied (falls back
-   to a page-filling layout) and lets us reach the sidebar/topbar, which
-   sit outside .ld-work and so aren't touched by :fullscreen alone. */
+   ldFullscreen (js/designer.js) puts the page into Fullscreen and toggles
+   body.ld-fullscreen alongside it so toolbar, modals, and canvas stay fully
+   operational without clipping or blackouts. */
+body.ld-fullscreen {
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+body.ld-fullscreen .app {
+  min-height: 100vh !important;
+  height: 100vh !important;
+  width: 100vw !important;
+  overflow: hidden !important;
+  display: flex !important;
+}
+
+body.ld-fullscreen .sidebar,
+body.ld-fullscreen .topbar,
+body.ld-fullscreen #ldStats,
+body.ld-fullscreen #ldChips {
+  display: none !important;
+}
+
+body.ld-fullscreen .main,
+body.ld-fullscreen .view {
+  padding: 0 !important;
+  margin: 0 !important;
+  max-width: none !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  flex: 1 1 100% !important;
+}
+
 :fullscreen.ld-work,
 body.ld-fullscreen .ld-work {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 322px;
-  gap: 0;
-  width: 100vw;
+  flex: 1 1 auto;
   height: 100vh;
+  max-height: 100vh;
+  min-height: 0;
+  width: 100vw;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px 322px;
+  gap: 0;
   padding: 0;
   background: var(--paper-2);
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  overflow: hidden;
 }
+
+/* ── Canvas Side & Corner Adjusters ──────────────────────────────────── */
+.ld-canvas-edge {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  touch-action: none;
+}
+.ld-canvas-edge--e {
+  top: 50%;
+  transform: translateY(-50%);
+  right: -10px;
+  width: 20px;
+  height: 48px;
+  cursor: ew-resize;
+}
+.ld-canvas-edge--s {
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -10px;
+  width: 48px;
+  height: 20px;
+  cursor: ns-resize;
+}
+.ld-canvas-corner {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  touch-action: none;
+}
+
+.ld-edge-grip-v {
+  width: 5px;
+  height: 36px;
+  border-left: 2px solid var(--gold);
+  border-right: 2px solid var(--gold);
+  border-radius: 2px;
+  background: var(--paper-2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  opacity: 0.75;
+  pointer-events: none;
+  transition: opacity 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.ld-edge-grip-h {
+  width: 36px;
+  height: 5px;
+  border-top: 2px solid var(--gold);
+  border-bottom: 2px solid var(--gold);
+  border-radius: 2px;
+  background: var(--paper-2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  opacity: 0.75;
+  pointer-events: none;
+  transition: opacity 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.ld-corner-grip {
+  width: 12px;
+  height: 12px;
+  border-right: 2.5px solid var(--gold);
+  border-bottom: 2.5px solid var(--gold);
+  opacity: 0.8;
+  pointer-events: none;
+  transition: opacity 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+
+.ld-canvas-edge:hover .ld-edge-grip-v,
+.ld-canvas-edge.is-dragging .ld-edge-grip-v,
+.ld-canvas-edge:hover .ld-edge-grip-h,
+.ld-canvas-edge.is-dragging .ld-edge-grip-h,
+.ld-canvas-corner:hover .ld-corner-grip,
+.ld-canvas-corner.is-dragging .ld-corner-grip {
+  opacity: 1;
+  border-color: var(--gold-deep);
+}
+
 :fullscreen.ld-work .ld-plan,
-body.ld-fullscreen .ld-work .ld-plan { border-radius: 0; height: 100vh; }
+body.ld-fullscreen .ld-work .ld-plan {
+  border-radius: 0;
+  height: 100vh;
+  max-height: 100vh;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body.ld-fullscreen .ld-plan-head {
+  padding: 10px 18px !important;
+  gap: 8px !important;
+  background: var(--vellum) !important;
+  border-bottom: 1px solid var(--gold-hair2) !important;
+  flex-shrink: 0 !important;
+}
+
 :fullscreen.ld-work .ld-stage,
-body.ld-fullscreen .ld-work .ld-stage { height: 100%; }
+body.ld-fullscreen .ld-work .ld-stage {
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
 :fullscreen.ld-work .ld-rail,
 body.ld-fullscreen .ld-work .ld-rail {
   height: 100vh;
+  max-height: 100vh;
   overflow-y: auto;
   position: static;
   border-radius: 0;
   border-left: 1px solid var(--gold-hair2);
-  padding: 14px;
-  background: var(--paper);
+  padding: 0;
+  background: var(--paper-2);
+  display: flex;
+  flex-direction: column;
 }
 
-/* Fallback path (no Fullscreen API): hide the rest of the page chrome so
-   .ld-work has the viewport to itself, same as the :fullscreen case. #ldStats
-   and #ldChips are the stat strip and event chips above the plan; .sidebar
-   and .topbar are the shell chrome hp-shell.js builds around #view. */
-body.ld-fullscreen .sidebar,
-body.ld-fullscreen .topbar,
-body.ld-fullscreen #ldStats,
-body.ld-fullscreen #ldChips { display: none !important; }
-body.ld-fullscreen .main,
-body.ld-fullscreen .view { padding: 0; margin: 0; max-width: none; }
-body.ld-fullscreen .ld-work { position: fixed; inset: 0; z-index: 500; }
+:fullscreen.ld-work .ld-rail .ld-drawer,
+body.ld-fullscreen .ld-work .ld-rail .ld-drawer {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 16px 18px !important;
+  min-height: 100% !important;
+  height: 100% !important;
+  flex: 1 1 auto !important;
+}
+
+body.ld-fullscreen #modalRoot {
+  z-index: 99999 !important;
+}
 
 #ldFullscreen .ic svg { width: 16px; height: 16px; }
 .ld-cmp {
