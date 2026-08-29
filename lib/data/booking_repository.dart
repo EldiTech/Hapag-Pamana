@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'booking.dart';
+import 'notification_repository.dart';
 
 /// Files catering bookings from the member "Book Us Now" wizard into the
 /// `bookings` collection, one document per request:
@@ -64,6 +67,15 @@ class BookingRepository {
       'status=${write['status']} authUid=$uid keys=${write.keys.toList()}',
     );
     final doc = await _db.collection('bookings').add(write);
+    // Fire-and-forget: post a "Booking Received" notification so the member
+    // sees it in their bell as soon as the wizard closes.
+    unawaited(
+      NotificationRepository.instance.postOrderUpdate(
+        uid: uid,
+        bookingId: doc.id,
+        status: BookingStatus.pending,
+      ),
+    );
     return doc.id;
   }
 

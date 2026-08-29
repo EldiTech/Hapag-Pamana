@@ -1191,6 +1191,12 @@
       if (money(o.packageTotal)) facts.push(["· Package", money(o.packageTotal)]);
       facts.push(["· Add-ons", money(o.addOnsTotal)]);
     }
+    if (money(o.discountTotal)) {
+      facts.push(["· Promo discount", `-${money(o.discountTotal)}`]);
+      if (Array.isArray(o.appliedPromos) && o.appliedPromos.length) {
+        facts.push(["· Applied promos", o.appliedPromos.join(", ")]);
+      }
+    }
     if (isPaid(o)) {
       if (settled) facts.push([offline ? "Downpayment taken" : "Downpayment paid", settled]);
       if (total && settled) facts.push(["Balance on the day",

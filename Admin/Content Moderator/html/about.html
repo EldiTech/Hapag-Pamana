@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · About Page</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../css/global.css" />
+  <style>
+    .about-section { margin-bottom: 24px; }
+    .about-item-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 14px 16px;
+      background: var(--paper-3);
+      border: 1px solid var(--hair);
+      border-radius: var(--r);
+      margin-bottom: 10px;
+    }
+    .about-item-card:hover { border-color: var(--gold); }
+    .about-item-card .meta { flex: 1; min-width: 0; }
+    .about-item-card .meta strong { display: block; font-family: var(--display); font-size: 17px; color: var(--ink); }
+    .about-item-card .meta small { display: block; color: var(--ink-soft); font-size: 13px; margin-top: 4px; line-height: 1.4; }
+    .about-item-card .tag-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--vellum);
+      border-radius: 99px;
+      font-size: 11px;
+      color: var(--gold-deep);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .about-item-actions { display: flex; gap: 6px; flex: none; align-self: center; }
+    .milestone-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--brown);
+      color: var(--paper-2);
+      border-radius: var(--r);
+      font-family: var(--engraved);
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 768px) { .form-grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <template id="tpl-view">
+    <div class="bento about-bento">
+      <!-- Top banner / Actions -->
+      <section class="bento-tile b-12">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="book"></span></span>
+            <span class="bento-label">About Page Content</span>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-ghost" id="aboutReset"><span class="ic" data-icon="undo"></span>Restore Defaults</button>
+            <button class="btn btn-primary" id="aboutSave"><span class="ic" data-icon="upload"></span>Save Changes</button>
+          </div>
+        </div>
+        <p class="bento-desc">Manage the narrative, family timeline, offerings, contact details, and social channels displayed on the guest and member About screen.</p>
+      </section>
+
+      <!-- 1. Hero Mantra & Story -->
+      <section class="bento-tile b-6">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="star"></span></span>
+            <span class="bento-label">Hero & Mantra</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Header Eyebrow</label>
+          <input class="control" id="mantraEyebrow" placeholder="SINCE 2016 · THE FILL AT HOME STORY" />
+        </div>
+        <div class="field">
+          <label>Hero Mantra Quote</label>
+          <textarea class="control" id="mantraQuote" rows="3" placeholder="Be patient — your small business will grow enough to pay your bills."></textarea>
+        </div>
+        <div class="field">
+          <label>Mantra Footer Label</label>
+          <input class="control" id="mantraLabel" placeholder="OUR MANTRA FROM DAY ONE" />
+        </div>
+      </section>
+
+      <!-- 2. Story / Where it Began -->
+      <section class="bento-tile b-6">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="ledger"></span></span>
+            <span class="bento-label">Our Story</span>
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <label>Section Eyebrow</label>
+            <input class="control" id="storyEyebrow" placeholder="WHERE WE BEGAN" />
+          </div>
+          <div class="field">
+            <label>Section Title</label>
+            <input class="control" id="storyTitle" placeholder="Our Story" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Story Body Narrative</label>
+          <textarea class="control" id="storyBody" rows="4" placeholder="We tried to open a small Fill at Home canteen..."></textarea>
+        </div>
+        <div class="field">
+          <label>Highlighted Pull Quote</label>
+          <input class="control" id="storyPullquote" placeholder="Little did we know that with a little effort..." />
+        </div>
+      </section>
+
+      <!-- 3. Milestones Timeline -->
+      <section class="bento-tile b-12">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="calendar"></span></span>
+            <span class="bento-label">Milestone Timeline</span>
+          </div>
+          <button class="btn btn-primary btn-sm" id="milestoneAdd"><span class="ic" data-icon="plus"></span>Add Milestone</button>
+        </div>
+        <div class="form-grid-2" style="margin-bottom: 16px;">
+          <div class="field">
+            <label>Timeline Eyebrow</label>
+            <input class="control" id="milestonesEyebrow" placeholder="THE FIRST YEAR" />
+          </div>
+          <div class="field">
+            <label>Timeline Title</label>
+            <input class="control" id="milestonesTitle" placeholder="From Day 1 to Day 365" />
+          </div>
+        </div>
+        <div id="milestoneList"></div>
+      </section>
+
+      <!-- 4. Offerings -->
+      <section class="bento-tile b-12">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="dish"></span></span>
+            <span class="bento-label">What We Offer</span>
+          </div>
+          <button class="btn btn-primary btn-sm" id="offerAdd"><span class="ic" data-icon="plus"></span>Add Offering</button>
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <label>Offerings Eyebrow</label>
+            <input class="control" id="offeringsEyebrow" placeholder="AT YOUR TABLE" />
+          </div>
+          <div class="field">
+            <label>Offerings Title</label>
+            <input class="control" id="offeringsTitle" placeholder="What We Offer" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Offerings Subtitle</label>
+          <input class="control" id="offeringsSubtitle" placeholder="A seat at our table for every occasion..." />
+        </div>
+        <div id="offerList"></div>
+      </section>
+
+      <!-- 5. Contact Details -->
+      <section class="bento-tile b-6">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="pin"></span></span>
+            <span class="bento-label">Contact & Location</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Location / Address</label>
+          <input class="control" id="contactAddress" placeholder="The Kitchen · Metro Manila, Philippines" />
+        </div>
+        <div class="field">
+          <label>Google Maps Query Term</label>
+          <input class="control" id="contactMapQuery" placeholder="Fill at Home Catering, Metro Manila" />
+        </div>
+        <div class="field">
+          <label>Kitchen Hours</label>
+          <input class="control" id="contactHours" placeholder="Monday – Sunday · 8:00 AM – 8:00 PM" />
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <label>Phone Number</label>
+            <input class="control" id="contactPhone" placeholder="0917 123 4567" />
+          </div>
+          <div class="field">
+            <label>Email Address</label>
+            <input class="control" id="contactEmail" placeholder="hello@fillathome.ph" />
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. Social Channels -->
+      <section class="bento-tile b-6">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="eye"></span></span>
+            <span class="bento-label">Social Channels</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Facebook URL</label>
+          <input class="control" id="socialFacebook" placeholder="https://www.facebook.com/fillathome" />
+        </div>
+        <div class="field">
+          <label>Instagram URL</label>
+          <input class="control" id="socialInstagram" placeholder="https://www.instagram.com/fillathome" />
+        </div>
+        <div class="field">
+          <label>TikTok URL</label>
+          <input class="control" id="socialTiktok" placeholder="https://www.tiktok.com/@fillathome" />
+        </div>
+      </section>
+
+      <!-- 7. Family Closing Quote & Footer -->
+      <section class="bento-tile b-12">
+        <div class="bento-head">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="heart"></span></span>
+            <span class="bento-label">Family Closing Quote & Footer Sign-off</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Closing Quote Text</label>
+          <textarea class="control" id="quoteText" rows="3" placeholder="So if you have a dream — no matter how difficult..."></textarea>
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <label>Sign-off Author / Signature</label>
+            <input class="control" id="quoteAuthor" placeholder="— THE FILL AT HOME FAMILY" />
+          </div>
+          <div class="field">
+            <label>Footer Brand Sign-off</label>
+            <input class="control" id="footerText" placeholder="FILL AT HOME · SINCE 2016" />
+          </div>
+        </div>
+      </section>
+    </div>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../js/store.js"></script>
+  <script src="../js/about.js"></script>
+</body>
+</html>

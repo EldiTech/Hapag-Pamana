@@ -14,6 +14,7 @@ import '../../data/paymongo_config.dart';
 import '../../data/places_service.dart';
 import '../../data/product.dart';
 import '../../data/product_repository.dart';
+import '../../data/promo_discount_service.dart';
 import '../../widgets.dart';
 import 'address_picker_page.dart';
 import 'payment_page.dart';
@@ -423,51 +424,60 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
   }
 
   // ── The downpayment ───────────────────────────────────────────────────────
-  /// The order's full amount — the booked package's per-pack price times the
-  /// number of packs ordered.
-  ///
-  /// Null when the wizard wasn't opened from a package (the Packages tab's plain
-  /// "Food Packs" row starts an order with no package behind it) or when that
-  /// package carries no price. Those file for the team to quote rather than
-  /// having a figure invented for them — see [_submit].
+  /// Active promo discount on the booked package if any.
+  PackageDiscountInfo? get _packageDiscount {
+    final pkg = widget.package;
+    if (pkg == null || pkg.price <= 0) return null;
+    return PromoDiscountService.instance.getPackageDiscount(pkg.name, pkg.price);
+  }
+
+  /// The order's full amount — the booked package's discounted per-pack price
+  /// times the number of packs ordered.
   num? get _orderTotal {
     final price = widget.package?.price ?? 0;
     final packs = int.tryParse(_ctrl('pax').text.trim()) ?? 0;
     if (price <= 0 || packs <= 0) return null;
-    return price * packs;
+    final disc = _packageDiscount;
+    final effectivePrice = disc != null ? disc.discountedPrice : price;
+    return effectivePrice * packs;
   }
 
-  /// The total's arithmetic, spelled out for the payment screen — "₱180 per pack
-  /// × 50 packs" — so the member can check the figure rather than trust it.
+  /// Total money saved on the package.
+  num get _packageSavingsTotal {
+    final disc = _packageDiscount;
+    final packs = int.tryParse(_ctrl('pax').text.trim()) ?? 0;
+    if (disc == null || packs <= 0) return 0;
+    return disc.discountSavings * packs;
+  }
+
+  /// The total's arithmetic, spelled out for the payment screen.
   String? get _priceLine {
     final price = widget.package?.price ?? 0;
     final packs = int.tryParse(_ctrl('pax').text.trim()) ?? 0;
     if (price <= 0 || packs <= 0) return null;
-    return '${peso(price)} per pack × $packs pack${packs == 1 ? '' : 's'}';
+    final disc = _packageDiscount;
+    final effectivePrice = disc != null ? disc.discountedPrice : price;
+    var line = '${peso(effectivePrice)} per pack × $packs pack${packs == 1 ? '' : 's'}';
+    if (disc != null) {
+      line += ' (${disc.badgeLabel}) · Save ${peso(_packageSavingsTotal)}';
+    }
+    return line;
   }
 
   Future<void> _submit() async {
     setState(() => _submitting = true);
 
-    // Worked out before the write so the terms travel *with* the order: what the
-    // team is owed is then the order's own record, not something recomputed
-    // later from a package whose price may since have changed.
     final total = _orderTotal;
     final num due = total != null && PayMongoConfig.isChargeable(total)
         ? PayMongoConfig.downpaymentOn(total)
         : 0;
     final gated = due > 0;
 
-    // Only the write is guarded — once the order is filed, "couldn't send" would
-    // be wrong, and the payment that follows reports its own trouble.
     final String id;
     try {
       id = await BookingRepository().submit(
         {
           for (final e in _fields.entries) e.key: e.value.text,
-          // A structured menu overrides the free-text fallback under the same
-          // key, so the moderator always reads one `menu` field of
-          // quotation-style lines.
           if (_menu.isNotEmpty) 'menu': _menuLines.join('\n'),
           'bookingType': 'Food Pack',
         },
@@ -475,6 +485,11 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
           'paymentStatus': gated ? 'awaiting' : 'quote_needed',
           'paymentTotal': ?total,
           if (gated) 'paymentDue': due,
+          if (_packageSavingsTotal > 0) 'discountTotal': _packageSavingsTotal,
+          if (_packageDiscount != null) 'packageDiscount': _packageDiscount!.badgeLabel,
+          if (_packageDiscount != null) 'appliedPromos': [
+            '${_packageDiscount!.promo.title} (${_packageDiscount!.badgeLabel})',
+          ],
         },
       );
     } catch (_) {

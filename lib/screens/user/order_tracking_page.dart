@@ -9,6 +9,7 @@ import '../../data/booking.dart';
 import '../../data/booking_repository.dart';
 import '../../data/catering.dart';
 import '../../data/catering_repository.dart';
+import '../../data/notification_repository.dart';
 import '../../widgets.dart';
 import 'booking_page.dart';
 import 'layout_preview_page.dart';
@@ -41,12 +42,38 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
   bool _loading = true;
   bool _error = false;
 
+  // Previous statuses keyed by booking id — used to detect server-side
+  // status changes so we can fire an in-app notification when the dashboard
+  // moves an order forward or declines it.
+  final Map<String, BookingStatus> _prevStatuses = {};
+
+  bool _hasUnread = false;
+  StreamSubscription<bool>? _unreadSub;
+
   @override
   void initState() {
     super.initState();
     _sub = BookingRepository().watchMine().listen(
       (orders) {
         if (!mounted) return;
+        // Detect server-side status changes and post a notification for each.
+        for (final order in orders) {
+          if (order.isDraft) continue;
+          final prev = _prevStatuses[order.id];
+          if (prev != null && prev != order.status) {
+            final uid = (order.data['uid'] ?? '') as String;
+            if (uid.isNotEmpty) {
+              unawaited(
+                NotificationRepository.instance.postOrderUpdate(
+                  uid: uid,
+                  bookingId: order.id,
+                  status: order.status,
+                ),
+              );
+            }
+          }
+          _prevStatuses[order.id] = order.status;
+        }
         setState(() {
           _orders = orders;
           _loading = false;
@@ -61,11 +88,20 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
         });
       },
     );
+    // Live unread badge for the app bar bell.
+    _unreadSub = NotificationRepository().watchHasUnread().listen(
+      (has) {
+        if (!mounted) return;
+        setState(() => _hasUnread = has);
+      },
+      onError: (_) {},
+    );
   }
 
   @override
   void dispose() {
     _sub?.cancel();
+    _unreadSub?.cancel();
     super.dispose();
   }
 
@@ -78,6 +114,10 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
         backgroundColor: Colors.transparent,
         flexibleSpace: const ParchmentBackground(weave: true, vignette: false),
         title: Text('Order Tracking', style: AppTextStyles.heading),
+        actions: [
+          NotificationIconButton(hasUnread: _hasUnread),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Stack(
         children: [

@@ -5,14 +5,19 @@ import 'package:flutter/material.dart';
 
 import '../../brand.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../data/announcement.dart';
+import '../../data/announcement_repository.dart';
+import '../../data/announcement_session.dart';
 import '../../data/app_settings.dart';
 import '../../data/customer_repository.dart';
 import '../../data/member_preferences.dart';
+import '../../data/notification_repository.dart';
 import '../../data/product.dart';
 import '../../data/product_repository.dart';
 import '../../data/recommendation_repository.dart';
 import '../../widgets.dart';
 import '../home_sections.dart';
+import 'announcement_popup_modal.dart';
 import 'user_shell.dart';
 
 /// Fallback clearance above the header when the platform reports no status-bar
@@ -56,6 +61,13 @@ class _UserHomePageState extends State<UserHomePage> {
   RecommendationSet _recs = RecommendationSet.empty;
   bool _recsLoading = true;
 
+  StreamSubscription<List<Announcement>>? _annSub;
+  List<Announcement> _announcements = const [];
+  bool _announcementsLoading = true;
+
+  bool _hasUnread = false;
+  StreamSubscription<bool>? _unreadSub;
+
   @override
   void initState() {
     super.initState();
@@ -73,6 +85,23 @@ class _UserHomePageState extends State<UserHomePage> {
         setState(() {
           _loading = false;
           _error = true;
+        });
+      },
+    );
+    // Announcements & Events live stream.
+    _annSub = AnnouncementRepository.instance.watchPublished().listen(
+      (items) {
+        if (!mounted) return;
+        setState(() {
+          _announcements = items;
+          _announcementsLoading = false;
+        });
+        _maybeShowAnnouncementPopup(items);
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _announcementsLoading = false;
         });
       },
     );
@@ -94,12 +123,36 @@ class _UserHomePageState extends State<UserHomePage> {
         });
       },
     );
+    // Live unread badge for the home header's bell.
+    _unreadSub = NotificationRepository().watchHasUnread().listen(
+      (has) {
+        if (!mounted) return;
+        setState(() => _hasUnread = has);
+      },
+      onError: (_) {},
+    );
+  }
+
+  void _maybeShowAnnouncementPopup(List<Announcement> items) {
+    if (items.isEmpty || !mounted) return;
+    final ids = items.map((e) => e.id).toList();
+    if (!AnnouncementSession.shouldShowForSession(ids)) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      AnnouncementPopupModal.show(
+        context,
+        announcements: items,
+      );
+    });
   }
 
   @override
   void dispose() {
     _sub?.cancel();
+    _annSub?.cancel();
     _recSub?.cancel();
+    _unreadSub?.cancel();
     super.dispose();
   }
 
@@ -153,12 +206,40 @@ class _UserHomePageState extends State<UserHomePage> {
               _MemberHeader(
                 topInset: topInset,
                 name: CustomerRepository().displayName,
+                hasUnread: _hasUnread,
                 onAccount: () => widget.onNavigate(UserShell.tabAccount),
                 onBrowse: settings.ordering
                     ? () => widget.onNavigate(UserShell.tabMenu)
                     : null,
               ),
               const SizedBox(height: AppSpacing.sm),
+
+              // ── Announcements & Promos ────────────────────────────────────
+              if (_announcementsLoading || _announcements.isNotEmpty) ...[
+                FadeSlideIn(
+                  delay: _d(80),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen,
+                    ),
+                    child: SectionHeading('Announcements & Promos'),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                FadeSlideIn(
+                  delay: _d(120),
+                  child: _AnnouncementsStrip(
+                    loading: _announcementsLoading,
+                    announcements: _announcements.take(5).toList(),
+                    onTap: (ann, index) => AnnouncementPopupModal.show(
+                      context,
+                      announcements: _announcements,
+                      initialIndex: index,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.section),
+              ],
 
               // ── Picks just for you ─────────────────────────────────────────
               // Ahead of Featured: a pick made for this member outranks the
@@ -168,7 +249,7 @@ class _UserHomePageState extends State<UserHomePage> {
               if (prefs.gabaySuggestions &&
                   (_recsLoading || _recs.isNotEmpty)) ...[
                 FadeSlideIn(
-                  delay: _d(100),
+                  delay: _d(140),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.screen,
@@ -194,7 +275,7 @@ class _UserHomePageState extends State<UserHomePage> {
                   ),
                 const SizedBox(height: 14),
                 FadeSlideIn(
-                  delay: _d(140),
+                  delay: _d(170),
                   child: ForYouStrip(
                     loading: _recsLoading,
                     set: _recs,
@@ -208,7 +289,7 @@ class _UserHomePageState extends State<UserHomePage> {
               // ── Featured highlight ─────────────────────────────────────────
               if (settings.featuredOnHome && (_loading || featured.isNotEmpty)) ...[
                 FadeSlideIn(
-                  delay: _d(120),
+                  delay: _d(200),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.screen,
@@ -223,7 +304,7 @@ class _UserHomePageState extends State<UserHomePage> {
                 ),
                 const SizedBox(height: 14),
                 FadeSlideIn(
-                  delay: _d(160),
+                  delay: _d(230),
                   child: FeaturedCarousel(
                     products: featured,
                     loading: _loading,
@@ -340,14 +421,15 @@ class _MemberHeader extends StatelessWidget {
     required this.name,
     required this.onAccount,
     required this.onBrowse,
+    this.hasUnread = false,
   });
 
   final double topInset;
   final String? name;
   final VoidCallback onAccount;
+  final bool hasUnread;
 
-  /// Null while ordering is switched off — the browse button is dropped so
-  /// the hero never points at a Menu tab that isn't there.
+  /// Null while ordering is switched off.
   final VoidCallback? onBrowse;
 
   @override
@@ -393,7 +475,9 @@ class _MemberHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.md),
+                const SizedBox(width: AppSpacing.sm),
+                NotificationIconButton(hasUnread: hasUnread),
+                const SizedBox(width: 8),
                 _AvatarChip(first: first, onTap: onAccount),
               ],
             ),
@@ -487,3 +571,317 @@ class _AvatarChip extends StatelessWidget {
     );
   }
 }
+
+// ════════════════════════ Announcements Strip ════════════════════════
+class _AnnouncementsStrip extends StatelessWidget {
+  const _AnnouncementsStrip({
+    required this.loading,
+    required this.announcements,
+    required this.onTap,
+  });
+
+  final bool loading;
+  final List<Announcement> announcements;
+  final void Function(Announcement, int) onTap;
+
+  static const double _cardWidth = 270;
+  static const double _height = 250;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return SizedBox(
+        height: _height,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+          scrollDirection: Axis.horizontal,
+          itemCount: 3,
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
+          itemBuilder: (_, _) => const _AnnouncementSkeleton(width: _cardWidth),
+        ),
+      );
+    }
+
+    if (announcements.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      height: _height,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+        scrollDirection: Axis.horizontal,
+        itemCount: announcements.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
+        itemBuilder: (context, index) {
+          final ann = announcements[index];
+          return _AnnouncementCard(
+            width: _cardWidth,
+            announcement: ann,
+            onTap: () => onTap(ann, index),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AnnouncementCard extends StatelessWidget {
+  const _AnnouncementCard({
+    required this.width,
+    required this.announcement,
+    required this.onTap,
+  });
+
+  final double width;
+  final Announcement announcement;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageBytes = announcement.imageBytes;
+    final isPromo = announcement.isPromo;
+
+    return PressableScale(
+      onTap: onTap,
+      child: Container(
+        width: width,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.hairline),
+          boxShadow: const [
+            BoxShadow(
+              color: Color.fromRGBO(42, 26, 8, 0.06),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Banner Image with Tag
+            Stack(
+              children: [
+                Container(
+                  height: 120,
+                  width: double.infinity,
+                  color: AppColors.creamEdge.withValues(alpha: 0.5),
+                  alignment: Alignment.center,
+                  child: announcement.hasImage
+                      ? (imageBytes != null
+                          ? Image.memory(
+                              imageBytes,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => _fallbackThumb(isPromo),
+                            )
+                          : Image.network(
+                              announcement.imageUrl,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => _fallbackThumb(isPromo),
+                            ))
+                      : _fallbackThumb(isPromo),
+                ),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isPromo ? AppColors.brown : AppColors.surface.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: isPromo ? AppColors.gold : AppColors.hairline,
+                      ),
+                    ),
+                    child: Text(
+                      announcement.tagLabel,
+                      style: AppTextStyles.engraved(
+                        size: 9,
+                        color: isPromo ? AppColors.cream : AppColors.brown,
+                        spacing: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      announcement.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.cardTitle.copyWith(
+                        color: AppColors.brown,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (announcement.displayDate.isNotEmpty ||
+                        announcement.location.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(
+                            isPromo ? Icons.local_offer_outlined : Icons.calendar_today_outlined,
+                            size: 12,
+                            color: AppColors.goldDeep,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              announcement.displayDate.isNotEmpty
+                                  ? announcement.displayDate
+                                  : announcement.location,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.brownSoft,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Text(
+                          'View Details',
+                          style: AppTextStyles.sans(
+                            size: 11,
+                            weight: FontWeight.w600,
+                            color: AppColors.brown,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.arrow_forward,
+                          size: 12,
+                          color: AppColors.brown,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackThumb(bool isPromo) {
+    return Container(
+      color: AppColors.creamEdge,
+      alignment: Alignment.center,
+      child: Icon(
+        isPromo ? Icons.local_offer_outlined : Icons.campaign_outlined,
+        size: 36,
+        color: AppColors.gold,
+      ),
+    );
+  }
+}
+
+class _AnnouncementSkeleton extends StatelessWidget {
+  const _AnnouncementSkeleton({required this.width});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final shimmerAnim = ShimmerScope.of(context);
+
+    Widget shimmerBox({
+      required double height,
+      double? width,
+      BorderRadius? radius,
+    }) {
+      if (shimmerAnim == null) {
+        return Container(
+          height: height,
+          width: width,
+          decoration: BoxDecoration(
+            color: AppColors.shimmerBase,
+            borderRadius: radius ?? BorderRadius.circular(4),
+          ),
+        );
+      }
+
+      return AnimatedBuilder(
+        animation: shimmerAnim,
+        builder: (context, _) {
+          final t = shimmerAnim.value;
+          final dx = t * 3.0 - 1.5;
+          return Container(
+            height: height,
+            width: width,
+            decoration: BoxDecoration(
+              borderRadius: radius ?? BorderRadius.circular(4),
+              gradient: LinearGradient(
+                begin: Alignment(dx - 0.6, -0.4),
+                end: Alignment(dx + 0.6, 0.4),
+                colors: const [
+                  AppColors.shimmerBase,
+                  AppColors.shimmerHi,
+                  AppColors.shimmerBase,
+                ],
+                stops: const [0.28, 0.5, 0.72],
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    return Container(
+      width: width,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.hairline),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          shimmerBox(
+            height: 120,
+            width: double.infinity,
+            radius: BorderRadius.zero,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                shimmerBox(
+                  height: 16,
+                  width: width * 0.75,
+                ),
+                const SizedBox(height: 8),
+                shimmerBox(
+                  height: 12,
+                  width: width * 0.5,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+

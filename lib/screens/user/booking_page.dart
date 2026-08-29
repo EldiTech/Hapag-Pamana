@@ -18,6 +18,7 @@ import '../../data/paymongo_config.dart';
 import '../../data/product.dart';
 import '../../data/places_service.dart';
 import '../../data/product_repository.dart';
+import '../../data/promo_discount_service.dart';
 import '../../widgets.dart';
 import '../detail_sheets.dart';
 import 'address_picker_page.dart';
@@ -1203,26 +1204,61 @@ class _BookingPageState extends State<BookingPage> {
   /// The headcount the member has entered, or 0 while it is blank or unusable.
   int get _pax => int.tryParse(_ctrl('pax').text.trim()) ?? 0;
 
-  /// What the package alone comes to — its per-head price times the headcount.
+  /// Active promo discount on the booked package if any.
+  PackageDiscountInfo? get _packageDiscount {
+    final pkg = widget.package;
+    if (pkg == null || pkg.price <= 0) return null;
+    return PromoDiscountService.instance.getPackageDiscount(pkg.name, pkg.price);
+  }
+
+  /// What the package alone comes to — its per-head discounted price times the headcount.
   num? get _packageTotal {
     final price = widget.package?.price ?? 0;
     if (price <= 0 || _pax <= 0) return null;
-    return price * _pax;
+    final disc = _packageDiscount;
+    final effectivePrice = disc != null ? disc.discountedPrice : price;
+    return effectivePrice * _pax;
   }
 
-  /// What one head of the add-ons comes to: each chosen extra's per-head rate
-  /// times how many of it was asked for. Extras the moderator hasn't priced
-  /// contribute nothing — they are quoted by the team instead (see
-  /// [_unpricedAddOns]), and charging a figure we don't have would be worse
-  /// than leaving them off.
+  /// Total money saved on the package.
+  num get _packageSavingsTotal {
+    final disc = _packageDiscount;
+    if (disc == null || _pax <= 0) return 0;
+    return disc.discountSavings * _pax;
+  }
+
+  /// What one head of the add-ons comes to (reflecting any active promo discounts).
   num get _addOnsPerHead {
     num sum = 0;
     for (final line in _addOns) {
       final rate = _pricing.priceFor(line.dish);
-      if (rate != null) sum += rate * line.qty;
+      if (rate != null) {
+        final disc = PromoDiscountService.instance.getDishDiscount(line.dish, rate);
+        final effectiveRate = disc != null ? disc.discountedPrice : rate;
+        sum += effectiveRate * line.qty;
+      }
     }
     return sum;
   }
+
+  /// Total money saved on add-ons across all pax.
+  num get _addOnsSavingsTotal {
+    num sum = 0;
+    if (_pax <= 0) return 0;
+    for (final line in _addOns) {
+      final rate = _pricing.priceFor(line.dish);
+      if (rate != null) {
+        final disc = PromoDiscountService.instance.getDishDiscount(line.dish, rate);
+        if (disc != null) {
+          sum += disc.discountSavings * line.qty * _pax;
+        }
+      }
+    }
+    return sum;
+  }
+
+  /// Total promo savings across package and all add-ons.
+  num get _totalSavings => _packageSavingsTotal + _addOnsSavingsTotal;
 
   /// The add-ons' share of the order — per-head rates times the headcount.
   num get _addOnsTotal => _pax > 0 ? _addOnsPerHead * _pax : 0;
@@ -1232,69 +1268,65 @@ class _BookingPageState extends State<BookingPage> {
   List<_AddOnLine> get _unpricedAddOns =>
       [for (final l in _addOns) if (_pricing.priceFor(l.dish) == null) l];
 
-  /// The order's full amount — the package plus the priced add-ons.
-  ///
-  /// Null when the wizard wasn't opened from a package (the Packages tab's plain
-  /// "Catering Service" row starts a booking with no package behind it) or when
-  /// that package carries no price. The package field is free text in that case,
-  /// and a price read out of prose is a price the member set themselves — so
-  /// rather than guess at a figure to charge, those orders file for the team to
-  /// quote (see [_submit]). Add-ons don't rescue such an order into being
-  /// chargeable: without a package price the total would still be a guess.
+  /// The order's full amount — the discounted package plus the discounted add-ons.
   num? get _orderTotal {
     final base = _packageTotal;
     if (base == null) return null;
     return base + _addOnsTotal;
   }
 
-  /// The total's arithmetic, spelled out for the payment screen — "₱850 per head
-  /// × 120 pax, + ₱150 per head of add-ons" — so the member can check the
-  /// figure rather than trust it.
+  /// The total's arithmetic, spelled out for the payment screen.
   String? get _priceLine {
     final price = widget.package?.price ?? 0;
     if (price <= 0 || _pax <= 0) return null;
-    final line = '${peso(price)} per head × $_pax pax';
+    final pkgDisc = _packageDiscount;
+    final effectivePrice = pkgDisc != null ? pkgDisc.discountedPrice : price;
+    var line = '${peso(effectivePrice)} per head × $_pax pax';
+    if (pkgDisc != null) {
+      line += ' (${pkgDisc.badgeLabel})';
+    }
     final extras = _addOnsPerHead;
-    if (extras <= 0) return line;
-    return '$line  ·  add-ons ${peso(extras)} per head';
+    if (extras > 0) {
+      line += '  ·  add-ons ${peso(extras)} per head';
+    }
+    if (_totalSavings > 0) {
+      line += '  ·  Total Savings: -${peso(_totalSavings)}';
+    }
+    return line;
   }
 
   Future<void> _submit() async {
     setState(() => _submitting = true);
 
-    // Worked out before the write so the terms travel *with* the order: the
-    // amount the team is owed is then the order's own record, not something
-    // recomputed later from a package whose price may since have changed.
     final total = _orderTotal;
     final num due = total != null && PayMongoConfig.isChargeable(total)
         ? PayMongoConfig.downpaymentOn(total)
         : 0;
     final gated = due > 0;
 
-    // Only the write is guarded: once the order is filed the "nothing was
-    // filed" reassurance below would be a lie, and the payment that follows
-    // handles its own trouble on its own screen.
     final String id;
     try {
       id = await BookingRepository().submit(
         {
           for (final e in _fields.entries) e.key: e.value.text.trim(),
-          // The chosen extras, one per line under the key the moderator's Orders
-          // board already reads — e.g. "Lechon Belly × 2".
           'menuAddOns': _addOnLines.join('\n'),
-          // Distinguishes this flow's documents from the food pack wizard's
-          // (`bookingType: 'Food Pack'`) in the shared `bookings` collection.
           'bookingType': 'Catering',
         },
         payment: {
           'paymentStatus': gated ? 'awaiting' : 'quote_needed',
           'paymentTotal': ?total,
           if (gated) 'paymentDue': due,
-          // The total's two halves, so the Orders board can show what was
-          // charged for the package and what for the extras without having to
-          // re-derive either from rates that may since have moved.
           if (_packageTotal != null) 'packageTotal': _packageTotal,
           if (_addOnsTotal > 0) 'addOnsTotal': _addOnsTotal,
+          if (_totalSavings > 0) 'discountTotal': _totalSavings,
+          if (_packageDiscount != null) 'packageDiscount': _packageDiscount!.badgeLabel,
+          if (_addOnsSavingsTotal > 0) 'addOnsDiscountTotal': _addOnsSavingsTotal,
+          if (_totalSavings > 0) 'appliedPromos': [
+            if (_packageDiscount != null) '${_packageDiscount!.promo.title} (${_packageDiscount!.badgeLabel})',
+            for (final l in _addOns)
+              if (PromoDiscountService.instance.getDishDiscount(l.dish, _pricing.priceFor(l.dish) ?? 0) != null)
+                '${l.dish.name} (${PromoDiscountService.instance.getDishDiscount(l.dish, _pricing.priceFor(l.dish) ?? 0)!.badgeLabel})',
+          ],
         },
       );
     } catch (e, st) {
@@ -1793,6 +1825,9 @@ class _BookingPageState extends State<BookingPage> {
           ? '${peso(perHead)} per head × $_pax pax  =  ${peso(_addOnsTotal)}'
           : '${peso(perHead)} per head — enter your headcount to see the total.');
     }
+    if (_addOnsSavingsTotal > 0) {
+      lines.add('Promo discount savings: -${peso(_addOnsSavingsTotal)}');
+    }
     if (unpriced.isNotEmpty) {
       lines.add(unpriced.length == _addOns.length
           ? 'We\'ll quote these when we confirm your booking.'
@@ -2281,12 +2316,15 @@ class _AddOnLineCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final category = line.dish.category.trim();
     final rate = unitPrice;
+    final disc = rate != null ? PromoDiscountService.instance.getDishDiscount(line.dish, rate) : null;
+    final effectiveRate = disc != null ? disc.discountedPrice : rate;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.mdAll,
-        border: Border.all(color: AppColors.hairline),
+        border: Border.all(color: disc != null ? AppColors.gold : AppColors.hairline),
       ),
       child: Row(
         children: [
@@ -2300,29 +2338,68 @@ class _AddOnLineCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  line.dish.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.sans(size: 13, weight: FontWeight.w600),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        line.dish.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.sans(size: 13, weight: FontWeight.w600),
+                      ),
+                    ),
+                    if (disc != null) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: 0.2),
+                          borderRadius: AppRadius.pillAll,
+                          border: Border.all(color: AppColors.goldDeep.withValues(alpha: 0.5)),
+                        ),
+                        child: Text(
+                          disc.badgeLabel,
+                          style: AppTextStyles.sans(
+                            size: 8.5,
+                            weight: FontWeight.w700,
+                            color: AppColors.goldDeep,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 if (category.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(category.toUpperCase(), style: AppTextStyles.eyebrow),
                 ],
                 const SizedBox(height: 2),
-                Text(
-                  rate == null
-                      ? 'We\'ll quote this one'
-                      : '${peso(rate)} per head'
-                          '${line.qty > 1 ? ' × ${line.qty} = ${peso(rate * line.qty)} per head' : ''}',
-                  style: AppTextStyles.sans(
-                    size: 11,
-                    weight: FontWeight.w600,
-                    color: rate == null
-                        ? AppColors.brown.withValues(alpha: 0.6)
-                        : AppColors.gold,
-                  ),
+                Row(
+                  children: [
+                    if (disc != null && rate != null) ...[
+                      Text(
+                        peso(rate),
+                        style: AppTextStyles.sans(
+                          size: 10,
+                          color: AppColors.brownSoft,
+                        ).copyWith(decoration: TextDecoration.lineThrough),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      effectiveRate == null
+                          ? 'We\'ll quote this one'
+                          : '${peso(effectiveRate)} per head'
+                              '${line.qty > 1 ? ' × ${line.qty} = ${peso(effectiveRate * line.qty)} per head' : ''}',
+                      style: AppTextStyles.sans(
+                        size: 11,
+                        weight: FontWeight.w600,
+                        color: effectiveRate == null
+                            ? AppColors.brown.withValues(alpha: 0.6)
+                            : AppColors.gold,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Row(

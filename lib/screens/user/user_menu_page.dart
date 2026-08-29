@@ -8,6 +8,7 @@ import '../../data/allergens.dart';
 import '../../data/member_preferences.dart';
 import '../../data/product.dart';
 import '../../data/product_repository.dart';
+import '../../data/promo_discount_service.dart';
 import '../../widgets.dart';
 import '../detail_sheets.dart';
 import 'settings/dietary_preference_page.dart';
@@ -149,30 +150,41 @@ class _UserMenuPageState extends State<UserMenuPage> {
                 ),
               ),
               const SizedBox(height: 14),
-              // Placeholder pills → the real chips → nothing (a type with no
-              // categories): one cross-fade, with the row's height tweened so
-              // the grid below settles rather than jumps.
               SmoothSwap(
                 resize: true,
                 child: loading
-                    ? SizedBox(
-                        key: const ValueKey('chips-loading'),
-                        height: 34,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: 6,
-                          separatorBuilder: (_, _) => const SizedBox(width: 10),
-                          itemBuilder: (_, i) =>
-                              PillPlaceholder(width: 64 + (i.isEven ? 30 : 0)),
+                    ? const SizedBox(
+                        key: ValueKey('chips-loading'),
+                        height: 36,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: PillPlaceholder(width: 140),
                         ),
                       )
                     : categories.isEmpty
                         ? const SizedBox.shrink(key: ValueKey('chips-none'))
-                        : _CategoryChips(
-                            key: const ValueKey('chips'),
-                            categories: categories,
-                            active: _category,
-                            onSelect: (c) => setState(() => _category = c),
+                        : SingleChildScrollView(
+                            key: const ValueKey('filter-row'),
+                            scrollDirection: Axis.horizontal,
+                            clipBehavior: Clip.none,
+                            child: Row(
+                              children: [
+                                _CategoryFilterButton(
+                                  categories: categories,
+                                  active: _category,
+                                  totalCount: ofType.length,
+                                  countFor: (c) => ofType.where((p) => p.category == c).length,
+                                  onSelect: (c) => setState(() => _category = c),
+                                ),
+                                if (showAllergens) ...[
+                                  const SizedBox(width: 8),
+                                  _AllergenButton(
+                                    stats: allergenStats,
+                                    count: shown.length,
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
               ),
               // Above the allergen map, because it's about *this member* rather
@@ -191,18 +203,6 @@ class _UserMenuPageState extends State<UserMenuPage> {
                         builder: (_) => const DietaryPreferencePage(),
                       ),
                     ),
-                  ),
-                ),
-              ),
-              // The summary comes and goes as the filters change what's in
-              // view, so it grows and fades rather than popping the grid down.
-              SmoothReveal(
-                visible: showAllergens,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.lg),
-                  child: _AllergenSummary(
-                    stats: allergenStats,
-                    count: shown.length,
                   ),
                 ),
               ),
@@ -396,97 +396,358 @@ class _TypeSegment extends StatelessWidget {
   }
 }
 
-// ─────────────────────────── Category chips ───────────────────────────
-class _CategoryChips extends StatelessWidget {
-  const _CategoryChips({
-    super.key,
+// ─────────────────────────── Category modal picker ───────────────────────────
+class _CategoryFilterButton extends StatelessWidget {
+  const _CategoryFilterButton({
     required this.categories,
     required this.active,
+    required this.countFor,
+    required this.totalCount,
     required this.onSelect,
   });
 
   final List<String> categories;
   final String? active; // null ⇒ All
+  final int Function(String) countFor;
+  final int totalCount;
   final ValueChanged<String?> onSelect;
+
+  void _openModal(BuildContext context) {
+    showCenterDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final allOptions = <Widget>[
+          _CategoryModalOption(
+            label: 'All Categories',
+            count: totalCount,
+            selected: active == null,
+            onTap: () {
+              Navigator.of(dialogContext).pop();
+              onSelect(null);
+            },
+          ),
+          for (final cat in categories)
+            _CategoryModalOption(
+              label: cat,
+              count: countFor(cat),
+              selected: active == cat,
+              onTap: () {
+                Navigator.of(dialogContext).pop();
+                onSelect(cat);
+              },
+            ),
+        ];
+
+        return AppDialogShell(
+          children: [
+            Text('MENU FILTER', style: AppTextStyles.eyebrow),
+            const SizedBox(height: AppSpacing.xs),
+            Text('Select Category', style: AppTextStyles.title),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Filter dishes by their category.',
+              style: AppTextStyles.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            for (var i = 0; i < allOptions.length; i += 2) ...[
+              Row(
+                children: [
+                  Expanded(child: allOptions[i]),
+                  const SizedBox(width: 8),
+                  if (i + 1 < allOptions.length)
+                    Expanded(child: allOptions[i + 1])
+                  else
+                    const Expanded(child: SizedBox.shrink()),
+                ],
+              ),
+              if (i + 2 < allOptions.length) const SizedBox(height: 8),
+            ],
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final items = <String?>[null, ...categories];
-    return SizedBox(
-      height: 34,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (_, i) {
-          final c = items[i];
-          final selected = c == active;
-          return GestureDetector(
-            onTap: () => onSelect(c),
-            child: AnimatedContainer(
-              duration: Motion.quick,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: selected ? AppColors.brown : AppColors.surface,
-                borderRadius: AppRadius.pillAll,
-                border: Border.all(
-                  color: selected ? AppColors.brown : AppColors.hairline,
-                ),
-              ),
-              child: Text(
-                c ?? 'All',
-                style: AppTextStyles.sans(
-                  size: 12,
-                  weight: FontWeight.w600,
-                  color: selected ? AppColors.cream : AppColors.brownSoft,
-                  spacing: 0.3,
-                ),
+    final isFiltered = active != null;
+    final activeCount = isFiltered ? countFor(active!) : totalCount;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () => _openModal(context),
+          child: AnimatedContainer(
+            duration: Motion.quick,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 7,
+            ),
+            decoration: BoxDecoration(
+              color: isFiltered ? AppColors.brown : AppColors.surface,
+              borderRadius: AppRadius.pillAll,
+              border: Border.all(
+                color: isFiltered ? AppColors.brown : AppColors.hairline,
               ),
             ),
-          );
-        },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.tune_rounded,
+                  size: 14,
+                  color: isFiltered ? AppColors.cream : AppColors.brownSoft,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  isFiltered ? active! : 'All Categories',
+                  style: AppTextStyles.sans(
+                    size: 12,
+                    weight: FontWeight.w600,
+                    color: isFiltered ? AppColors.cream : AppColors.brown,
+                    spacing: 0.2,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: isFiltered
+                        ? AppColors.cream.withValues(alpha: 0.2)
+                        : AppColors.placeholderFill,
+                    borderRadius: AppRadius.pillAll,
+                  ),
+                  child: Text(
+                    '$activeCount',
+                    style: AppTextStyles.sans(
+                      size: 9.5,
+                      weight: FontWeight.w700,
+                      color: isFiltered ? AppColors.cream : AppColors.brownSoft,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 15,
+                  color: isFiltered
+                      ? AppColors.cream.withValues(alpha: 0.8)
+                      : AppColors.brownSoft,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (isFiltered) ...[
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => onSelect(null),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.hairline),
+              ),
+              child: const Icon(
+                Icons.close_rounded,
+                size: 13,
+                color: AppColors.brownSoft,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CategoryModalOption extends StatelessWidget {
+  const _CategoryModalOption({
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final disc = PromoDiscountService.instance.getCategoryDiscount(label, 100);
+
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 10,
+      ),
+      color: selected ? AppColors.brown : AppColors.surface,
+      border: !selected,
+      radius: AppRadius.md,
+      child: Row(
+        children: [
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: selected
+                  ? AppColors.cream.withValues(alpha: 0.2)
+                  : AppColors.placeholderFill,
+              border: Border.all(
+                color: selected ? AppColors.cream : AppColors.hairline,
+                width: 1.5,
+              ),
+            ),
+            child: selected
+                ? const Icon(
+                    Icons.check_rounded,
+                    size: 12,
+                    color: AppColors.cream,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.sans(
+                          size: 13,
+                          weight: selected ? FontWeight.w700 : FontWeight.w600,
+                          color: selected ? AppColors.cream : AppColors.brown,
+                        ),
+                      ),
+                    ),
+                    if (disc != null) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: selected ? AppColors.cream.withValues(alpha: 0.25) : AppColors.gold.withValues(alpha: 0.2),
+                          borderRadius: AppRadius.pillAll,
+                          border: Border.all(color: selected ? AppColors.cream.withValues(alpha: 0.5) : AppColors.goldDeep.withValues(alpha: 0.5)),
+                        ),
+                        child: Text(
+                          disc.badgeLabel,
+                          style: AppTextStyles.sans(
+                            size: 8.5,
+                            weight: FontWeight.w700,
+                            color: selected ? AppColors.cream : AppColors.goldDeep,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$count ${count == 1 ? 'dish' : 'dishes'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.sans(
+                    size: 11,
+                    weight: FontWeight.w500,
+                    color: selected
+                        ? AppColors.cream.withValues(alpha: 0.82)
+                        : AppColors.brownSoft,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ─────────────────────────── Allergen summary ───────────────────────────
-/// A card-bound heatmap of the allergens running through the dishes currently
-/// shown, so the menu's collection view surfaces the same allergen read-out a
-/// single dish does. Tracks the active type / category / search filter.
-class _AllergenSummary extends StatelessWidget {
-  const _AllergenSummary({required this.stats, required this.count});
+// ─────────────────────────── Allergen modal button ───────────────────────────
+class _AllergenButton extends StatelessWidget {
+  const _AllergenButton({
+    required this.stats,
+    required this.count,
+  });
 
   final List<AllergenStat> stats;
   final int count;
 
+  void _openModal(BuildContext context) {
+    showCenterDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AppDialogShell(
+          children: [
+            Text('ALLERGEN MAP', style: AppTextStyles.eyebrow),
+            const SizedBox(height: AppSpacing.xs),
+            Text('Allergen Summary', style: AppTextStyles.title),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Across the $count dish${count == 1 ? '' : 'es'} shown in this view.',
+              style: AppTextStyles.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AllergenHeatmap(stats: stats),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.health_and_safety_outlined,
-                size: 16,
-                color: AppColors.goldDeep,
+    return GestureDetector(
+      onTap: () => _openModal(context),
+      child: AnimatedContainer(
+        duration: Motion.quick,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 7,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.pillAll,
+          border: Border.all(color: AppColors.hairline),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.health_and_safety_outlined,
+              size: 14,
+              color: AppColors.goldDeep,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              'Allergen Map',
+              style: AppTextStyles.sans(
+                size: 12,
+                weight: FontWeight.w600,
+                color: AppColors.brown,
+                spacing: 0.2,
               ),
-              const SizedBox(width: 8),
-              Text('ALLERGEN MAP', style: AppTextStyles.eyebrow),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Across the $count dish${count == 1 ? '' : 'es'} shown',
-            style: AppTextStyles.bodySmall,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AllergenHeatmap(stats: stats),
-        ],
+            ),
+            const SizedBox(width: 3),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 15,
+              color: AppColors.brownSoft,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -516,6 +777,8 @@ class _MenuItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final disc = PromoDiscountService.instance.getDishDiscount(product, 100);
+
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.sm),
@@ -531,6 +794,33 @@ class _MenuItemCard extends StatelessWidget {
                   ProductImage(product),
                   if (product.featured)
                     const Positioned(top: 8, left: 8, child: FeaturedTag()),
+                  if (disc != null)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold,
+                          borderRadius: AppRadius.pillAll,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.brown.withValues(alpha: 0.25),
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          disc.badgeLabel,
+                          style: AppTextStyles.sans(
+                            size: 9,
+                            weight: FontWeight.w800,
+                            color: AppColors.cream,
+                          ),
+                        ),
+                      ),
+                    ),
                   // Opposite corner from the Featured tag, so a dish can carry
                   // both without them colliding.
                   if (avoided.isNotEmpty)
@@ -554,11 +844,36 @@ class _MenuItemCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            product.category,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  product.category,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption,
+                ),
+              ),
+              if (disc != null) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withValues(alpha: 0.15),
+                    borderRadius: AppRadius.pillAll,
+                    border: Border.all(color: AppColors.goldDeep.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    disc.badgeLabel,
+                    style: AppTextStyles.sans(
+                      size: 8.5,
+                      weight: FontWeight.w700,
+                      color: AppColors.goldDeep,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),

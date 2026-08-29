@@ -238,18 +238,131 @@
   }
 
   /* ── Seed data ───────────────────────────────────────────────────────── */
+  const DEFAULT_ABOUT = {
+    mantra: {
+      eyebrow: "SINCE 2016 · THE FILL AT HOME STORY",
+      quote: "Be patient — your small business will grow enough to pay your bills.",
+      label: "OUR MANTRA FROM DAY ONE",
+    },
+    story: {
+      eyebrow: "WHERE WE BEGAN",
+      title: "Our Story",
+      body: "We tried to open a small Fill at Home canteen back in 2016. It did not work out — but it was an exciting experience for us. We went back to being a small family of employees, working every day to make ends meet: earning enough to pay the bills, put food on the table and send the kids to school.",
+      pullquote: "Little did we know that with a little effort, prayer and grit, this small business would become our lifeline.",
+    },
+    milestonesEyebrow: "THE FIRST YEAR",
+    milestonesTitle: "From Day 1 to Day 365",
+    milestones: [
+      {
+        id: "m1",
+        label: "DAY 1",
+        title: "Para sa Bayan",
+        paragraphs: [
+          "It began when one of our siblings still had time to share her #ParaSaBayan posts — we started mainly as a food supplier to frontliners at the start of the pandemic. We just wanted to make sure the frontliners were provided with clean and yummy food, and at the same time it was an opportunity for us to earn extra income — so we went for it.",
+          "We were just five siblings, using our normal household stuff as equipment, cooking meals daily for 100 people. This went on for a few days, until we were able to save enough to invest in more equipment for our kitchen.",
+        ],
+        icon: "volunteer_activism",
+        tag: "#ParaSaBayan",
+        highlight: false,
+      },
+      {
+        id: "m2",
+        label: "JUNE",
+        title: "The Kitchen",
+        paragraphs: [
+          "We started to rent an apartment that we now call “The Kitchen”. This is where our family started to grow, our equipment started to pile up, and more clients came knocking — where we grew as a family and as a small business.",
+          "We also started adding to our small family by hiring our first few staff members, Ate Toneth and CJ — and with their help, we were able to add even more people to our family.",
+          "June was also our first ever catering event. We still remember the sleepless nights, the excitement, the adrenaline.",
+        ],
+        icon: "soup_kitchen",
+        highlight: false,
+      },
+      {
+        id: "m3",
+        label: "AUGUST",
+        title: "Meet Filla",
+        paragraphs: [
+          "Operations started to become faster and we were getting more and more clients, so we decided to buy our first service vehicle — we call him Filla.",
+          "You see, we are very sentimental about all the things we buy and invest in, and about the people we hire. This is because we know that with these, big and small, we can become more.",
+        ],
+        icon: "local_shipping",
+        highlight: false,
+      },
+      {
+        id: "m4",
+        label: "DECEMBER",
+        title: "A Family Wedding",
+        paragraphs: [
+          "The couple who started Fill at Home tied the knot — and all the Fill at Home family members were present.",
+        ],
+        icon: "favorite",
+        highlight: false,
+      },
+      {
+        id: "m5",
+        label: "JANUARY",
+        title: "The Second Kitchen",
+        paragraphs: [
+          "We started renting a Second Kitchen, to accommodate more orders, more equipment and more staff.",
+        ],
+        icon: "home_work",
+        highlight: false,
+      },
+      {
+        id: "m6",
+        label: "DAY 365",
+        title: "We Are Still Here",
+        paragraphs: [
+          "It started as seven siblings — and now, with all our staff and the second-generation family members, we are 25 strong.",
+          "We are still growing, and with the help of our clients and our members, we will grow more. Soon, we are off to our next milestone — our biggest investment yet: the new home for Fill at Home.",
+        ],
+        icon: "groups",
+        highlight: true,
+      },
+    ],
+    quote: {
+      text: "So if you have a dream — no matter how difficult — put your heart into it and slowly ease your way toward your goals. And if you are lucky, you will succeed together with your family.",
+      author: "— THE FILL AT HOME FAMILY",
+    },
+    offeringsEyebrow: "AT YOUR TABLE",
+    offeringsTitle: "What We Offer",
+    offeringsSubtitle: "A seat at our table for every occasion — from a weekday craving to a once-in-a-lifetime celebration.",
+    offers: [
+      { id: "o1", title: "Event Coordinator/s", description: "Assigned on the day to ensure smooth operations during the event.", icon: "assignment_ind" },
+      { id: "o2", title: "Trained Waiters", description: "Uniformed and trained to assist guests throughout the event.", icon: "emoji_people" },
+      { id: "o3", title: "Dressed-Up Tables", description: "Tables styled with toppers based on the client's motif.", icon: "table_restaurant" },
+      { id: "o4", title: "Table Numbers", description: "Numbered tables to keep guests organized and seated with ease.", icon: "format_list_numbered" },
+      { id: "o5", title: "Basic Centerpiece Design", description: "Simple centerpieces to complete each table's look.", icon: "local_florist" },
+      { id: "o6", title: "Chairs with Cover & Accent", description: "Chairs dressed with covers and accents to match the theme.", icon: "event_seat" },
+      { id: "o7", title: "Purified Water", description: "Purified drinking water served throughout the event.", icon: "water_drop" },
+      { id: "o8", title: "Roll-Up Chafing Dish", description: "Chafing dishes to keep the spread warm and ready.", icon: "local_fire_department" },
+      { id: "o9", title: "Sanitized Dinnerware & Glassware", description: "Sanitized dinnerware, glassware and flatware for every guest.", icon: "restaurant" },
+    ],
+    contact: {
+      address: "The Kitchen · Metro Manila, Philippines",
+      mapQuery: "Fill at Home Catering, Metro Manila",
+      hours: "Monday – Sunday · 8:00 AM – 8:00 PM",
+      phone: "0917 123 4567",
+      email: "hello@fillathome.ph",
+    },
+    social: {
+      facebook: "https://www.facebook.com/fillathome",
+      instagram: "https://www.instagram.com/fillathome",
+      tiktok: "https://www.tiktok.com/@fillathome",
+    },
+    footer: "FILL AT HOME · SINCE 2016",
+  };
+
   const SEED = {
     categories: TYPES.flatMap((type) =>
       TAXONOMY[type].map(([name, icon]) =>
         ({ id: uid(), name, icon, type, price: (DEFAULT_CAT_PRICES[type] || {})[name] ?? 0 }))),
-    // Sample business records are intentionally empty — the dashboard shows
-    // ONLY what actually lives in Firestore. The category taxonomy below is the
-    // single seeded scaffold (so the product form always has categories to pick).
     dishes: [],
     packages: [],
     setups: [],
     allergens: structuredClone(DEFAULT_ALLERGENS),
     settings: { ordering: true, catering: true, featuredOnHome: true, maintenance: false, currency: "₱", schema: 3 },
+    about: structuredClone(DEFAULT_ABOUT),
   };
 
   /* ── Data store ──────────────────────────────────────────────────────── */
@@ -338,6 +451,7 @@
   const COLL = { categories: "categories", dishes: "products", packages: "packages", setups: "setups" };
   const SETTINGS_REF = () => FB.db.collection("settings").doc("app");
   const ALLERGENS_REF = () => FB.db.collection("settings").doc("allergens");
+  const ABOUT_REF = () => FB.db.collection("settings").doc("about");
   const PRODUCT_INDEX_REF = () => FB.db.collection("settings").doc("productIndex");
 
   /* Lightweight product index (settings/productIndex): one tiny doc mapping
@@ -367,13 +481,14 @@
   const docToObj = (d) => ({ id: d.id, ...d.data() });
 
   async function loadFromFirestore() {
-    const [cats, dishes, pkgs, setups, sett, algn] = await Promise.all([
+    const [cats, dishes, pkgs, setups, sett, algn, abt] = await Promise.all([
       FB.db.collection(COLL.categories).get(),
       FB.db.collection(COLL.dishes).get(),
       FB.db.collection(COLL.packages).get(),
       FB.db.collection(COLL.setups).get(),
       SETTINGS_REF().get(),
-      ALLERGENS_REF().get(),
+      ALLERGENS_REF().get().catch(() => ({ exists: false })),
+      ABOUT_REF().get().catch(() => ({ exists: false })),
     ]);
     return {
       categories: cats.docs.map(docToObj),
@@ -381,33 +496,23 @@
       packages: pkgs.docs.map(docToObj),
       setups: setups.docs.map(docToObj),
       settings: sett.exists ? { ...structuredClone(SEED.settings), ...sett.data() } : structuredClone(SEED.settings),
-      allergens: (algn.exists && normalizeAllergens((algn.data() || {}).list))
+      allergens: (algn && algn.exists && normalizeAllergens((algn.data() || {}).list))
         || structuredClone(DEFAULT_ALLERGENS),
-      // The settings doc is written by seedFirestore(); its presence marks a DB
-      // that has already been seeded once. Used to gate first-run seeding so
-      // deleted content never reappears.
+      about: (abt && abt.exists && abt.data()) ? { ...structuredClone(DEFAULT_ABOUT), ...abt.data() } : structuredClone(DEFAULT_ABOUT),
       _seeded: sett.exists,
-      _allergensSeeded: algn.exists,
+      _allergensSeeded: Boolean(algn && algn.exists),
     };
   }
 
-  // First-run convenience: write the seed content (the category taxonomy) so
-  // the dashboard and the app have a scaffold. Keeps each row's generated id
-  // as its doc id.
   async function seedFirestore() {
     const batch = FB.db.batch();
     ["categories", "dishes", "packages"].forEach((k) =>
       SEED[k].forEach((row) => batch.set(FB.db.collection(COLL[k]).doc(row.id), stripId(row))));
     batch.set(SETTINGS_REF(), SEED.settings);
+    batch.set(ABOUT_REF(), SEED.about);
     await batch.commit();
   }
 
-  /* Adopt freshly-loaded data. A background refetch merges INTO the existing
-     DB — same object, same row objects (matched by id) — instead of replacing
-     it: page scripts and open modals hold references captured earlier, and a
-     wholesale swap orphans them. A save through an orphaned copy lands in
-     Firestore but never in memory, and writeCache() then stamps the cache
-     fresh WITHOUT it — the item invisibly vanishes for up to CACHE_TTL. */
   function adoptLoaded(data) {
     if (!DB) { DB = data; return; }
     Object.keys(COLL).forEach((k) => {
@@ -426,6 +531,7 @@
     DB.settings = Object.assign(DB.settings || {}, data.settings);
     if (Array.isArray(DB.allergens)) DB.allergens.splice(0, DB.allergens.length, ...data.allergens);
     else DB.allergens = data.allergens;
+    DB.about = Object.assign(structuredClone(DEFAULT_ABOUT), DB.about || {}, data.about || {});
   }
 
   async function load() {
@@ -557,6 +663,16 @@
           || structuredClone(DEFAULT_ALLERGENS);
         if (Array.isArray(DB.allergens)) DB.allergens.splice(0, DB.allergens.length, ...list);
         else DB.allergens = list;
+      }));
+  }
+  function persistAbout(data) {
+    if (data) DB.about = data;
+    writeCache();
+    if (!ONLINE) return persistLocal();
+    ABOUT_REF().set({ ...DB.about, ...stamp() }, { merge: true }).catch((e) =>
+      onWriteError(e, "save about content", async () => {
+        const snap = await ABOUT_REF().get();
+        DB.about = snap.exists ? { ...structuredClone(DEFAULT_ABOUT), ...snap.data() } : structuredClone(DEFAULT_ABOUT);
       }));
   }
 
@@ -769,6 +885,7 @@
     if (!DB.settings) DB.settings = structuredClone(SEED.settings);
     // Older caches / local stores predate the editable taxonomy.
     if (!Array.isArray(DB.allergens)) DB.allergens = structuredClone(DEFAULT_ALLERGENS);
+    if (!DB.about) DB.about = structuredClone(DEFAULT_ABOUT);
     const from = DB.settings.schema || 1;
     if (from >= SCHEMA) return;
 
@@ -1070,6 +1187,7 @@
   HP.DEFAULT_CAT_PRICES = DEFAULT_CAT_PRICES;
   Object.defineProperty(HP, "ALLERGENS", { get: currentAllergens, configurable: true });
   HP.DEFAULT_ALLERGENS = DEFAULT_ALLERGENS;
+  HP.DEFAULT_ABOUT = DEFAULT_ABOUT;
   HP.parseAllergens = parseAllergens;
   HP.aggregateAllergens = aggregateAllergens;
   HP.hasAnyAllergenData = hasAnyAllergenData;
@@ -1089,6 +1207,7 @@
     importContent,
     persistSettings,
     persistAllergens,
+    persistAbout,
     resetData,
   };
 })();

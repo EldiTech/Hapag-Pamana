@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'brand.dart';
+import 'data/about_content.dart';
 import 'data/allergens.dart';
 import 'data/app_settings.dart';
 import 'data/member_preferences.dart';
@@ -27,6 +28,7 @@ Future<void> main() async {
   // Follow the dashboard's App-features switches (ordering / catering /
   // featured / maintenance) live for the whole session.
   AppSettingsScope.start();
+  AboutContentScope.start();
   runApp(const HapagPamanaApp());
 }
 

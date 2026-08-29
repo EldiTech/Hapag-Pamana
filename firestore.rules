@@ -424,5 +424,29 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isModerator() && id != 'pettyCash';
     }
+
+    // ── In-app notifications ──────────────────────────────────────────────
+    // Per-user notification items: only the owning member may read them or
+    // mark them as read. The app writes a notification on the member's behalf
+    // using the same uid, so creates are allowed for the owner as well.
+    // Only `isRead` may be patched by the client — everything else (title,
+    // body, type, createdAt) is written by the app server-side logic and must
+    // not be editable once stored.
+    match /notifications/{uid}/items/{notifId} {
+      allow read:   if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['isRead']);
+      allow delete: if false;
+    }
+
+    // ── Admin announcements (shared, all-member promotions & events) ──────
+    // Public read for guest/member apps and admin dash; moderator write only.
+    match /announcements/{id} {
+      allow read:   if true;
+      allow write:  if isModerator();
+    }
   }
 }

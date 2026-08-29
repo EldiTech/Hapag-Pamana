@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'announcement_session.dart';
 import 'customer.dart';
 
 /// Thrown by [CustomerRepository.signUp] when a field that must be unique is
@@ -180,10 +181,14 @@ class CustomerRepository {
       await _auth.signOut();
       throw const AccountBannedException();
     }
+    AnnouncementSession.markLoggedIn();
   }
 
   /// Signs the current customer out, returning the app to the guest side.
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() async {
+    AnnouncementSession.reset();
+    await _auth.signOut();
+  }
 
   /// Emits whether the signed-in customer is banned, live. The member shell
   /// listens so a ban flagged on the dashboard takes effect the moment it's

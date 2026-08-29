@@ -7,6 +7,7 @@ import '../core/format.dart';
 import '../core/widgets/app_widgets.dart';
 import '../data/catering.dart';
 import '../data/catering_repository.dart';
+import '../data/promo_discount_service.dart';
 import '../widgets.dart';
 import 'detail_sheets.dart';
 
@@ -412,15 +413,14 @@ class _PackagesSection extends StatelessWidget {
   /// Fixed grid-tile height: card padding + medallion + two name lines +
   /// price block + minimum caption + optional eligibility line, with a little
   /// slack for font metrics.
-  static const double _tileExtent = 228;
+  static const double _tileExtent = 240;
 
   @override
   Widget build(BuildContext context) {
-    // Skeleton pair → the grid → the quiet empty / error card. All three are
-    // different heights, so the swap tweens the section's height as it
-    // cross-fades and the page settles rather than jumping. It also covers
-    // the family toggle, which swaps one shelf of packages for the other.
-    return SmoothSwap(resize: true, child: _state(context));
+    return ListenableBuilder(
+      listenable: PromoDiscountService.instance,
+      builder: (context, _) => SmoothSwap(resize: true, child: _state(context)),
+    );
   }
 
   Widget _state(BuildContext context) {
@@ -510,6 +510,7 @@ class _PackageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final disc = PromoDiscountService.instance.getPackageDiscount(pkg.name, pkg.price);
     final minLabel = pkg.minPax > 0
         ? (pkg.isFoodPack ? 'MIN ${pkg.minPax} ORDERS' : 'MIN ${pkg.minPax} PAX')
         : null;
@@ -522,7 +523,40 @@ class _PackageCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _PackageMedallion(pkg: pkg, size: 68),
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.topRight,
+            children: [
+              _PackageMedallion(pkg: pkg, size: 68),
+              if (disc != null)
+                Positioned(
+                  top: -4,
+                  right: -10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.goldDeep,
+                      borderRadius: AppRadius.pillAll,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.brown.withValues(alpha: 0.25),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      disc.badgeLabel,
+                      style: AppTextStyles.sans(
+                        size: 9,
+                        weight: FontWeight.w800,
+                        color: AppColors.cream,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 10),
           Text(
             pkg.name,
@@ -533,14 +567,37 @@ class _PackageCard extends StatelessWidget {
           ),
           const Spacer(),
           if (pkg.price > 0) ...[
-            Text(
-              peso(pkg.price),
-              style: AppTextStyles.serif(
-                size: 18,
-                weight: FontWeight.w700,
-                color: AppColors.goldDeep,
+            if (disc != null) ...[
+              Text(
+                peso(pkg.price),
+                style: AppTextStyles.serif(
+                  size: 12,
+                  color: AppColors.brownSoft,
+                ).copyWith(
+                  decoration: TextDecoration.lineThrough,
+                  decorationColor: AppColors.brownSoft,
+                  decorationThickness: 1.5,
+                ),
               ),
-            ),
+              const SizedBox(height: 1),
+              Text(
+                peso(disc.discountedPrice),
+                style: AppTextStyles.serif(
+                  size: 18,
+                  weight: FontWeight.w700,
+                  color: AppColors.goldDeep,
+                ),
+              ),
+            ] else ...[
+              Text(
+                peso(pkg.price),
+                style: AppTextStyles.serif(
+                  size: 18,
+                  weight: FontWeight.w700,
+                  color: AppColors.goldDeep,
+                ),
+              ),
+            ],
             Text(
               _priceUnit(pkg),
               style: AppTextStyles.sans(size: 10, color: AppColors.brownSoft),

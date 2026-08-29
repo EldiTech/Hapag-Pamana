@@ -7,6 +7,7 @@ import '../../core/widgets/app_widgets.dart';
 import '../../data/app_settings.dart';
 import '../../data/customer_repository.dart';
 import '../../data/member_preferences.dart';
+import '../../data/notification_repository.dart';
 import '../../widgets.dart';
 import '../banned_notice.dart';
 import '../guest_shell.dart';
@@ -53,6 +54,10 @@ class _UserShellState extends State<UserShell> {
   bool _banned = false;
   StreamSubscription<bool>? _banSub;
 
+  /// Whether the bell should glow — updated live from Firestore.
+  bool _hasUnread = false;
+  StreamSubscription<bool>? _unreadSub;
+
   @override
   void initState() {
     super.initState();
@@ -74,11 +79,20 @@ class _UserShellState extends State<UserShell> {
       },
       onError: (_) {},
     );
+    // Live unread badge — update the bell dot as notifications land.
+    _unreadSub = NotificationRepository().watchHasUnread().listen(
+      (has) {
+        if (!mounted) return;
+        setState(() => _hasUnread = has);
+      },
+      onError: (_) {},
+    );
   }
 
   @override
   void dispose() {
     _banSub?.cancel();
+    _unreadSub?.cancel();
     AppSettingsScope.notifier.removeListener(_onSettings);
     super.dispose();
   }
@@ -182,6 +196,7 @@ class _UserShellState extends State<UserShell> {
                       key: ValueKey<int>(active),
                       title: _titles[active]!,
                       name: CustomerRepository().displayName,
+                      hasUnread: _hasUnread,
                       onAccount: () => _go(UserShell.tabAccount),
                     )
                   : const SizedBox.shrink(key: ValueKey('home-no-bar')),
@@ -417,11 +432,13 @@ class _MemberAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     required this.name,
     required this.onAccount,
+    this.hasUnread = false,
   });
 
   final String title;
   final String? name;
   final VoidCallback onAccount;
+  final bool hasUnread;
 
   @override
   Size get preferredSize => const Size.fromHeight(72);
@@ -448,7 +465,11 @@ class _MemberAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ],
       ),
-      actions: [_MemberChip(name: name, onTap: onAccount)],
+      actions: [
+        NotificationIconButton(hasUnread: hasUnread),
+        const SizedBox(width: 8),
+        _MemberChip(name: name, onTap: onAccount),
+      ],
     );
   }
 }
