@@ -26,6 +26,7 @@ class Announcement {
     this.discountScope = 'all',
     this.targetPackages = const [],
     this.targetCategories = const [],
+    this.discountAddOns = false,
     this.promoCode,
     required this.createdAt,
     this.updatedAt,
@@ -51,6 +52,7 @@ class Announcement {
   final String discountScope; // 'all' | 'specific' | 'packages' | 'categories'
   final List<String> targetPackages;
   final List<String> targetCategories;
+  final bool discountAddOns;
   final String? promoCode;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -134,13 +136,32 @@ class Announcement {
   /// Check if a food category matches this promo discount.
   bool appliesToCategory(String categoryName) {
     if (!offersDiscount) return false;
-    if (discountScope == 'packages') return false;
-    if (discountScope == 'all' || targetCategories.isEmpty) return true;
-    final clean = categoryName.trim().toLowerCase();
-    return targetCategories.any((c) {
-      final target = c.trim().toLowerCase();
-      return clean == target || clean.contains(target) || target.contains(clean);
-    });
+    if (discountScope == 'packages') {
+      return discountAddOns;
+    }
+    if (discountScope == 'specific') {
+      if (targetCategories.isEmpty) {
+        return discountAddOns;
+      }
+      final clean = categoryName.trim().toLowerCase();
+      final inTarget = targetCategories.any((c) {
+        final target = c.trim().toLowerCase();
+        return clean == target || clean.contains(target) || target.contains(clean);
+      });
+      return inTarget || discountAddOns;
+    }
+    if (discountScope == 'categories') {
+      if (targetCategories.isEmpty) return true;
+      final clean = categoryName.trim().toLowerCase();
+      return targetCategories.any((c) {
+        final target = c.trim().toLowerCase();
+        return clean == target || clean.contains(target) || target.contains(clean);
+      });
+    }
+    if (discountScope == 'all') {
+      return discountAddOns;
+    }
+    return false;
   }
 
   /// Calculate savings amount on a given unit/head price.
@@ -279,6 +300,7 @@ class Announcement {
       discountScope: (d['discountScope'] as String?)?.trim().toLowerCase() ?? 'all',
       targetPackages: parseStringList(d['targetPackages']),
       targetCategories: parseStringList(d['targetCategories']),
+      discountAddOns: d['discountAddOns'] == true || d['includeAddOns'] == true,
       promoCode: (d['promoCode'] as String?)?.trim(),
       createdAt: createdTs is Timestamp
           ? createdTs.toDate()
@@ -311,6 +333,7 @@ class Announcement {
         'discountScope': discountScope,
         'targetPackages': targetPackages,
         'targetCategories': targetCategories,
+        'discountAddOns': discountAddOns,
         if (promoCode != null) 'promoCode': promoCode,
         'createdAt': createdAt,
         if (updatedAt != null) 'updatedAt': updatedAt,

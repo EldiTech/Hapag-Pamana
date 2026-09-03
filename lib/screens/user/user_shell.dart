@@ -8,11 +8,15 @@ import '../../data/app_settings.dart';
 import '../../data/customer_repository.dart';
 import '../../data/member_preferences.dart';
 import '../../data/notification_repository.dart';
+import '../../data/booking_repository.dart';
+import '../../data/catering.dart';
+import '../../data/catering_repository.dart';
 import '../../widgets.dart';
 import '../banned_notice.dart';
 import '../guest_shell.dart';
 import '../maintenance_notice.dart';
 import 'account_page.dart';
+import 'booking_page.dart';
 import 'user_catering_page.dart';
 import 'user_gabay_page.dart';
 import 'user_home_page.dart';
@@ -57,10 +61,14 @@ class _UserShellState extends State<UserShell> {
   /// Whether the bell should glow — updated live from Firestore.
   bool _hasUnread = false;
   StreamSubscription<bool>? _unreadSub;
+  bool _checkedIncompleteBooking = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIncompleteBooking();
+    });
     AppSettingsScope.notifier.addListener(_onSettings);
     // Fetch this member's own settings once, for the whole session: the
     // Settings screens read and write them, the Menu flags dishes against the
@@ -95,6 +103,144 @@ class _UserShellState extends State<UserShell> {
     _unreadSub?.cancel();
     AppSettingsScope.notifier.removeListener(_onSettings);
     super.dispose();
+  }
+
+  /// Automatically checks if the customer has an incomplete booking draft
+  /// (e.g. phone turned off, closed app mid-booking) and offers to continue.
+  Future<void> _checkIncompleteBooking() async {
+    if (_checkedIncompleteBooking || !mounted) return;
+    _checkedIncompleteBooking = true;
+
+    // Small delay so splash screen transition / home intro settles smoothly
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+
+    final draft = await BookingRepository().fetchLatestDraft();
+    if (draft == null || !mounted) return;
+
+    final shouldResume = await showCenterDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AppDialogShell(
+        footer: Row(
+          children: [
+            Expanded(
+              child: AppButton.secondary(
+                label: 'DISCARD',
+                icon: Icons.delete_outline_rounded,
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              flex: 2,
+              child: AppButton.primary(
+                label: 'CONTINUE',
+                icon: Icons.arrow_forward_rounded,
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+              ),
+            ),
+          ],
+        ),
+        children: [
+          Text('INCOMPLETE BOOKING', style: AppTextStyles.eyebrow),
+          const SizedBox(height: AppSpacing.sm),
+          Text('Continue your booking?', style: AppTextStyles.title),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            draft.headline.isNotEmpty
+                ? 'You were in the middle of booking ${draft.headline}. Would you like to continue where you left off?'
+                : 'You were in the middle of a catering booking. Would you like to continue where you left off?',
+            style: AppTextStyles.bodySmall,
+          ),
+          if (draft.eventDate.isNotEmpty ||
+              draft.value('venue').isNotEmpty ||
+              draft.value('pax').isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.cream,
+                borderRadius: AppRadius.smAll,
+                border: Border.all(color: AppColors.hairline),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (draft.eventDate.isNotEmpty)
+                    Row(
+                      children: [
+                        const Icon(Icons.event_outlined,
+                            size: 15, color: AppColors.goldDeep),
+                        const SizedBox(width: 8),
+                        Text(
+                          draft.eventDate,
+                          style: AppTextStyles.sans(
+                              size: 13, weight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  if (draft.value('venue').isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.place_outlined,
+                            size: 15, color: AppColors.goldDeep),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            draft.value('venue'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.sans(
+                                size: 12, color: AppColors.brown),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (draft.value('pax').isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.groups_outlined,
+                            size: 15, color: AppColors.goldDeep),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${draft.value('pax')} pax',
+                          style: AppTextStyles.sans(
+                              size: 12, color: AppColors.brown),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (shouldResume == true) {
+      CateringPackage? package;
+      final packageId = draft.draftPackageId;
+      if (packageId.isNotEmpty) {
+        try {
+          package = await CateringRepository().fetchPackage(packageId);
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      await Navigator.of(context).push<void>(
+        BrandPageRoute<void>(
+          builder: (_) => BookingPage(package: package, resumeFrom: draft),
+        ),
+      );
+    } else if (shouldResume == false) {
+      try {
+        await BookingRepository().deleteDraft(draft.id);
+      } catch (_) {}
+    }
   }
 
   static List<int> _visibleIds(AppSettings s) => [

@@ -141,6 +141,36 @@ class BookingRepository {
   Future<void> deleteDraft(String draftId) =>
       _db.collection('bookings').doc(draftId).delete();
 
+  /// Fetches the signed-in member's most recent incomplete draft booking, if any.
+  Future<Booking?> fetchLatestDraft() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return null;
+    try {
+      final snap = await _db
+          .collection('bookings')
+          .where('uid', isEqualTo: uid)
+          .where('status', isEqualTo: 'draft')
+          .get();
+      if (snap.docs.isEmpty) return null;
+      final drafts = snap.docs
+          .map(Booking.fromDoc)
+          .where((b) => !b.deleted)
+          .toList()
+        ..sort((a, b) {
+          final at = a.statusUpdatedAt ?? a.createdAt;
+          final bt = b.statusUpdatedAt ?? b.createdAt;
+          if (at == null && bt == null) return 0;
+          if (at == null) return -1;
+          if (bt == null) return 1;
+          return bt.compareTo(at);
+        });
+      return drafts.isEmpty ? null : drafts.first;
+    } catch (e) {
+      debugPrint('BookingRepository.fetchLatestDraft error: $e');
+      return null;
+    }
+  }
+
   /// Records the PayMongo checkout page opened for [bookingId], so a member who
   /// backs out mid-payment can be handed the same page again from Order
   /// Tracking rather than opening a second one.

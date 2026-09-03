@@ -219,6 +219,8 @@ class _BookingPageState extends State<BookingPage> {
   /// second tap updates the same document instead of creating another one, and
   /// so a successful send can clean the draft up (see [_submit]).
   String? _draftId;
+  Timer? _autoSaveTimer;
+  bool _initDone = false;
 
   /// True while a "Continue later" save is in flight, so the button can show
   /// its own busy state independently of [_submitting].
@@ -371,7 +373,42 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   TextEditingController _ctrl(String key) =>
-      _fields.putIfAbsent(key, () => TextEditingController());
+      _fields.putIfAbsent(key, () {
+        final c = TextEditingController();
+        c.addListener(_scheduleAutoSave);
+        return c;
+      });
+
+  void _scheduleAutoSave() {
+    if (!_initDone || _submitting || _submitted) return;
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(milliseconds: 1500), _autoSaveDraft);
+  }
+
+  Future<void> _autoSaveDraft() async {
+    if (_submitting || _submitted) return;
+    if (!CustomerRepository().isSignedIn) return;
+
+    final hasContent = _step > 0 ||
+        _addOns.isNotEmpty ||
+        _fields.values.any((c) => c.text.trim().isNotEmpty);
+    if (!hasContent) return;
+
+    try {
+      final id = await BookingRepository().saveDraft(
+        {
+          for (final e in _fields.entries) e.key: e.value.text.trim(),
+          'menuAddOns': _addOnLines.join('\n'),
+        },
+        draftId: _draftId,
+        packageId: widget.package?.id,
+        step: _step,
+      );
+      _draftId = id;
+    } catch (e) {
+      debugPrint('BookingPage._autoSaveDraft error: $e');
+    }
+  }
 
   @override
   void initState() {
@@ -476,6 +513,7 @@ class _BookingPageState extends State<BookingPage> {
       // always did before the wizard asked.
       onError: (_) {},
     );
+    _initDone = true;
   }
 
   /// Sets [key]'s field to [value] unless the member has already typed there.
@@ -491,10 +529,12 @@ class _BookingPageState extends State<BookingPage> {
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
     _productSub?.cancel();
     _pricingSub?.cancel();
     _setupSub?.cancel();
     for (final c in _fields.values) {
+      c.removeListener(_scheduleAutoSave);
       c.dispose();
     }
     super.dispose();
@@ -1189,6 +1229,7 @@ class _BookingPageState extends State<BookingPage> {
       _stepForward = next >= _step;
       _step = next;
     });
+    _autoSaveDraft();
   }
 
   // ── The downpayment ───────────────────────────────────────────────────────
@@ -1296,6 +1337,7 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   Future<void> _submit() async {
+    _autoSaveTimer?.cancel();
     setState(() => _submitting = true);
 
     final total = _orderTotal;
@@ -1772,8 +1814,48 @@ class _BookingPageState extends State<BookingPage> {
   /// it confirms the booking.
   List<Widget> _addOnsSection() {
     final catalogue = _addOnsByCategory;
+    final hasAddOnDiscount = _addOnsSavingsTotal > 0;
+    final pkgHasDisc = _packageDiscount != null;
     return [
-      Text('Add-ons', style: AppTextStyles.label),
+      Row(
+        children: [
+          Text('Add-ons', style: AppTextStyles.label),
+          const SizedBox(width: AppSpacing.sm),
+          if (hasAddOnDiscount)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.2),
+                borderRadius: AppRadius.pillAll,
+                border: Border.all(color: AppColors.goldDeep.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.local_offer_rounded, size: 10, color: AppColors.goldDeep),
+                  const SizedBox(width: 3),
+                  Text(
+                    'DISCOUNT ACTIVE',
+                    style: AppTextStyles.sans(size: 8.5, weight: FontWeight.w700, color: AppColors.goldDeep),
+                  ),
+                ],
+              ),
+            )
+          else if (pkgHasDisc)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.cream,
+                borderRadius: AppRadius.pillAll,
+                border: Border.all(color: AppColors.hairline),
+              ),
+              child: Text(
+                'STANDARD RATE',
+                style: AppTextStyles.sans(size: 8.5, weight: FontWeight.w600, color: AppColors.brownSoft),
+              ),
+            ),
+        ],
+      ),
       const SizedBox(height: AppSpacing.xs),
       Text(
         catalogue.isEmpty
@@ -1786,14 +1868,69 @@ class _BookingPageState extends State<BookingPage> {
                     'menu. Each is priced per head and added to your total.',
         style: AppTextStyles.bodySmall,
       ),
+      if (pkgHasDisc && !hasAddOnDiscount) ...[
+        const SizedBox(height: AppSpacing.xs),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.cream,
+            borderRadius: AppRadius.smAll,
+            border: Border.all(color: AppColors.hairline),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.brownSoft),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Package promo applies to package only. Add-ons are charged at standard rates.',
+                  style: AppTextStyles.sans(size: 11, weight: FontWeight.w500, color: AppColors.brownSoft),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ] else if (hasAddOnDiscount) ...[
+        const SizedBox(height: AppSpacing.xs),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.gold.withValues(alpha: 0.12),
+            borderRadius: AppRadius.smAll,
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.local_offer_rounded, size: 14, color: AppColors.goldDeep),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Promo discount applies to your chosen add-ons!',
+                  style: AppTextStyles.sans(size: 11, weight: FontWeight.w600, color: AppColors.goldDeep),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
       const SizedBox(height: AppSpacing.md),
       for (final line in _addOns) ...[
         _AddOnLineCard(
           line: line,
           unitPrice: _pricing.priceFor(line.dish),
-          onAdd: line.qty < 99 ? () => setState(() => line.qty++) : null,
-          onRemove: line.qty > 1 ? () => setState(() => line.qty--) : null,
-          onDelete: () => setState(() => _addOns.remove(line)),
+          isPackageDiscounted: pkgHasDisc,
+          onAdd: line.qty < 99 ? () {
+            setState(() => line.qty++);
+            _scheduleAutoSave();
+          } : null,
+          onRemove: line.qty > 1 ? () {
+            setState(() => line.qty--);
+            _scheduleAutoSave();
+          } : null,
+          onDelete: () {
+            setState(() => _addOns.remove(line));
+            _scheduleAutoSave();
+          },
         ),
         const SizedBox(height: AppSpacing.sm),
       ],
@@ -1827,6 +1964,8 @@ class _BookingPageState extends State<BookingPage> {
     }
     if (_addOnsSavingsTotal > 0) {
       lines.add('Promo discount savings: -${peso(_addOnsSavingsTotal)}');
+    } else if (_packageDiscount != null && perHead > 0) {
+      lines.add('Add-ons: Standard rate (not discounted by package promo).');
     }
     if (unpriced.isNotEmpty) {
       lines.add(unpriced.length == _addOns.length
@@ -1913,9 +2052,9 @@ class _BookingPageState extends State<BookingPage> {
   /// menu categories; tapping one shows that category's available dishes,
   /// where tapping adds or removes an extra. A back row returns to the
   /// categories, and DONE closes.
-  Future<void> _pickAddOns(Map<String, List<Product>> byCategory) {
+  Future<void> _pickAddOns(Map<String, List<Product>> byCategory) async {
     String? open; // the category being browsed; null → the category list
-    return showCenterDialog<void>(
+    await showCenterDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
@@ -2000,6 +2139,8 @@ class _BookingPageState extends State<BookingPage> {
         },
       ),
     );
+    if (!mounted) return;
+    _scheduleAutoSave();
   }
 
   // ── Field builders ────────────────────────────────────────────────────────
@@ -2296,6 +2437,7 @@ class _AddOnLineCard extends StatelessWidget {
   const _AddOnLineCard({
     required this.line,
     required this.unitPrice,
+    this.isPackageDiscounted = false,
     required this.onAdd,
     required this.onRemove,
     required this.onDelete,
@@ -2306,6 +2448,7 @@ class _AddOnLineCard extends StatelessWidget {
   /// What one head of this dish costs, or null when neither it nor its
   /// category has been priced — then the card says the team will quote it.
   final num? unitPrice;
+  final bool isPackageDiscounted;
 
   /// Null at the 99 ceiling / the 1 floor, which dims the matching button.
   final VoidCallback? onAdd;
@@ -2363,6 +2506,24 @@ class _AddOnLineCard extends StatelessWidget {
                             size: 8.5,
                             weight: FontWeight.w700,
                             color: AppColors.goldDeep,
+                          ),
+                        ),
+                      ),
+                    ] else if (isPackageDiscounted && rate != null) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.cream,
+                          borderRadius: AppRadius.pillAll,
+                          border: Border.all(color: AppColors.hairline),
+                        ),
+                        child: Text(
+                          'STANDARD RATE',
+                          style: AppTextStyles.sans(
+                            size: 8.5,
+                            weight: FontWeight.w600,
+                            color: AppColors.brownSoft,
                           ),
                         ),
                       ),
@@ -2627,6 +2788,10 @@ class _AddOnToggleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rate = unitPrice;
+    final disc = rate != null ? PromoDiscountService.instance.getDishDiscount(dish, rate) : null;
+    final effectiveRate = disc != null ? disc.discountedPrice : rate;
+
     return PressableScale(
       onTap: onTap,
       child: Container(
@@ -2662,17 +2827,50 @@ class _AddOnToggleRow extends StatelessWidget {
                         AppTextStyles.sans(size: 13, weight: FontWeight.w600),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    unitPrice == null
-                        ? 'Priced on confirmation'
-                        : '${peso(unitPrice!)} per head',
-                    style: AppTextStyles.sans(
-                      size: 11,
-                      weight: FontWeight.w600,
-                      color: unitPrice == null
-                          ? AppColors.brown.withValues(alpha: 0.6)
-                          : AppColors.gold,
-                    ),
+                  Row(
+                    children: [
+                      if (disc != null && rate != null) ...[
+                        Text(
+                          peso(rate),
+                          style: AppTextStyles.sans(
+                            size: 10,
+                            color: AppColors.brownSoft,
+                          ).copyWith(decoration: TextDecoration.lineThrough),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Text(
+                        effectiveRate == null
+                            ? 'Priced on confirmation'
+                            : '${peso(effectiveRate)} per head',
+                        style: AppTextStyles.sans(
+                          size: 11,
+                          weight: FontWeight.w600,
+                          color: effectiveRate == null
+                              ? AppColors.brown.withValues(alpha: 0.6)
+                              : AppColors.gold,
+                        ),
+                      ),
+                      if (disc != null) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppColors.gold.withValues(alpha: 0.2),
+                            borderRadius: AppRadius.pillAll,
+                            border: Border.all(color: AppColors.goldDeep.withValues(alpha: 0.5)),
+                          ),
+                          child: Text(
+                            disc.badgeLabel,
+                            style: AppTextStyles.sans(
+                              size: 8,
+                              weight: FontWeight.w700,
+                              color: AppColors.goldDeep,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),

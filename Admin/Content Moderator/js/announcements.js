@@ -194,6 +194,7 @@
                   ${item.location ? `<span class="ann-meta-pill"><span class="ic">${HP.icon("pin")}</span>${HP.esc(item.location)}</span>` : ""}
                   ${targetPkgs.length ? `<span class="ann-meta-pill" title="Applies to packages"><span class="ic">${HP.icon("box")}</span>${HP.esc(targetPkgs.join(", "))}</span>` : ""}
                   ${targetCats.length ? `<span class="ann-meta-pill" title="Applies to food categories"><span class="ic">${HP.icon("basket")}</span>${HP.esc(targetCats.join(", "))}</span>` : ""}
+                  ${hasDisc ? `<span class="ann-meta-pill" style="${item.discountAddOns ? 'color:var(--gold-deep); font-weight:600;' : 'color:var(--ink-faint);'}" title="${item.discountAddOns ? 'Promo discount applies to dish add-ons' : 'Promo discount does not apply to dish add-ons'}"><span class="ic">${HP.icon("tag")}</span>${item.discountAddOns ? "Add-ons: Discounted" : "Add-ons: Excluded"}</span>` : ""}
                 </div>
               </div>
             </div>
@@ -296,6 +297,7 @@
     const targetPackages = (existing && Array.isArray(existing.targetPackages) ? existing.targetPackages : []);
     const targetCategories = (existing && Array.isArray(existing.targetCategories) ? existing.targetCategories : []);
     const promoCode = (existing && existing.promoCode) || "";
+    const discountAddOns = Boolean(existing && (existing.discountAddOns || existing.includeAddOns));
 
     // Available packages and categories from store or fallback
     const allPackages = (HP.store && HP.store.DB && HP.store.DB.packages && HP.store.DB.packages.length)
@@ -418,6 +420,22 @@
                 }).join("")}
               </div>
             </div>
+
+            <!-- Add-ons Discount Indicator & Toggle -->
+            <div class="field" style="margin-top:4px; padding:12px 14px; background:var(--paper-3); border-radius:var(--r); border:1px solid var(--hair-soft);">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:0; text-transform:none; font-family:var(--text); font-size:13px; font-weight:600; color:var(--ink);">
+                  <input type="checkbox" id="annDiscountAddOns" ${discountAddOns ? "checked" : ""}>
+                  <span>Apply promo discount to custom dish add-ons as well</span>
+                </label>
+                <span id="annAddOnsBadge" class="status-badge ${discountAddOns ? 'promo-badge' : ''}" style="font-size:10px; padding:2px 8px;">
+                  ${discountAddOns ? 'ADD-ONS DISCOUNTED' : 'ADD-ONS EXCLUDED'}
+                </span>
+              </div>
+              <small style="display:block; margin-top:4px; margin-left:22px; color:var(--ink-faint); font-size:11px;">
+                When unchecked, only booked packages get discounted. Add-on dishes remain at regular rates.
+              </small>
+            </div>
           </div>
         </div>
 
@@ -428,9 +446,9 @@
             <small style="color:var(--ink-faint); font-size:11px;">When the promo or event begins</small>
           </div>
           <div class="field">
-            <label>End Date / Valid Until <span style="color:var(--ink-faint); font-weight:normal;">(optional)</span></label>
+            <label>End Date / Valid Until</label>
             <input class="control" id="annEndDate" type="date" value="${HP.esc((existing && (existing.endDate || existing.validUntil)) || "")}">
-            <small style="color:var(--ink-faint); font-size:11px;">e.g. Sept 15 (leave empty for ongoing promo)</small>
+            <small style="color:var(--ink-faint); font-size:11px;">Optional · e.g. Sept 15 (leave empty for ongoing promo)</small>
           </div>
         </div>
 
@@ -569,6 +587,20 @@
       });
     }
 
+    const addOnsCheck = document.getElementById("annDiscountAddOns");
+    const addOnsBadge = document.getElementById("annAddOnsBadge");
+    if (addOnsCheck && addOnsBadge) {
+      addOnsCheck.addEventListener("change", () => {
+        if (addOnsCheck.checked) {
+          addOnsBadge.className = "status-badge promo-badge";
+          addOnsBadge.textContent = "ADD-ONS DISCOUNTED";
+        } else {
+          addOnsBadge.className = "status-badge";
+          addOnsBadge.textContent = "ADD-ONS EXCLUDED";
+        }
+      });
+    }
+
     if (dropzone && fileInput) {
       dropzone.addEventListener("click", () => fileInput.click());
       dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("dragover"); });
@@ -704,12 +736,15 @@
         }
         docData.targetPackages = dScope === "all" || dScope === "categories" ? [] : selPkgs;
         docData.targetCategories = dScope === "all" || dScope === "packages" ? [] : selCats;
+        const addOnsCheck = document.getElementById("annDiscountAddOns");
+        docData.discountAddOns = Boolean(addOnsCheck && addOnsCheck.checked);
       } else {
         docData.hasDiscount = false;
         docData.discountType = null;
         docData.discountPercent = null;
         docData.discountAmount = null;
         docData.discountScope = null;
+        docData.discountAddOns = false;
         docData.targetPackages = [];
         docData.targetCategories = [];
       }
