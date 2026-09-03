@@ -434,7 +434,8 @@ service cloud.firestore {
     // not be editable once stored.
     match /notifications/{uid}/items/{notifId} {
       allow read:   if request.auth != null && request.auth.uid == uid;
-      allow create: if request.auth != null && request.auth.uid == uid;
+      allow create: if (request.auth != null && request.auth.uid == uid)
+                    || isOrderManager();
       allow update: if request.auth != null
                     && request.auth.uid == uid
                     && request.resource.data.diff(resource.data)

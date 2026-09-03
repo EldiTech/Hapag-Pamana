@@ -266,7 +266,8 @@
     // dumped into "More details".
     "paymentStatus", "paymentTotal", "paymentDue", "paymentPaid", "paidAt",
     // The total's breakdown — presented under it in paymentHTML.
-    "packageTotal", "addOnsTotal",
+    "packageTotal", "addOnsTotal", "discountTotal", "packageDiscount",
+    "addOnsDiscountTotal", "appliedPromos",
     "paymentRef", "paymentMethod", "checkoutSessionId", "checkoutUrl",
     // Written when a manager records a payment taken by hand (recordPayment);
     // the sheet reads them in paymentHTML.
@@ -732,6 +733,34 @@
     pending:   (o) => `${clientName(o)}'s order is back in the pending queue.`,
   };
 
+  const NOTIF_COPY = {
+    confirmed: {
+      title: "Booking Confirmed",
+      body: "Great news — your booking is confirmed! We'll be in touch for the details.",
+    },
+    completed: {
+      title: "Booking Completed",
+      body: "Your event with Hapag Pamana is done. Salamat — hope it was special!",
+    },
+    declined: {
+      title: "Booking Declined",
+      body: "Your booking couldn't be accommodated. Tap to review your details.",
+    },
+  };
+
+  function sendCustomerNotification(uid, bookingId, status) {
+    if (!uid || !NOTIF_COPY[status]) return;
+    const { title, body } = NOTIF_COPY[status];
+    db.collection("notifications").doc(uid).collection("items").add({
+      title,
+      body,
+      type: "order_update",
+      isRead: false,
+      bookingId: bookingId,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch((e) => console.warn("HapagPamana: couldn't post customer notification —", e));
+  }
+
   /* The moves the workflow allows from each status. Validated inside the
      transaction against the doc's CURRENT status — never the copy a sheet
      was painted from — so a stale sheet can't re-route an order another
@@ -815,6 +844,7 @@
       if (status === "completed" && committed && window.HPRec) {
         HPRec.recordCompletion(db, committed);
       }
+      sendCustomerNotification(o.uid || (committed && committed.uid), o.id, status);
       HP.toast(STATUS_TOAST[status](o), status === "declined" ? "warn" : "ok");
     } catch (e) {
       if (e && (e.code === "hp/gone" || e.code === "not-found")) {
@@ -1193,6 +1223,8 @@
     }
     if (money(o.discountTotal)) {
       facts.push(["· Promo discount", `-${money(o.discountTotal)}`]);
+      if (o.packageDiscount) facts.push(["· Package promo", String(o.packageDiscount)]);
+      if (money(o.addOnsDiscountTotal)) facts.push(["· Add-ons savings", `-${money(o.addOnsDiscountTotal)}`]);
       if (Array.isArray(o.appliedPromos) && o.appliedPromos.length) {
         facts.push(["· Applied promos", o.appliedPromos.join(", ")]);
       }

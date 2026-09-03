@@ -136,30 +136,44 @@ class Announcement {
   /// Check if a food category matches this promo discount.
   bool appliesToCategory(String categoryName) {
     if (!offersDiscount) return false;
-    if (discountScope == 'packages') {
-      return discountAddOns;
-    }
-    if (discountScope == 'specific') {
-      if (targetCategories.isEmpty) {
-        return discountAddOns;
+    if (discountScope == 'packages') return false;
+    if (discountScope == 'all') return true;
+    if (targetCategories.isEmpty) return true;
+    final clean = categoryName.trim().toLowerCase();
+    return targetCategories.any((c) {
+      final target = c.trim().toLowerCase();
+      return clean == target || clean.contains(target) || target.contains(clean);
+    });
+  }
+
+  /// Check if an event booking custom add-on dish receives this promo discount.
+  bool appliesToAddOn(String categoryName, {String? packageName}) {
+    if (!offersDiscount) return false;
+    if (discountAddOns) {
+      if (discountScope == 'all') return true;
+      if (discountScope == 'packages') {
+        if (packageName != null && targetPackages.isNotEmpty) {
+          return appliesToPackage(packageName);
+        }
+        return true;
       }
-      final clean = categoryName.trim().toLowerCase();
-      final inTarget = targetCategories.any((c) {
-        final target = c.trim().toLowerCase();
-        return clean == target || clean.contains(target) || target.contains(clean);
-      });
-      return inTarget || discountAddOns;
+      if (discountScope == 'specific' || discountScope == 'categories') {
+        if (targetCategories.isEmpty) return true;
+        final clean = categoryName.trim().toLowerCase();
+        final inTarget = targetCategories.any((c) {
+          final target = c.trim().toLowerCase();
+          return clean == target || clean.contains(target) || target.contains(clean);
+        });
+        if (inTarget) return true;
+        if (packageName != null && appliesToPackage(packageName)) return true;
+        return false;
+      }
+      return true;
     }
+    // If discountAddOns is false, add-ons only get discounted if the promo
+    // specifically targets food categories.
     if (discountScope == 'categories') {
-      if (targetCategories.isEmpty) return true;
-      final clean = categoryName.trim().toLowerCase();
-      return targetCategories.any((c) {
-        final target = c.trim().toLowerCase();
-        return clean == target || clean.contains(target) || target.contains(clean);
-      });
-    }
-    if (discountScope == 'all') {
-      return discountAddOns;
+      return appliesToCategory(categoryName);
     }
     return false;
   }

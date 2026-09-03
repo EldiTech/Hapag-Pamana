@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../brand.dart';
 import '../../data/announcement.dart';
+import '../../data/app_modal_queue.dart';
 import '../../widgets.dart';
 import 'announcement_details_page.dart';
 
@@ -20,17 +21,19 @@ class AnnouncementPopupModal extends StatefulWidget {
   final List<Announcement> announcements;
   final int initialIndex;
 
-  /// Singleton guard flag to ensure multiple dialogs never stack.
-  static bool _isShowingDialog = false;
-
-  /// Shows the announcement popup modal. If a popup is already active, this is ignored.
+  /// Shows the announcement popup modal sequentially through the modal queue.
   static Future<void> show(
     BuildContext context, {
     required List<Announcement> announcements,
     int initialIndex = 0,
   }) async {
-    if (_isShowingDialog || announcements.isEmpty || !context.mounted) return;
-    _isShowingDialog = true;
+    if (announcements.isEmpty || !context.mounted) return;
+
+    await AppModalQueue.instance.acquire();
+    if (!context.mounted) {
+      AppModalQueue.instance.release();
+      return;
+    }
 
     try {
       await showGeneralDialog<void>(
@@ -83,7 +86,7 @@ class AnnouncementPopupModal extends StatefulWidget {
         },
       );
     } finally {
-      _isShowingDialog = false;
+      AppModalQueue.instance.release();
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../brand.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../data/app_modal_queue.dart';
 import '../../data/app_settings.dart';
 import '../../data/customer_repository.dart';
 import '../../data/member_preferences.dart';
@@ -118,29 +119,30 @@ class _UserShellState extends State<UserShell> {
     final draft = await BookingRepository().fetchLatestDraft();
     if (draft == null || !mounted) return;
 
-    final shouldResume = await showCenterDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AppDialogShell(
-        footer: Row(
-          children: [
-            Expanded(
-              child: AppButton.secondary(
-                label: 'DISCARD',
-                icon: Icons.delete_outline_rounded,
-                onPressed: () => Navigator.of(dialogContext).pop(false),
+    final shouldResume = await AppModalQueue.instance.show<bool>(() async {
+      if (!mounted) return null;
+      return showCenterDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AppDialogShell(
+          footer: Row(
+            children: [
+              Expanded(
+                child: AppButton.secondary(
+                  label: 'DISCARD',
+                  icon: Icons.delete_outline_rounded,
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              flex: 2,
-              child: AppButton.primary(
-                label: 'CONTINUE',
-                icon: Icons.arrow_forward_rounded,
-                onPressed: () => Navigator.of(dialogContext).pop(true),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: AppButton.primary(
+                  label: 'CONTINUE',
+                  icon: Icons.arrow_forward_rounded,
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         children: [
           Text('INCOMPLETE BOOKING', style: AppTextStyles.eyebrow),
           const SizedBox(height: AppSpacing.sm),
@@ -220,6 +222,7 @@ class _UserShellState extends State<UserShell> {
         ],
       ),
     );
+  });
 
     if (!mounted) return;
     if (shouldResume == true) {

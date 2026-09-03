@@ -136,6 +136,35 @@ class PromoDiscountService extends ChangeNotifier {
     return getCategoryDiscount(dish.category, originalPrice);
   }
 
+  /// Check and calculate discount for a custom dish add-on in event booking.
+  CategoryDiscountInfo? getAddOnDiscount(Product dish, num originalPrice, {String? packageName}) {
+    if (originalPrice <= 0 || _activePromos.isEmpty) return null;
+
+    Announcement? bestPromo;
+    num bestSavings = 0;
+
+    for (final promo in _activePromos) {
+      if (promo.appliesToAddOn(dish.category, packageName: packageName)) {
+        final savings = promo.computeDiscount(originalPrice);
+        if (savings > bestSavings) {
+          bestSavings = savings;
+          bestPromo = promo;
+        }
+      }
+    }
+
+    if (bestPromo == null || bestSavings <= 0) return null;
+
+    return CategoryDiscountInfo(
+      promo: bestPromo,
+      categoryName: dish.category,
+      originalPrice: originalPrice,
+      discountedPrice: (originalPrice - bestSavings).clamp(0, originalPrice),
+      discountSavings: bestSavings,
+      badgeLabel: bestPromo.discountBadgeLabel,
+    );
+  }
+
   /// Helper for [CateringPackage].
   PackageDiscountInfo? discountForCateringPackage(CateringPackage package) {
     return getPackageDiscount(package.name, package.price);

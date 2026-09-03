@@ -40,7 +40,9 @@
     if (Number.isFinite(total) && total > 0) return total;
     const pkg = Number(o.packageTotal) || 0;
     const addons = Number(o.addOnsTotal) || 0;
-    return pkg + addons > 0 ? pkg + addons : 0;
+    const disc = Number(o.discountTotal) || 0;
+    const computed = pkg + addons - disc;
+    return computed > 0 ? computed : 0;
   }
 
   function clean(doc) {

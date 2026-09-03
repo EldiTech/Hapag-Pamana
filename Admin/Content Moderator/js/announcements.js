@@ -373,6 +373,12 @@
                 </select>
                 <small style="color:var(--ink-faint); font-size:11px;">Choose what receives this discount</small>
               </div>
+
+              <div class="field" style="margin-top:8px;">
+                <label>Voucher / Promo Code (Optional)</label>
+                <input class="control" id="annPromoCode" placeholder="e.g. PAMANA20 or SUMMERFEST" value="${HP.esc(promoCode)}" style="text-transform:uppercase; letter-spacing:1px; font-weight:600;">
+                <small style="color:var(--ink-faint); font-size:11px;">Shown on announcement modal & cards with a 1-tap copy button in the member app</small>
+              </div>
             </div>
 
             <!-- Package Selection Chips -->
@@ -738,6 +744,9 @@
         docData.targetCategories = dScope === "all" || dScope === "packages" ? [] : selCats;
         const addOnsCheck = document.getElementById("annDiscountAddOns");
         docData.discountAddOns = Boolean(addOnsCheck && addOnsCheck.checked);
+        const promoCodeInput = document.getElementById("annPromoCode");
+        const codeVal = promoCodeInput ? (promoCodeInput.value || "").trim().toUpperCase() : "";
+        docData.promoCode = codeVal || null;
       } else {
         docData.hasDiscount = false;
         docData.discountType = null;
@@ -747,6 +756,7 @@
         docData.discountAddOns = false;
         docData.targetPackages = [];
         docData.targetCategories = [];
+        docData.promoCode = null;
       }
 
       if (status === "published") {

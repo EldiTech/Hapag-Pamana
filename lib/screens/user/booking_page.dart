@@ -1274,7 +1274,7 @@ class _BookingPageState extends State<BookingPage> {
     for (final line in _addOns) {
       final rate = _pricing.priceFor(line.dish);
       if (rate != null) {
-        final disc = PromoDiscountService.instance.getDishDiscount(line.dish, rate);
+        final disc = PromoDiscountService.instance.getAddOnDiscount(line.dish, rate, packageName: widget.package?.name);
         final effectiveRate = disc != null ? disc.discountedPrice : rate;
         sum += effectiveRate * line.qty;
       }
@@ -1289,7 +1289,7 @@ class _BookingPageState extends State<BookingPage> {
     for (final line in _addOns) {
       final rate = _pricing.priceFor(line.dish);
       if (rate != null) {
-        final disc = PromoDiscountService.instance.getDishDiscount(line.dish, rate);
+        final disc = PromoDiscountService.instance.getAddOnDiscount(line.dish, rate, packageName: widget.package?.name);
         if (disc != null) {
           sum += disc.discountSavings * line.qty * _pax;
         }
@@ -1366,8 +1366,8 @@ class _BookingPageState extends State<BookingPage> {
           if (_totalSavings > 0) 'appliedPromos': [
             if (_packageDiscount != null) '${_packageDiscount!.promo.title} (${_packageDiscount!.badgeLabel})',
             for (final l in _addOns)
-              if (PromoDiscountService.instance.getDishDiscount(l.dish, _pricing.priceFor(l.dish) ?? 0) != null)
-                '${l.dish.name} (${PromoDiscountService.instance.getDishDiscount(l.dish, _pricing.priceFor(l.dish) ?? 0)!.badgeLabel})',
+              if (PromoDiscountService.instance.getAddOnDiscount(l.dish, _pricing.priceFor(l.dish) ?? 0, packageName: widget.package?.name) != null)
+                '${l.dish.name} (${PromoDiscountService.instance.getAddOnDiscount(l.dish, _pricing.priceFor(l.dish) ?? 0, packageName: widget.package?.name)!.badgeLabel})',
           ],
         },
       );
@@ -1502,7 +1502,12 @@ class _BookingPageState extends State<BookingPage> {
       // state) actually leaves the wizard.
       canPop: _step == 0 || _submitted,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _back();
+        if (!didPop) {
+          _back();
+        } else if (!_submitted) {
+          _autoSaveTimer?.cancel();
+          unawaited(_autoSaveDraft());
+        }
       },
       child: Scaffold(
         appBar: AppBar(
@@ -1918,6 +1923,7 @@ class _BookingPageState extends State<BookingPage> {
         _AddOnLineCard(
           line: line,
           unitPrice: _pricing.priceFor(line.dish),
+          packageName: widget.package?.name,
           isPackageDiscounted: pkgHasDisc,
           onAdd: line.qty < 99 ? () {
             setState(() => line.qty++);
@@ -2115,6 +2121,7 @@ class _BookingPageState extends State<BookingPage> {
                   _AddOnToggleRow(
                     dish: dish,
                     unitPrice: _pricing.priceFor(dish),
+                    packageName: widget.package?.name,
                     selected: isChosen(dish),
                     onTap: () {
                       // Update the page behind the dialog (the quantity
@@ -2437,6 +2444,7 @@ class _AddOnLineCard extends StatelessWidget {
   const _AddOnLineCard({
     required this.line,
     required this.unitPrice,
+    this.packageName,
     this.isPackageDiscounted = false,
     required this.onAdd,
     required this.onRemove,
@@ -2448,6 +2456,7 @@ class _AddOnLineCard extends StatelessWidget {
   /// What one head of this dish costs, or null when neither it nor its
   /// category has been priced — then the card says the team will quote it.
   final num? unitPrice;
+  final String? packageName;
   final bool isPackageDiscounted;
 
   /// Null at the 99 ceiling / the 1 floor, which dims the matching button.
@@ -2459,7 +2468,7 @@ class _AddOnLineCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final category = line.dish.category.trim();
     final rate = unitPrice;
-    final disc = rate != null ? PromoDiscountService.instance.getDishDiscount(line.dish, rate) : null;
+    final disc = rate != null ? PromoDiscountService.instance.getAddOnDiscount(line.dish, rate, packageName: packageName) : null;
     final effectiveRate = disc != null ? disc.discountedPrice : rate;
 
     return Container(
@@ -2774,6 +2783,7 @@ class _AddOnToggleRow extends StatelessWidget {
   const _AddOnToggleRow({
     required this.dish,
     required this.unitPrice,
+    this.packageName,
     required this.selected,
     required this.onTap,
   });
@@ -2782,6 +2792,7 @@ class _AddOnToggleRow extends StatelessWidget {
 
   /// The dish's per-head rate, or null when it hasn't been priced.
   final num? unitPrice;
+  final String? packageName;
 
   final bool selected;
   final VoidCallback onTap;
@@ -2789,7 +2800,7 @@ class _AddOnToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rate = unitPrice;
-    final disc = rate != null ? PromoDiscountService.instance.getDishDiscount(dish, rate) : null;
+    final disc = rate != null ? PromoDiscountService.instance.getAddOnDiscount(dish, rate, packageName: packageName) : null;
     final effectiveRate = disc != null ? disc.discountedPrice : rate;
 
     return PressableScale(

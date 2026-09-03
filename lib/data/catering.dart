@@ -57,13 +57,20 @@ class CateringPackage {
   /// and no less (Sandwich, which no fixed course list had).
   List<PackageCourse> get courses {
     final out = <PackageCourse>[];
-    final seen = <String>{};
+    final counts = <String, int>{};
     for (final line in inclusions) {
       final course = PackageCourse.parse(line);
       if (course == null) continue;
-      // Two identical lines would collide on one controller; keep the first.
-      if (!seen.add(course.key)) continue;
-      out.add(course);
+      final count = counts.update(course.key, (v) => v + 1, ifAbsent: () => 1);
+      if (count > 1) {
+        out.add(PackageCourse(
+          key: '${course.key}$count',
+          label: '${course.label} ($count)',
+          categories: course.categories,
+        ));
+      } else {
+        out.add(course);
+      }
     }
     return out;
   }

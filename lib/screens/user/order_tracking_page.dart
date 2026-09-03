@@ -923,6 +923,8 @@ class _OrderSheet extends StatelessWidget {
     'menu', 'menuAddOns', 'bookingType',
     'uid', 'status', 'createdAt', 'statusUpdatedAt', 'history', 'deleted',
     'paymentStatus', 'paymentTotal', 'paymentDue', 'paymentPaid', 'paidAt',
+    'packageTotal', 'addOnsTotal', 'discountTotal', 'packageDiscount',
+    'addOnsDiscountTotal', 'appliedPromos',
     'paymentRef', 'paymentMethod', 'checkoutUrl', 'checkoutSessionId',
     'fulfilment',
   };
@@ -1097,6 +1099,17 @@ class _MoneySection extends StatelessWidget {
           if (order.paymentTotal > 0) ...[
             const SizedBox(height: AppSpacing.sm),
             _MoneyRow(label: 'Order total', value: peso(order.paymentTotal)),
+            if (order.packageTotal > 0) ...[
+              _MoneyRow(label: '  · Package', value: peso(order.packageTotal)),
+            ],
+            if (order.addOnsTotal > 0) ...[
+              _MoneyRow(label: '  · Add-ons', value: peso(order.addOnsTotal)),
+            ],
+            if (order.discountTotal > 0) ...[
+              _MoneyRow(label: '  · Promo discount', value: '-${peso(order.discountTotal)}'),
+              if (order.appliedPromos.isNotEmpty)
+                _MoneyRow(label: '  · Applied promos', value: order.appliedPromos.join(', ')),
+            ],
             if (order.paymentDue > 0)
               _MoneyRow(
                 label: paid ? 'Paid' : 'Due now (50%)',

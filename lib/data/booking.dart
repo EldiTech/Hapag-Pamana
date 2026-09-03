@@ -311,6 +311,30 @@ class Booking {
   /// price and the headcount. 0 when no total could be established.
   num get paymentTotal => _numOf(data['paymentTotal']);
 
+  /// The priced package base total before add-ons.
+  num get packageTotal => _numOf(data['packageTotal']);
+
+  /// The add-ons total before or after promos.
+  num get addOnsTotal => _numOf(data['addOnsTotal']);
+
+  /// The total promo discount savings applied to this booking.
+  num get discountTotal => _numOf(data['discountTotal']);
+
+  /// Promo badge label applied to package (e.g. "10% OFF").
+  String get packageDiscount => value('packageDiscount');
+
+  /// Total promo savings specifically on custom add-ons.
+  num get addOnsDiscountTotal => _numOf(data['addOnsDiscountTotal']);
+
+  /// Names / labels of promos applied to this order.
+  List<String> get appliedPromos {
+    final raw = data['appliedPromos'];
+    if (raw is List) {
+      return [for (final p in raw) if (p != null) p.toString()];
+    }
+    return const [];
+  }
+
   /// The half of [paymentTotal] the downpayment gate asks for.
   num get paymentDue => _numOf(data['paymentDue']);
 
