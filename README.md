@@ -32,11 +32,13 @@ flutter pub get
 flutter run                       # debug on a connected device
 flutter build apk --release      # release APK (the usual install path)
 flutter test                      # smoke test
+
+# Admin portal (Staff / Owner / Chef / Finance / Moderator)
+node serve-admin.js               # serves Admin/ at http://localhost:3000
 ```
 
 Android is the primary target (`com.HapagPamana`). iOS requires a Mac to build.
-The Content Moderator portal is opened directly from `Admin/index.html` (serve the folder or
-open the file; sign-in is Firebase Auth–gated).
+The Admin portal is served from `Admin/index.html` via `node serve-admin.js` on `http://localhost:3000` (sign-in is Firebase Auth–gated).
 
 ## Firebase notes
 

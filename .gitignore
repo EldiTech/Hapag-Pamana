@@ -80,3 +80,9 @@ node_modules/
 # the real Maps key baked in — the template is what's tracked. Regenerate
 # with that script before `flutter run -d chrome` / `flutter build web`.
 /web/index.html
+
+# Root copy of google-services.json (Android app uses android/app/google-services.json)
+/google-services.json
+
+# Dev login page with generated custom token
+**/dev-login.html

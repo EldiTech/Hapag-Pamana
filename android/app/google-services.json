@@ -29,6 +29,13 @@
             {
               "client_id": "369246306524-qco3l7mlh3ppl7g9nj0idagio5q5ilom.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "369246306524-kp2m8vhdv6b2jachg3fq4rq1787l74er.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.hapag.pamana"
+              }
             }
           ]
         }
