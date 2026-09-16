@@ -59,6 +59,7 @@ class _LayoutPreviewPageState extends State<LayoutPreviewPage> {
   WebViewController? _controller;
   bool _loading = true;
   String? _error;
+  bool _isLandscape = false;
 
   @override
   void initState() {
@@ -92,6 +93,7 @@ class _LayoutPreviewPageState extends State<LayoutPreviewPage> {
             _send();
             _wireOrientation();
             _trimWalkthroughUi();
+            _patch2dFloorPlan();
             if (mounted) setState(() => _loading = false);
           },
           onWebResourceError: (_) {
@@ -145,29 +147,158 @@ class _LayoutPreviewPageState extends State<LayoutPreviewPage> {
     ".hp-sim .hp-sim-keys," +
     ".hp-sim .hp-sim-badge," +
     ".hp-sim .hp-sim-status-wrap," +
+    ".hp-sim .hp-sim-tools .hp-sim-tool:nth-of-type(1)," +
     ".hp-sim .hp-sim-tools .hp-sim-tool:nth-of-type(3)," +
+    ".hp-sim [data-pop=\"quality\"]," +
+    ".hp-sim [data-pop=\"guide\"]," +
+    ".hp-sim .hp-sim-pop," +
     ".hp-sim #hpSimAnalyze," +
     ".hp-sim #hpSimReset," +
     ".hp-sim #hpSimHide," +
     ".hp-sim #hpSimFull { display: none !important; }" +
-    // Only HIGH and ULTRA are worth offering on a phone.
-    ".hp-sim .hp-sim-opt[data-quality=\"LOW\"]," +
-    ".hp-sim .hp-sim-opt[data-quality=\"MEDIUM\"] { display: none !important; }" +
-    // Controls to the left edge, and the popovers with them.
-    ".hp-sim .hp-sim-foot { justify-content: flex-start !important; }" +
-    ".hp-sim .hp-sim-tools { justify-content: flex-start !important; }" +
-    ".hp-sim .hp-sim-btn { flex: 0 1 auto !important; }" +
-    // css/viewer.css centres the popovers on narrow screens (left: 50% with a
-    // translateX). With the strip moved left they belong over it, not over the
-    // middle of the room, so that centring is undone here.
-    "@media (max-width: 480px) {" +
-    "  .hp-sim .hp-sim-pop {" +
-    "    left: 10px !important;" +
-    "    right: auto !important;" +
-    "    transform: none !important;" +
-    "  }" +
+    // Controls to the left edge: only 1st Person and Exit remain
+    ".hp-sim .hp-sim-foot { justify-content: flex-start !important; gap: 12px !important; }" +
+    ".hp-sim .hp-sim-tools { justify-content: flex-start !important; gap: 12px !important; }" +
+    ".hp-sim .hp-sim-btn { flex: 0 1 auto !important; min-width: 108px !important; padding: 10px 18px !important; font-size: 0.62rem !important; }" +
+    // Safe area spacing for landscape status bar and navigation
+    ".hp-sim .hp-sim-top {" +
+    "  padding-top: max(12px, env(safe-area-inset-top, 12px)) !important;" +
+    "  padding-left: max(18px, env(safe-area-inset-left, 18px)) !important;" +
+    "  padding-right: max(18px, env(safe-area-inset-right, 18px)) !important;" +
+    "}" +
+    ".hp-sim .hp-sim-foot {" +
+    "  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px)) !important;" +
+    "  padding-left: max(18px, env(safe-area-inset-left, 18px)) !important;" +
+    "  padding-right: max(18px, env(safe-area-inset-right, 18px)) !important;" +
+    "}" +
+    // Prompt dismissal and touch responsiveness
+    ".hp-sim-prompt.is-dismissed," +
+    ".hp-sim.is-locked .hp-sim-prompt { opacity: 0 !important; pointer-events: none !important; visibility: hidden !important; display: none !important; }" +
+    ".hp-sim .hp-sim-prompt {" +
+    "  max-width: min(340px, 85vw) !important;" +
+    "  padding: 12px 18px !important;" +
+    "  cursor: pointer !important;" +
+    "  pointer-events: auto !important;" +
+    "  transition: opacity 0.3s ease !important;" +
+    "}" +
+    // Virtual joystick styles
+    ".hp-sim-joystick {" +
+    "  position: fixed !important;" +
+    "  width: 84px !important;" +
+    "  height: 84px !important;" +
+    "  border-radius: 50% !important;" +
+    "  background: radial-gradient(circle, rgba(220, 182, 97, 0.18) 0%, rgba(20, 12, 5, 0.5) 100%) !important;" +
+    "  border: 2px solid rgba(220, 182, 97, 0.5) !important;" +
+    "  pointer-events: none !important;" +
+    "  z-index: 9998 !important;" +
+    "  transform: translate(-50%, -50%) !important;" +
+    "  box-shadow: 0 0 16px rgba(0, 0, 0, 0.4) !important;" +
+    "}" +
+    ".hp-sim-joy-knob {" +
+    "  position: absolute !important;" +
+    "  top: 50% !important;" +
+    "  left: 50% !important;" +
+    "  width: 38px !important;" +
+    "  height: 38px !important;" +
+    "  margin-top: -19px !important;" +
+    "  margin-left: -19px !important;" +
+    "  border-radius: 50% !important;" +
+    "  background: linear-gradient(135deg, #DCB661 0%, #7b591f 100%) !important;" +
+    "  border: 1.5px solid #F4E9CE !important;" +
+    "  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;" +
+    "  pointer-events: none !important;" +
+    "  will-change: transform !important;" +
     "}";
   document.head.appendChild(s);
+
+  function wireSimUi() {
+    var sim = document.querySelector(".hp-sim");
+    if (!sim || sim.dataset.hpUiWired) return;
+    sim.dataset.hpUiWired = "1";
+
+    if (window.HPSim && window.HPSim.setQuality && window.HPSim.quality !== "LOW") {
+      window.HPSim.setQuality("LOW");
+    }
+
+    var prompt = sim.querySelector("#hpSimPrompt");
+    if (prompt) {
+      var strong = prompt.querySelector("strong");
+      var span = prompt.querySelector("span");
+      if (strong) strong.textContent = "Touch & Drag to Walk";
+      if (span) span.textContent = "Drag left side to walk · Drag right side to look";
+      prompt.addEventListener("click", function () {
+        prompt.classList.add("is-dismissed");
+      });
+    }
+    var dismissPrompt = function () {
+      if (prompt) prompt.classList.add("is-dismissed");
+    };
+    setTimeout(dismissPrompt, 3500);
+
+    var joy = sim.querySelector(".hp-sim-joystick");
+    if (!joy) {
+      joy = document.createElement("div");
+      joy.className = "hp-sim-joystick";
+      joy.style.display = "none";
+      var knob = document.createElement("div");
+      knob.className = "hp-sim-joy-knob";
+      joy.appendChild(knob);
+      sim.appendChild(joy);
+    }
+    var knobEl = joy.querySelector(".hp-sim-joy-knob");
+    var moveId = null;
+    var startPos = { x: 0, y: 0 };
+    var stage = sim.querySelector("#hpSimStage") || sim;
+
+    stage.addEventListener("touchstart", function (e) {
+      dismissPrompt();
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        var t = e.changedTouches[i];
+        if (t.clientX < window.innerWidth / 2 && moveId === null) {
+          moveId = t.identifier;
+          startPos = { x: t.clientX, y: t.clientY };
+          joy.style.left = t.clientX + "px";
+          joy.style.top = t.clientY + "px";
+          joy.style.display = "block";
+          if (knobEl) knobEl.style.transform = "translate(0px, 0px)";
+        }
+      }
+    }, { passive: true });
+
+    stage.addEventListener("touchmove", function (e) {
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        var t = e.changedTouches[i];
+        if (moveId !== null && t.identifier === moveId) {
+          var dx = t.clientX - startPos.x;
+          var dy = t.clientY - startPos.y;
+          var dist = Math.hypot(dx, dy);
+          var maxR = 40;
+          var clamped = Math.min(dist, maxR);
+          var angle = dist > 0 ? Math.atan2(dy, dx) : 0;
+          var kx = Math.cos(angle) * clamped;
+          var ky = Math.sin(angle) * clamped;
+          if (knobEl) knobEl.style.transform = "translate(" + kx + "px, " + ky + "px)";
+        }
+      }
+    }, { passive: true });
+
+    var onEnd = function (e) {
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        var t = e.changedTouches[i];
+        if (moveId !== null && t.identifier === moveId) {
+          moveId = null;
+          joy.style.display = "none";
+        }
+      }
+    };
+    stage.addEventListener("touchend", onEnd, { passive: true });
+    stage.addEventListener("touchcancel", onEnd, { passive: true });
+  }
+
+  if (!window.__hpSimPoll) {
+    window.__hpSimPoll = setInterval(wireSimUi, 300);
+  }
+  wireSimUi();
 })();
 ''';
     try {
@@ -175,6 +306,161 @@ class _LayoutPreviewPageState extends State<LayoutPreviewPage> {
     } catch (_) {
       // Cosmetic. A failure leaves the full toolbar, which still works.
     }
+  }
+
+  /// Fixes 2D floor plan rendering on mobile so tables display sequential table
+  /// numbering (T1, T2...) instead of bare seat counts, fixtures (Stage, Buffet,
+  /// Entrance) stay labeled, and items can be inspected with tap.
+  Future<void> _patch2dFloorPlan() async {
+    const js = r'''
+(function () {
+  if (!document.getElementById("hp2dPatchStyles")) {
+    var s = document.createElement("style");
+    s.id = "hp2dPatchStyles";
+    s.textContent =
+      ".ld-item.is-tiny .ld-item-seats { display: none !important; }" +
+      ".ld-item.is-tiny .ld-item-label { display: block !important; font-size: 0.58rem !important; letter-spacing: 0 !important; max-width: 96% !important; line-height: 1 !important; }" +
+      ".ld-item-num { font-family: var(--display, serif) !important; font-weight: 700 !important; font-size: 0.78rem !important; color: var(--ink, #33220f) !important; line-height: 1 !important; pointer-events: none !important; }" +
+      ".ld-item.is-tiny:has(.ld-item-num) .ld-item-label { display: none !important; }" +
+      ".ld-item[data-kind=\"stage\"] .ld-item-label { font-size: 0.75rem !important; letter-spacing: 1.5px !important; color: var(--brown-deep, #2a1a08) !important; display: block !important; }" +
+      ".ld-item[data-kind=\"buffet\"] { background: var(--paper-2, #f8f1de) !important; }" +
+      ".ld-item[data-kind=\"buffet\"] .ld-item-label { font-size: 0.6rem !important; letter-spacing: 1.2px !important; color: var(--brown, #432c0e) !important; display: block !important; writing-mode: vertical-rl !important; }" +
+      ".ld-item[data-kind=\"door\"] { background: rgba(169, 130, 60, 0.25) !important; border: 1.5px dashed var(--gold-deep, #7b591f) !important; }" +
+      ".ld-item[data-kind=\"door\"] .ld-item-label { font-size: 0.52rem !important; display: block !important; color: var(--brown-deep, #2a1a08) !important; }" +
+      ".lv-stage2d .ld-item { cursor: pointer !important; }" +
+      ".lv-stage2d .ld-item.selected { border-color: var(--brown, #432c0e) !important; box-shadow: 0 0 0 2px var(--gold-light, #c7a04a), 0 6px 16px rgba(0,0,0,0.2) !important; z-index: 5 !important; }" +
+      ".lv-zoom-tools { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 20; }" +
+      ".lv-zoom-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid rgba(169, 130, 60, 0.42); background: #FFFBF0; color: #33220F; font-size: 1.15rem; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }" +
+      ".lv-selection-info { position: absolute; bottom: 12px; left: 14px; right: 14px; background: #FFFBF0; border: 1px solid #A9823C; border-radius: 8px; padding: 10px 14px; box-shadow: 0 12px 28px rgba(42,26,8,0.25); display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 25; }" +
+      ".lv-sel-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }" +
+      ".lv-sel-title { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 1.05rem; color: #2A1A08; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }" +
+      ".lv-sel-meta { font-size: 0.8rem; color: #6A5331; }" +
+      ".lv-sel-close { background: transparent; border: none; font-size: 1.4rem; line-height: 1; color: #927A4E; cursor: pointer; padding: 4px 8px; }";
+    document.head.appendChild(s);
+  }
+
+  function enhanceCanvas() {
+    var canvas = document.getElementById("lvCanvas");
+    if (!canvas) return;
+
+    var items = canvas.querySelectorAll(".ld-item");
+    items.forEach(function (el) {
+      if (el.dataset.hpEnhanced) return;
+      el.dataset.hpEnhanced = "1";
+
+      var body = el.querySelector(".ld-item-body");
+      var labelEl = el.querySelector(".ld-item-label");
+      var seatsEl = el.querySelector(".ld-item-seats");
+      var rawLabel = (labelEl ? labelEl.textContent : "").trim();
+      var kind = el.dataset.kind || "";
+
+      var m = rawLabel.match(/^(?:Table|T|Guest)\s*(\d+)$/i);
+      if (m) {
+        if (!el.querySelector(".ld-item-num")) {
+          var numSpan = document.createElement("span");
+          numSpan.className = "ld-item-num";
+          numSpan.textContent = "T" + m[1];
+          if (body) {
+            body.insertBefore(numSpan, body.firstChild);
+            if (labelEl) labelEl.style.display = "none";
+          }
+        }
+      } else if (kind === "stage") {
+        if (labelEl && !labelEl.textContent.trim()) labelEl.textContent = "STAGE";
+      } else if (kind === "buffet") {
+        if (labelEl && !labelEl.textContent.trim()) labelEl.textContent = "BUFFET";
+      } else if (kind === "door") {
+        if (labelEl && !labelEl.textContent.trim()) labelEl.textContent = "ENTRANCE";
+      }
+
+      el.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        var stage = document.getElementById("lvStage2d");
+        if (!stage) return;
+        stage.querySelectorAll(".ld-item").forEach(function (other) { other.classList.remove("selected"); });
+        el.classList.add("selected");
+
+        var card = stage.querySelector(".lv-selection-info");
+        if (!card) {
+          card = document.createElement("div");
+          card.className = "lv-selection-info";
+          stage.appendChild(card);
+        }
+        var title = rawLabel || kind.toUpperCase();
+        var seats = seatsEl ? seatsEl.textContent.trim() : "";
+        var meta = seats ? (seats + " seats") : "Floor piece";
+        card.innerHTML =
+          '<div class="lv-sel-body">' +
+          '  <span class="lv-sel-title">' + title + '</span>' +
+          '  <span class="lv-sel-meta">' + meta + '</span>' +
+          '</div>' +
+          '<button class="lv-sel-close" type="button">&times;</button>';
+        card.querySelector(".lv-sel-close").addEventListener("click", function (cEv) {
+          cEv.stopPropagation();
+          el.classList.remove("selected");
+          card.remove();
+        });
+      });
+    });
+  }
+
+  // 3. Patch 3D View Pinch-To-Zoom
+  function patch3d() {
+    var host = document.getElementById("ld3dHost");
+    if (!host) return;
+    var canvas = host.querySelector("canvas");
+    if (!canvas || canvas.dataset.hpPinchPatched) return;
+    canvas.dataset.hpPinchPatched = "1";
+
+    var pointers = new Map();
+    var pinchDist = null;
+
+    canvas.addEventListener("pointerdown", function (e) {
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size >= 2) {
+        var pts = Array.from(pointers.values());
+        pinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      }
+    }, { capture: true });
+
+    canvas.addEventListener("pointermove", function (e) {
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pointers.size >= 2) {
+        e.stopPropagation();
+        var pts = Array.from(pointers.values());
+        var curDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        if (pinchDist && Math.abs(curDist - pinchDist) > 1.5) {
+          var diff = curDist - pinchDist;
+          var delta = -diff * 4;
+          canvas.dispatchEvent(new WheelEvent("wheel", { deltaY: delta, bubbles: true }));
+          pinchDist = curDist;
+        }
+      }
+    }, { capture: true });
+
+    var end = function (e) {
+      pointers.delete(e.pointerId);
+      if (pointers.size < 2) pinchDist = null;
+    };
+    canvas.addEventListener("pointerup", end, { capture: true });
+    canvas.addEventListener("pointercancel", end, { capture: true });
+  }
+
+  if (!window.__hpEnhanceTimer) {
+    window.__hpEnhanceTimer = setInterval(function () {
+      enhanceCanvas();
+      patch3d();
+    }, 400);
+  }
+  enhanceCanvas();
+  patch3d();
+})();
+''';
+    try {
+      await _controller!.runJavaScript(js);
+    } catch (_) {}
   }
 
   /// Wires the walkthrough's rotation from this side, rather than trusting the
@@ -261,6 +547,14 @@ class _LayoutPreviewPageState extends State<LayoutPreviewPage> {
   /// runs in — it never sets orientations anywhere else, so it inherits the
   /// manifest's (Android) and Info.plist's (iOS) portrait default.
   void _orient(bool landscape) {
+    if (mounted && _isLandscape != landscape) {
+      setState(() => _isLandscape = landscape);
+    }
+    if (landscape) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
     SystemChrome.setPreferredOrientations(
       landscape
           ? const [
@@ -281,7 +575,10 @@ class _LayoutPreviewPageState extends State<LayoutPreviewPage> {
   /// already exited cleanly.
   @override
   void dispose() {
-    if (!kIsWeb) _orient(false);
+    if (!kIsWeb) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      _orient(false);
+    }
     super.dispose();
   }
 
@@ -360,11 +657,14 @@ class _LayoutPreviewPageState extends State<LayoutPreviewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        flexibleSpace: const ParchmentBackground(weave: true, vignette: false),
-        title: Text(widget.eventName, style: AppTextStyles.heading),
-      ),
+      appBar: _isLandscape
+          ? null
+          : AppBar(
+              backgroundColor: Colors.transparent,
+              flexibleSpace:
+                  const ParchmentBackground(weave: true, vignette: false),
+              title: Text(widget.eventName, style: AppTextStyles.heading),
+            ),
       // The room takes a moment to build, so the scrim doesn't vanish the
       // instant the page reports itself finished — it fades off the WebView,
       // and an error fades in over it, rather than either one cutting.

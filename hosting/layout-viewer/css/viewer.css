@@ -132,10 +132,96 @@ body {
 .lv-stage2d .ld-canvas { flex: 0 0 auto; }
 /* Read-only: the desk's hover/selection affordances would promise an edit
    that this page cannot honour. */
-.lv-stage2d .ld-item { cursor: default; }
+.lv-stage2d .ld-item { cursor: pointer; }
 .lv-stage2d .ld-item:hover {
-  border-color: var(--gold-hair);
-  box-shadow: none;
+  border-color: var(--gold);
+  box-shadow: var(--shadow-sm);
+}
+.lv-stage2d .ld-item.selected {
+  border-color: var(--brown) !important;
+  box-shadow: 0 0 0 2px var(--gold-light), var(--shadow-md) !important;
+  z-index: 5;
+}
+
+.lv-zoom-tools {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 20;
+}
+.lv-zoom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--gold-hair);
+  background: var(--paper-3);
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  user-select: none;
+  touch-action: manipulation;
+}
+.lv-zoom-btn:active {
+  background: var(--vellum);
+}
+
+.lv-selection-info {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  right: 14px;
+  background: var(--paper-3);
+  border: 1px solid var(--gold);
+  border-radius: var(--r-lg);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 25;
+  animation: lvSlideUp 0.18s ease-out;
+}
+@keyframes lvSlideUp {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.lv-sel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.lv-sel-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--brown-deep);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lv-sel-meta {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.lv-sel-close {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 4px 8px;
 }
 
 .lv-stage-wrap > .ld-stage--3d[hidden] { display: none; }
@@ -260,23 +346,93 @@ body {
 
    Not inside the 480px media query above: this applies at every width the app
    can present, and the walkthrough now runs landscape. */
-   Guide is the one control with no id of its own, so it is reached by
-   position: it is the third and last <div class="hp-sim-tool"> in the strip,
-   after Quality and the 1st/3rd-person toggle (simulate.js ~1685-1714).
-   :has([data-pop="guide"]) would say this far more plainly, but :has() is
-   unsupported on the older Android System WebViews this app still meets, and
-   there it fails silently — leaving Guide on screen with no sign anything is
-   wrong. If a tool is ever added to that strip ahead of Guide, this number
-   moves with it. */
+/*  Guide is the one control with no id of its own, so it is reached by
+    position: it is the third and last <div class="hp-sim-tool"> in the strip,
+    after Quality and the 1st/3rd-person toggle (simulate.js ~1685-1714).
+    :has([data-pop="guide"]) would say this far more plainly, but :has() is
+    unsupported on the older Android System WebViews this app still meets, and
+    there it fails silently — leaving Guide on screen with no sign anything is
+    wrong. If a tool is ever added to that strip ahead of Guide, this number
+    moves with it. */
 .hp-sim-touchfix .hp-sim-keys,
 .hp-sim-touchfix .hp-sim-badge,
 .hp-sim-touchfix .hp-sim-status-wrap,
+.hp-sim-touchfix .hp-sim-tools .hp-sim-tool:nth-of-type(1),
 .hp-sim-touchfix .hp-sim-tools .hp-sim-tool:nth-of-type(3),
+.hp-sim-touchfix [data-pop="quality"],
+.hp-sim-touchfix [data-pop="guide"],
+.hp-sim-touchfix .hp-sim-pop,
 .hp-sim-touchfix #hpSimAnalyze,
 .hp-sim-touchfix #hpSimReset,
 .hp-sim-touchfix #hpSimHide,
 .hp-sim-touchfix #hpSimFull {
   display: none !important;
+}
+
+/* Popover positioning for mobile walkthrough (both portrait and landscape) */
+.hp-sim-touchfix .hp-sim-pop {
+  position: fixed !important;
+  left: max(14px, env(safe-area-inset-left, 14px)) !important;
+  right: auto !important;
+  bottom: max(58px, calc(env(safe-area-inset-bottom, 0px) + 54px)) !important;
+  transform: none !important;
+  width: min(280px, 85vw) !important;
+  max-height: calc(100vh - 74px) !important;
+  overflow-y: auto !important;
+  z-index: 100 !important;
+}
+
+/* Safe area padding on landscape phones */
+.hp-sim-touchfix .hp-sim-top {
+  padding-top: max(12px, env(safe-area-inset-top, 12px)) !important;
+  padding-left: max(18px, env(safe-area-inset-left, 18px)) !important;
+  padding-right: max(18px, env(safe-area-inset-right, 18px)) !important;
+}
+.hp-sim-touchfix .hp-sim-foot {
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px)) !important;
+  padding-left: max(18px, env(safe-area-inset-left, 18px)) !important;
+  padding-right: max(18px, env(safe-area-inset-right, 18px)) !important;
+}
+
+/* Prompt dismissal and tap handling */
+.hp-sim-prompt.is-dismissed,
+.hp-sim.is-locked .hp-sim-prompt {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+.hp-sim.is-touch .hp-sim-prompt {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Mobile Virtual Joystick */
+.hp-sim-joystick {
+  position: fixed;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(220, 182, 97, 0.15) 0%, rgba(20, 12, 5, 0.45) 100%);
+  border: 2px solid rgba(220, 182, 97, 0.5);
+  pointer-events: none;
+  z-index: 20;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.4);
+}
+.hp-sim-joy-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 38px;
+  height: 38px;
+  margin-top: -19px;
+  margin-left: -19px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #DCB661 0%, #7b591f 100%);
+  border: 1.5px solid #F4E9CE;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  will-change: transform;
 }
 
 /* Only HIGH and ULTRA are offered. LOW and MEDIUM exist for the desk's older

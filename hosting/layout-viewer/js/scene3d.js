@@ -1363,38 +1363,103 @@ window.HPScene = (function () {
   function wireOrbit() {
     const el = renderer.domElement;
     let drag = null;
+    const pointers = new Map();
+    let pinchStartDist = null;
+    let pinchStartRadius = null;
+
+    function getPointersDist() {
+      if (pointers.size < 2) return null;
+      const pts = Array.from(pointers.values());
+      return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    }
 
     el.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
-      el.setPointerCapture(e.pointerId);
-      const off = camera.position.clone().sub(target);
-      drag = {
-        x: e.clientX, y: e.clientY,
-        radius: off.length(),
-        theta: Math.atan2(off.x, off.z),
-        phi: Math.acos(Math.min(1, Math.max(-1, off.y / off.length()))),
-      };
-      el.classList.add("is-orbiting");
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pointers.size === 2) {
+        drag = null;
+        pinchStartDist = getPointersDist();
+        const off = camera.position.clone().sub(target);
+        pinchStartRadius = off.length();
+        el.classList.remove("is-orbiting");
+        return;
+      }
+
+      if (pointers.size === 1) {
+        pinchStartDist = null;
+        const off = camera.position.clone().sub(target);
+        drag = {
+          x: e.clientX, y: e.clientY,
+          pointerId: e.pointerId,
+          radius: off.length(),
+          theta: Math.atan2(off.x, off.z),
+          phi: Math.acos(Math.min(1, Math.max(-1, off.y / off.length()))),
+        };
+        el.classList.add("is-orbiting");
+      }
     });
+
     el.addEventListener("pointermove", (e) => {
-      if (!drag) return;
-      ease = null; // the hand wins over an in-flight glide
-      const dx = (e.clientX - drag.x) / el.clientWidth;
-      const dy = (e.clientY - drag.y) / el.clientHeight;
-      const theta = drag.theta - dx * Math.PI * 2;
-      const phi = Math.min(Math.PI / 2 - 0.04, Math.max(0.08, drag.phi + dy * Math.PI));
-      camera.position.set(
-        target.x + drag.radius * Math.sin(phi) * Math.sin(theta),
-        target.y + drag.radius * Math.cos(phi),
-        target.z + drag.radius * Math.sin(phi) * Math.cos(theta));
-      camera.lookAt(target);
-      needsDraw = true;
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      // Pinch zoom handling for 2 fingers
+      if (pointers.size >= 2) {
+        const dist = getPointersDist();
+        if (dist && pinchStartDist && pinchStartRadius) {
+          ease = null;
+          const ratio = pinchStartDist / Math.max(10, dist);
+          const span = Math.max(room.w, room.h);
+          const minLen = span * 0.25;
+          const maxLen = span * 3.5;
+          const newLen = Math.min(maxLen, Math.max(minLen, pinchStartRadius * ratio));
+          const off = camera.position.clone().sub(target);
+          camera.position.copy(target).add(off.setLength(newLen));
+          camera.lookAt(target);
+          needsDraw = true;
+        }
+        return;
+      }
+
+      // Single-finger orbit
+      if (drag && drag.pointerId === e.pointerId) {
+        ease = null;
+        const dx = (e.clientX - drag.x) / el.clientWidth;
+        const dy = (e.clientY - drag.y) / el.clientHeight;
+        const theta = drag.theta - dx * Math.PI * 2;
+        const phi = Math.min(Math.PI / 2 - 0.04, Math.max(0.08, drag.phi + dy * Math.PI));
+        camera.position.set(
+          target.x + drag.radius * Math.sin(phi) * Math.sin(theta),
+          target.y + drag.radius * Math.cos(phi),
+          target.z + drag.radius * Math.sin(phi) * Math.cos(theta));
+        camera.lookAt(target);
+        needsDraw = true;
+      }
     });
+
     const end = (e) => {
-      if (!drag) return;
       try { el.releasePointerCapture(e.pointerId); } catch (_) {}
-      drag = null;
-      el.classList.remove("is-orbiting");
+      pointers.delete(e.pointerId);
+
+      if (pointers.size === 1) {
+        const remaining = Array.from(pointers.entries())[0];
+        const off = camera.position.clone().sub(target);
+        drag = {
+          x: remaining[1].x, y: remaining[1].y,
+          pointerId: remaining[0],
+          radius: off.length(),
+          theta: Math.atan2(off.x, off.z),
+          phi: Math.acos(Math.min(1, Math.max(-1, off.y / off.length()))),
+        };
+        pinchStartDist = null;
+        el.classList.add("is-orbiting");
+      } else if (pointers.size === 0) {
+        drag = null;
+        pinchStartDist = null;
+        el.classList.remove("is-orbiting");
+      }
     };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);

@@ -99,7 +99,7 @@ window.HPSim = (function () {
   let boomLift = 0;          // extra height on the pivot — the elevated view
 
   const QUALITY = {
-    LOW:    { shadows: false, shadowMap: 512,  pixelRatio: 1,   fov: 72, aa: false, fog: true },
+    LOW:    { shadows: false, shadowMap: 512,  pixelRatio: 1.5, fov: 72, aa: true,  fog: true },
     MEDIUM: { shadows: true,  shadowMap: 1024, pixelRatio: 1.25, fov: 72, aa: true,  fog: true },
     HIGH:   { shadows: true,  shadowMap: 2048, pixelRatio: 1.6, fov: 72, aa: true,  fog: true },
     ULTRA:  { shadows: true,  shadowMap: 4096, pixelRatio: 2,   fov: 70, aa: true,  fog: true },
@@ -110,6 +110,9 @@ window.HPSim = (function () {
   // count and DPR is crude, but it beats defaulting ULTRA onto a laptop and
   // handing the designer a slideshow the first time they press SIMULATE.
   function autoQuality() {
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+      || ("ontouchstart" in window);
+    if (isMobile) return "LOW";
     const cores = navigator.hardwareConcurrency || 4;
     const mem = navigator.deviceMemory || 4;
     if (cores <= 2 || mem <= 2) return "LOW";
@@ -755,45 +758,111 @@ window.HPSim = (function () {
     if (renderer && renderer.domElement) {
       renderer.domElement.removeEventListener("wheel", onWheel);
     }
+    if (touch.joyEl && touch.joyEl.parentNode) {
+      touch.joyEl.parentNode.removeChild(touch.joyEl);
+    }
+    touch.joyEl = null;
+    touch.knobEl = null;
     for (const k in keys) delete keys[k];
   }
 
-  /* Touch: a left-half virtual stick to walk, a right-half drag to look. Only
-     wired on a touch device — a laptop with a touchscreen still gets the
-     mouse-and-keyboard walkthrough the desktop brief asks for, because both
-     can be true and the pointer lock is the better experience. */
-  const touch = { move: null, look: null, mx: 0, mz: 0 };
+  /* Touch: a left-half virtual stick to walk, a right-half drag to look.
+     Equipped with visible arcade thumbstick feedback and auto-dismissing prompt. */
+  const touch = { move: null, look: null, mx: 0, mz: 0, joyEl: null, knobEl: null };
   function bindTouch() {
-    if (!("ontouchstart" in window)) return;
+    const isTouch = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
+    if (!isTouch) return;
     overlay.classList.add("is-touch");
+
+    // Update center prompt for mobile users and dismiss on first touch or tap
+    const pmt = overlay.querySelector("#hpSimPrompt");
+    if (pmt) {
+      const strong = pmt.querySelector("strong");
+      const span = pmt.querySelector("span");
+      if (strong) strong.textContent = "Touch & Drag to Walk";
+      if (span) span.textContent = "Drag left side to walk · Drag right side to look";
+      pmt.addEventListener("click", () => pmt.classList.add("is-dismissed"));
+    }
+    const dismissPrompt = () => {
+      if (pmt && !pmt.classList.contains("is-dismissed")) {
+        pmt.classList.add("is-dismissed");
+      }
+    };
+    setTimeout(dismissPrompt, 3500);
+
+    // Build virtual joystick element if not already present
+    function getJoystick() {
+      if (touch.joyEl) return touch.joyEl;
+      let j = overlay.querySelector(".hp-sim-joystick");
+      if (!j) {
+        j = document.createElement("div");
+        j.className = "hp-sim-joystick";
+        j.style.display = "none";
+        const k = document.createElement("div");
+        k.className = "hp-sim-joy-knob";
+        j.appendChild(k);
+        overlay.appendChild(j);
+      }
+      touch.joyEl = j;
+      touch.knobEl = j.querySelector(".hp-sim-joy-knob");
+      return j;
+    }
+
     const el = renderer.domElement;
     el.addEventListener("touchstart", (e) => {
+      dismissPrompt();
       for (const t of e.changedTouches) {
-        if (t.clientX < window.innerWidth / 2 && !touch.move)
+        if (t.clientX < window.innerWidth / 2 && !touch.move) {
           touch.move = { id: t.identifier, x: t.clientX, y: t.clientY };
-        else if (!touch.look)
+          const j = getJoystick();
+          if (j) {
+            j.style.left = t.clientX + "px";
+            j.style.top = t.clientY + "px";
+            j.style.display = "block";
+            if (touch.knobEl) touch.knobEl.style.transform = "translate(0px, 0px)";
+          }
+        } else if (!touch.look) {
           touch.look = { id: t.identifier, x: t.clientX, y: t.clientY };
+        }
       }
     }, { passive: true });
+
     el.addEventListener("touchmove", (e) => {
       for (const t of e.changedTouches) {
         if (touch.move && t.identifier === touch.move.id) {
-          const dx = (t.clientX - touch.move.x) / 60;
-          const dy = (t.clientY - touch.move.y) / 60;
-          touch.mx = Math.max(-1, Math.min(1, dx));
-          touch.mz = Math.max(-1, Math.min(1, dy));
+          const dx = t.clientX - touch.move.x;
+          const dy = t.clientY - touch.move.y;
+          const dist = Math.hypot(dx, dy);
+          const maxR = 40;
+          const clampedDist = Math.min(dist, maxR);
+          const angle = dist > 0 ? Math.atan2(dy, dx) : 0;
+          const kx = Math.cos(angle) * clampedDist;
+          const ky = Math.sin(angle) * clampedDist;
+          if (touch.knobEl) {
+            touch.knobEl.style.transform = `translate(${kx}px, ${ky}px)`;
+          }
+          touch.mx = kx / maxR;
+          touch.mz = ky / maxR;
         } else if (touch.look && t.identifier === touch.look.id) {
-          player.yaw -= (t.clientX - touch.look.x) * 0.006;
-          player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (t.clientY - touch.look.y) * 0.006));
-          touch.look.x = t.clientX; touch.look.y = t.clientY;
+          player.yaw -= (t.clientX - touch.look.x) * 0.005;
+          player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (t.clientY - touch.look.y) * 0.005));
+          touch.look.x = t.clientX;
+          touch.look.y = t.clientY;
         }
       }
       e.preventDefault();
     }, { passive: false });
+
     const end = (e) => {
       for (const t of e.changedTouches) {
-        if (touch.move && t.identifier === touch.move.id) { touch.move = null; touch.mx = touch.mz = 0; }
-        if (touch.look && t.identifier === touch.look.id) touch.look = null;
+        if (touch.move && t.identifier === touch.move.id) {
+          touch.move = null;
+          touch.mx = touch.mz = 0;
+          if (touch.joyEl) touch.joyEl.style.display = "none";
+        }
+        if (touch.look && t.identifier === touch.look.id) {
+          touch.look = null;
+        }
       }
     };
     el.addEventListener("touchend", end, { passive: true });
@@ -1058,7 +1127,10 @@ window.HPSim = (function () {
     }
     const esc = window.HP ? window.HP.esc : (s) => s;
     promptEl.hidden = false;
-    promptEl.innerHTML = `<b>E</b> Inspect <span>${esc(best.label || best.kind)}</span>`;
+    const isTouch = overlay && overlay.classList.contains("is-touch");
+    promptEl.innerHTML = isTouch
+      ? `Tap to Inspect <span>${esc(best.label || best.kind)}</span>`
+      : `<b>E</b> Inspect <span>${esc(best.label || best.kind)}</span>`;
   }
 
   function toggleInspect() {
@@ -1725,6 +1797,7 @@ window.HPSim = (function () {
     host = overlay.querySelector("#hpSimStage");
     nearEl = overlay.querySelector("#hpSimNear");
     promptEl = overlay.querySelector("#hpSimHint");
+    if (promptEl) promptEl.addEventListener("click", toggleInspect);
     compassEl = overlay.querySelector("#hpSimCompass");
     statusEl = overlay.querySelector("#hpSimStatus");
     renderStatus();

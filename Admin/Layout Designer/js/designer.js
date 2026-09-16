@@ -1090,9 +1090,13 @@
     el.dataset.kind = it.kind;
     el.tabIndex = 0;
     place(el, it);
+    const rawLabel = String(it.label || "").trim();
+    const tableNum = rawLabel.match(/^(?:Table|T|Guest)\s*(\d+)$/i);
+    const numDisplay = tableNum ? `T${tableNum[1]}` : "";
     el.innerHTML = `
       <span class="ld-item-body">
         <span class="ld-item-label">${HP.esc(it.label)}</span>
+        ${numDisplay ? `<span class="ld-item-num">${numDisplay}</span>` : ""}
         ${it.seats ? `<span class="ld-item-seats">${it.seats}</span>` : ""}
       </span>
       <span class="ld-grip ld-grip--rot" data-grip="rot" title="Rotate"></span>
@@ -1108,7 +1112,9 @@
     el.style.width = it.w * scale + "px";
     el.style.height = it.h * scale + "px";
     el.style.transform = it.rot ? `rotate(${it.rot}deg)` : "";
-    el.classList.toggle("is-tiny", Math.min(it.w, it.h) * scale < 54);
+    const pxW = it.w * scale;
+    const pxH = it.h * scale;
+    el.classList.toggle("is-tiny", (pxW < 46 && pxH < 22) || (Math.max(pxW, pxH) < 32));
   }
 
   /* Drag to move, grips to resize and rotate. All three run on pointer events

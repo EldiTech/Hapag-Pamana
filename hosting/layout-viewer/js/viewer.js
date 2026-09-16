@@ -226,6 +226,7 @@
       pax,
       event: eventType,
       title: clientName,
+      quality: "LOW",
       onExit: () => {
         orient("portrait");
         window.HPScene.resize();

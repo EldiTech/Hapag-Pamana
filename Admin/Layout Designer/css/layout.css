@@ -473,8 +473,37 @@
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
-/* Below ~54px a piece is a token, not a card — the label would only smear. */
-.ld-item.is-tiny .ld-item-label { display: none; }
+/* When tiny, hide the bare seats count so tables aren't mistaken as all named "3". Show the label or table number! */
+.ld-item.is-tiny .ld-item-seats { display: none; }
+.ld-item.is-tiny .ld-item-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  max-width: 96%;
+  line-height: 1;
+}
+.ld-item-num {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--ink);
+  line-height: 1;
+  pointer-events: none;
+}
+.ld-item[data-kind="stage"] .ld-item-label {
+  font-size: 0.75rem;
+  letter-spacing: 1.5px;
+  color: var(--brown-deep);
+}
+.ld-item[data-kind="buffet"] .ld-item-label {
+  font-size: 0.6rem;
+  letter-spacing: 1.2px;
+  color: var(--brown);
+}
+.ld-item[data-kind="door"] {
+  background: rgba(169, 130, 60, 0.25);
+  border: 1.5px dashed var(--gold-deep);
+}
 
 /* Rotation handle + resize grip appear on the selected piece only. */
 .ld-grip {
@@ -1182,7 +1211,12 @@ body.hp-sim-open .app { visibility: hidden; }
   text-transform: uppercase;
   color: rgba(244, 233, 206, 0.66);
 }
-.hp-sim.is-locked .hp-sim-prompt { opacity: 0; }
+.hp-sim.is-locked .hp-sim-prompt,
+.hp-sim-prompt.is-dismissed {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
 
 /* ── The interaction prompt (brief §13) ───────────────────────────────
    A single line under the reticle, shown only within reach of something.
