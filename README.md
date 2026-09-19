@@ -40,6 +40,11 @@ node serve-admin.js               # serves Admin/ at http://localhost:3000
 Android is the primary target (`com.HapagPamana`). iOS requires a Mac to build.
 The Admin portal is served from `Admin/index.html` via `node serve-admin.js` on `http://localhost:3000` (sign-in is Firebase Auth–gated).
 
+## Repository sync note
+
+This repository is synced to the GitHub remote at `https://github.com/EldiTech/Hapag-Pamana`.
+Use `git pull --rebase` before making changes if you are working from multiple machines.
+
 ## Firebase notes
 
 - App reads live content from Firestore (`products`, catering packages, `settings/allergens`);
