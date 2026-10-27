@@ -5,8 +5,144 @@
    assets/hp-workflow.css this dashboard already links. Only what's unique
    to variants and the equipment checklist lives here. */
 
-/* ── Variant chips on the inventory table ─────────────────────────────── */
+/* ── Variant chips & Dropdown on the inventory table ──────────────────── */
 .eq-variant-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.eq-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.eq-dropdown summary.eq-dropdown-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--paper-2);
+  border: 1px solid var(--gold-hair);
+  border-radius: 20px;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.76rem;
+  user-select: none;
+  list-style: none;
+  transition: all 0.15s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.eq-dropdown summary.eq-dropdown-btn::-webkit-details-marker {
+  display: none;
+}
+
+.eq-dropdown summary.eq-dropdown-btn:hover {
+  background: var(--paper-3);
+  border-color: var(--gold);
+}
+
+.eq-dd-badge {
+  font-weight: 700;
+  color: var(--gold-deep);
+  font-family: var(--display);
+  letter-spacing: 0.3px;
+}
+
+.eq-dd-total {
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  border-left: 1px solid var(--hair);
+  padding-left: 8px;
+}
+
+.eq-dd-arrow {
+  color: var(--gold);
+  font-size: 0.7rem;
+  display: inline-block;
+  transition: transform 0.2s ease;
+  margin-left: 2px;
+}
+
+.eq-dropdown[open] .eq-dd-arrow {
+  transform: rotate(180deg);
+}
+
+.eq-dropdown-menu {
+  margin-top: 8px;
+  min-width: 280px;
+  max-width: 380px;
+  background: var(--paper-2);
+  border: 1px solid var(--gold-hair);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-sm), 0 8px 24px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  animation: eqMenuSlide 0.15s ease-out;
+}
+
+@keyframes eqMenuSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.eq-dropdown-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.18);
+  border-bottom: 1px solid var(--hair);
+  font-size: 0.75rem;
+}
+
+.eq-dropdown-head strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.eq-dd-total-tag {
+  font-weight: 700;
+  color: var(--gold-deep);
+}
+
+.eq-dropdown-items {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+
+.eq-dropdown-items::-webkit-scrollbar {
+  width: 5px;
+}
+
+.eq-dropdown-items::-webkit-scrollbar-thumb {
+  background: rgba(169, 130, 60, 0.3);
+  border-radius: 4px;
+}
+
+.eq-dropdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 12px;
+  gap: 12px;
+  border-bottom: 1px solid var(--hair-soft);
+  font-size: 0.76rem;
+  transition: background 0.12s ease;
+}
+
+.eq-dropdown-row:last-child {
+  border-bottom: 0;
+}
+
+.eq-dropdown-row:hover {
+  background: var(--paper-3);
+}
+
+.eq-dd-label {
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
 
 /* ── Item form: category row + repeatable variant rows ───────────────── */
 .eq-form .field { margin-bottom: 15px; }

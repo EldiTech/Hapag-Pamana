@@ -80,7 +80,8 @@
   function renderAll() { renderStats(); renderChips(); renderRows(); }
 
   function renderStats() {
-    const low = items.filter((i) => K.itemState(i) === "low").length;
+    const inStock = items.filter((i) => K.itemState(i) === "ok").length;
+    const partial = items.filter((i) => K.itemState(i) === "partial").length;
     const out = items.filter((i) => K.itemState(i) === "out").length;
     const variantCount = items.reduce((sum, i) => sum + (Array.isArray(i.variants) ? i.variants.length : 0), 0);
 
@@ -92,20 +93,21 @@
       </div>`;
     if (HP.shell.paint(statsEl,
       stat("shelf", items.length, "Equipment items") +
-      stat("crate", variantCount, "Variants tracked") +
-      stat("logbook", low, "Running low") +
+      stat("check", inStock, "In stock") +
+      stat("ledger", partial, "Partial stock") +
       stat("close", out, "Out of stock"))) HP.countUp(statsEl);
   }
 
   function renderChips() {
     const counts = {
       all: items.length,
-      low: items.filter((i) => K.itemState(i) === "low").length,
+      ok: items.filter((i) => K.itemState(i) === "ok").length,
+      partial: items.filter((i) => K.itemState(i) === "partial").length,
       out: items.filter((i) => K.itemState(i) === "out").length,
     };
     const chip = (key, label) =>
       `<button class="seg-btn ${filter === key ? "active" : ""}" data-chip="${key}">${label} <span class="seg-count">${counts[key]}</span></button>`;
-    chipsEl.innerHTML = chip("all", "All items") + chip("low", "Running low") + chip("out", "Out of stock");
+    chipsEl.innerHTML = chip("all", "All items") + chip("ok", "In stock") + chip("partial", "Partial stock") + chip("out", "Out of stock");
     chipsEl.querySelectorAll("[data-chip]").forEach((b) =>
       b.addEventListener("click", () => { filter = b.dataset.chip; renderChips(); renderRows(); }));
   }
@@ -120,10 +122,47 @@
   }
 
   function variantChips(it) {
-    return (it.variants || []).map((v) => {
-      const st = K.stateOf(v);
-      return `<span class="badge ${K.STATE_BADGE[st]}" title="${HP.esc(K.STATE_LABEL[st])}">${HP.esc(v.label || "—")} · ${HP.esc(K.qtyText(v.qty, v.unit))}</span>`;
-    }).join(" ") || `<span class="badge badge-cat">No variants yet</span>`;
+    const variants = it.variants || [];
+    if (!variants.length) {
+      return `<span class="badge badge-cat">No variants yet</span>`;
+    }
+
+    // If 1 or 2 variants, show clean badges directly
+    if (variants.length <= 2) {
+      return `<div class="eq-variant-chips">${variants.map((v) => {
+        const st = K.stateOf(v);
+        return `<span class="badge ${K.STATE_BADGE[st]}" title="${HP.esc(K.STATE_LABEL[st])}">${HP.esc(v.label || "—")} · ${HP.esc(K.qtyText(v.qty, v.unit))}</span>`;
+      }).join(" ")}</div>`;
+    }
+
+    // 3 or more variants: show a sleek interactive dropdown list
+    const totalQty = variants.reduce((sum, v) => sum + (Number(v.qty) || 0), 0);
+    const unit = variants[0]?.unit || "pcs";
+
+    return `
+      <details class="eq-dropdown">
+        <summary class="eq-dropdown-btn">
+          <span class="eq-dd-badge">${variants.length} types</span>
+          <span class="eq-dd-total">${totalQty} ${unit}</span>
+          <span class="eq-dd-arrow">▾</span>
+        </summary>
+        <div class="eq-dropdown-menu">
+          <div class="eq-dropdown-head">
+            <strong>${HP.esc(it.name || "Item")}</strong>
+            <span class="eq-dd-total-tag">${totalQty} ${unit} total</span>
+          </div>
+          <div class="eq-dropdown-items">
+            ${variants.map((v) => {
+              const st = K.stateOf(v);
+              return `
+              <div class="eq-dropdown-row">
+                <span class="eq-dd-label" title="${HP.esc(v.label || "—")}">${HP.esc(v.label || "—")}</span>
+                <span class="badge ${K.STATE_BADGE[st]}">${HP.esc(K.qtyText(v.qty, v.unit))}</span>
+              </div>`;
+            }).join("")}
+          </div>
+        </div>
+      </details>`;
   }
 
   function renderRows() {
@@ -146,7 +185,7 @@
           </div></div>
         </td>
         <td>${HP.esc(it.categoryName || "—")}</td>
-        <td><div class="eq-variant-chips">${variantChips(it)}</div></td>
+        <td>${variantChips(it)}</td>
         <td><span class="badge ${K.STATE_BADGE[st]}">${HP.esc(K.STATE_LABEL[st])}</span></td>
         <td>${HP.esc(K.fmtWhen({ at: it.updatedAt, atLocal: it.updatedAtLocal }))}</td>
         <td>
@@ -161,6 +200,17 @@
     }).join(""));
     HP.hydrateIcons(rowsEl);
 
+    // Auto-close other open dropdowns when one is opened
+    rowsEl.querySelectorAll("details.eq-dropdown").forEach((d) => {
+      d.addEventListener("toggle", () => {
+        if (d.open) {
+          rowsEl.querySelectorAll("details.eq-dropdown[open]").forEach((other) => {
+            if (other !== d) other.open = false;
+          });
+        }
+      });
+    });
+
     rowsEl.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", (e) => {
       e.stopPropagation();
       const it = items.find((x) => x.id === e.currentTarget.closest("tr").dataset.id);
@@ -170,11 +220,18 @@
     }));
     rowsEl.querySelectorAll("tr[data-id]").forEach((tr) =>
       tr.addEventListener("click", (e) => {
-        if (e.target.closest("button")) return;
+        if (e.target.closest("button") || e.target.closest(".eq-dropdown")) return;
         const it = items.find((x) => x.id === tr.dataset.id);
         if (it) openHistory(it);
       }));
   }
+
+  // Close any open variant dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".eq-dropdown")) {
+      document.querySelectorAll("details.eq-dropdown[open]").forEach((d) => { d.open = false; });
+    }
+  });
 
   /* ── Add / edit an item ───────────────────────────────────────────────────
      A form with a category picker (plus an inline "new category" prompt)

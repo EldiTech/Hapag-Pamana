@@ -31,6 +31,7 @@
   });
 
   const statsEl = document.getElementById("pantryStats");
+  const deptBarEl = document.getElementById("pantryDeptBar");
   const chipsEl = document.getElementById("pantryChips");
   const rowsEl = document.getElementById("pantryRows");
   const db = HP.ONLINE ? firebase.firestore() : null;
@@ -39,6 +40,8 @@
   let plans = [];        // prepPlans — the orders whose ingredients can be issued
   let query = "";
   let filter = "all";
+  let selectedDept = "all";
+  let selectedSec = "all";
   let loaded = false;
   const unsubs = [];
 
@@ -84,7 +87,43 @@
   }
 
   /* ── Rendering ────────────────────────────────────────────────────────── */
-  function renderAll() { renderStats(); renderChips(); renderRows(); }
+  function renderAll() {
+    renderDepartments();
+    renderStats();
+    renderChips();
+    renderRows();
+  }
+
+  function renderDepartments() {
+    if (!deptBarEl) return;
+    const depts = K.DEPARTMENTS || [];
+    const counts = {};
+    counts["all"] = items.length;
+    depts.forEach((d) => {
+      if (d.key !== "all") {
+        counts[d.key] = items.filter((it) => K.departmentOf(it) === d.label).length;
+      }
+    });
+
+    deptBarEl.innerHTML = depts.map((d) => {
+      const active = selectedDept === d.key ? " active" : "";
+      const n = counts[d.key] || 0;
+      return `<button class="pantry-dept-btn${active}" data-dept="${d.key}">
+        <span class="ic">${HP.icon(d.icon)}</span>
+        <span class="pantry-dept-name">${d.label}</span>
+        <span class="pantry-dept-count">${n}</span>
+      </button>`;
+    }).join("");
+    HP.hydrateIcons(deptBarEl);
+
+    deptBarEl.querySelectorAll("[data-dept]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectedDept = btn.dataset.dept;
+        selectedSec = "all";
+        renderAll();
+      });
+    });
+  }
 
   function renderStats() {
     const low = items.filter((i) => K.stateOf(i) === "low").length;
@@ -108,28 +147,60 @@
   }
 
   function renderChips() {
+    const curDept = (K.DEPARTMENTS || []).find((d) => d.key === selectedDept);
+    const inDept = selectedDept === "all"
+      ? items
+      : items.filter((it) => K.departmentOf(it) === (curDept ? curDept.label : ""));
+
     const counts = {
-      all: items.length,
-      low: items.filter((i) => K.stateOf(i) === "low").length,
-      out: items.filter((i) => K.stateOf(i) === "out").length,
+      all: inDept.length,
+      low: inDept.filter((i) => K.stateOf(i) === "low").length,
+      out: inDept.filter((i) => K.stateOf(i) === "out").length,
     };
+
+    // Extract available sections in this department
+    const availSections = Array.from(new Set(inDept.map((it) => it.category || "Other"))).sort();
+    let secSelect = "";
+    if (availSections.length > 1) {
+      const secOpts = [`<option value="all">All Sections (${inDept.length})</option>`]
+        .concat(availSections.map((sec) => {
+          const cnt = inDept.filter((it) => (it.category || "Other") === sec).length;
+          return `<option value="${HP.esc(sec)}"${selectedSec === sec ? " selected" : ""}>${HP.esc(sec)} (${cnt})</option>`;
+        })).join("");
+      secSelect = `<label style="display:inline-flex; align-items:center; gap:6px; margin-left:12px; font-size:0.8rem; color:var(--ink-soft); font-family:var(--display);">Section: <select class="pantry-sec-select" id="pantrySecSelect">${secOpts}</select></label>`;
+    }
+
     const chip = (key, label) =>
       `<button class="seg-btn ${filter === key ? "active" : ""}" data-chip="${key}">${label} <span class="seg-count">${counts[key]}</span></button>`;
     chipsEl.innerHTML =
       chip("all", "All items") + chip("low", "Running low") + chip("out", "Out of stock") +
+      secSelect +
       `<button class="btn btn-primary seg-cta" id="issueBtn"><span class="ic">${HP.icon("crates")}</span>Issue to kitchen</button>`;
     HP.hydrateIcons(chipsEl);
+
     chipsEl.querySelectorAll("[data-chip]").forEach((b) =>
       b.addEventListener("click", () => { filter = b.dataset.chip; renderChips(); renderRows(); }));
+    
+    const secEl = document.getElementById("pantrySecSelect");
+    if (secEl) {
+      secEl.addEventListener("change", (e) => {
+        selectedSec = e.target.value;
+        renderRows();
+      });
+    }
+
     const issue = document.getElementById("issueBtn");
     if (issue) issue.addEventListener("click", openOrderPicker);
   }
 
   function visible() {
+    const curDept = (K.DEPARTMENTS || []).find((d) => d.key === selectedDept);
     return items.filter((it) => {
+      if (selectedDept !== "all" && curDept && K.departmentOf(it) !== curDept.label) return false;
+      if (selectedSec !== "all" && (it.category || "Other") !== selectedSec) return false;
       if (filter !== "all" && K.stateOf(it) !== filter) return false;
       if (!query) return true;
-      return [it.name, it.category, it.note].join(" ").toLowerCase().includes(query);
+      return [it.name, it.category, it.department, it.note].join(" ").toLowerCase().includes(query);
     });
   }
 
@@ -142,31 +213,62 @@
         : "The pantry is empty — press “Add item” to put the first thing on the shelf.");
       return;
     }
-    HP.shell.paint(rowsEl, list.map((it) => {
-      const st = K.stateOf(it);
-      return `
-      <tr data-id="${HP.esc(it.id)}">
-        <td>
-          <div class="cell-name"><div>
-            <strong>${HP.esc(it.name || "Unnamed item")}</strong>
-            <small>${HP.esc(it.note || "—")}</small>
-          </div></div>
-        </td>
-        <td>${HP.esc(it.category || "—")}</td>
-        <td><strong>${HP.esc(K.qtyText(it.qty, it.unit))}</strong></td>
-        <td>${HP.esc(it.par ? K.qtyText(it.par, it.unit) : "—")}</td>
-        <td><span class="badge ${K.STATE_BADGE[st]}">${HP.esc(K.STATE_LABEL[st])}</span></td>
-        <td>${HP.esc(K.fmtWhen({ at: it.updatedAt, atLocal: it.updatedAtLocal }))}</td>
-        <td>
-          <div class="row-actions">
-            <button class="icon-btn" data-act="move" title="Record a movement"
-              aria-label="Record a movement for ${HP.esc(it.name || "item")}"><span class="ic">${HP.icon("scales")}</span></button>
-            <button class="icon-btn" data-act="edit" title="Edit this item"
-              aria-label="Edit ${HP.esc(it.name || "item")}"><span class="ic">${HP.icon("pencil")}</span></button>
-          </div>
-        </td>
-      </tr>`;
-    }).join(""));
+
+    // Group items by Section/Category
+    const groups = new Map();
+    list.forEach((it) => {
+      const cat = it.category || "Other";
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat).push(it);
+    });
+
+    let html = "";
+    groups.forEach((catItems, catName) => {
+      html += `
+        <tr class="pantry-group-row">
+          <td colspan="7">
+            <div class="pantry-group-header">
+              <div class="pantry-group-left">
+                <span class="ic" style="color:var(--gold);">${HP.icon("shelf")}</span>
+                <span class="pantry-group-name">${HP.esc(catName)}</span>
+              </div>
+              <span class="pantry-group-pill">${catItems.length} ${catItems.length === 1 ? 'item' : 'items'}</span>
+            </div>
+          </td>
+        </tr>`;
+
+      catItems.forEach((it) => {
+        const st = K.stateOf(it);
+        html += `
+        <tr data-id="${HP.esc(it.id)}">
+          <td>
+            <div class="cell-name"><div>
+              <strong>${HP.esc(it.name || "Unnamed item")}</strong>
+              <div class="cell-sub" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:3px;">
+                ${it.price !== null && it.price !== undefined && it.price !== "" ? `<span class="pn-tag-price">${HP.esc(K.priceText(it.price))} / ${HP.esc(it.unit || "unit")}</span>` : ""}
+                ${it.expiryDate ? `<span class="pn-tag-exp">Exp: ${HP.esc(it.expiryDate)}</span>` : ""}
+                ${it.note ? `<small style="color:var(--ink-faint);">${HP.esc(it.note)}</small>` : ""}
+              </div>
+            </div></div>
+          </td>
+          <td>${HP.esc(it.category || "—")}</td>
+          <td><strong>${HP.esc(K.qtyText(it.qty, it.unit))}</strong></td>
+          <td>${HP.esc(it.par ? K.qtyText(it.par, it.unit) : "—")}</td>
+          <td><span class="badge ${K.STATE_BADGE[st]}">${HP.esc(K.STATE_LABEL[st])}</span></td>
+          <td>${HP.esc(K.fmtWhen({ at: it.updatedAt, atLocal: it.updatedAtLocal }))}</td>
+          <td>
+            <div class="row-actions">
+              <button class="icon-btn" data-act="move" title="Record a movement"
+                aria-label="Record a movement for ${HP.esc(it.name || "item")}"><span class="ic">${HP.icon("scales")}</span></button>
+              <button class="icon-btn" data-act="edit" title="Edit this item"
+                aria-label="Edit ${HP.esc(it.name || "item")}"><span class="ic">${HP.icon("pencil")}</span></button>
+            </div>
+          </td>
+        </tr>`;
+      });
+    });
+
+    HP.shell.paint(rowsEl, html);
     HP.hydrateIcons(rowsEl);
 
     rowsEl.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", (e) => {
@@ -185,12 +287,11 @@
   }
 
   /* ── Add / edit an item ───────────────────────────────────────────────────
-     Editing describes the item; it never sets the count. The only way qty
-     moves is a movement, so an edit cannot quietly rewrite history — a new
-     item's starting count is itself written as an "opening balance" entry. */
+     Editing describes the item; for a brand-new item, an initial opening
+     count can be provided which is written as an "opening balance" entry. */
   function openItem(it) {
     const isNew = !it;
-    it = it || { name: "", unit: "kg", category: "", par: "", note: "", qty: 0 };
+    it = it || { name: "", unit: "pcs", category: "", price: "", expiryDate: "", par: "", note: "", qty: 0 };
     // A section outside the known list (or none yet) opens on "Other" with
     // its own text box, so a clerk can name a section this list doesn't have
     // instead of being stuck with the closest guess.
@@ -214,12 +315,12 @@
         </div>
         <div class="pn-grid">
           <div class="field">
-            <label>Unit <span class="req">*</span></label>
-            <select class="control" id="pnUnit">${unitOpts}</select>
-          </div>
-          <div class="field">
             <label>Section</label>
             <select class="control" id="pnCat">${catOpts}</select>
+          </div>
+          <div class="field">
+            <label>Unit <span class="req">*</span></label>
+            <select class="control" id="pnUnit">${unitOpts}</select>
           </div>
         </div>
         <div class="field" id="pnCatOtherField" ${it.category && !catKnown ? "" : "hidden"}>
@@ -227,12 +328,34 @@
           <input class="control" id="pnCatOther" placeholder="e.g. Bakery"
             value="${HP.esc(it.category && !catKnown ? String(it.category) : "")}" />
         </div>
-        <div class="field">
-          <label>Reorder below</label>
-          <input class="control" id="pnPar" type="number" min="0" step="any"
-            placeholder="e.g. 2" value="${HP.esc(it.par === 0 || it.par ? String(it.par) : "")}" />
-          <p class="pn-hint">Once the shelf count drops to or below this, the item shows as
-            “Running low.” Leave blank if you don't track a reorder point for it yet.</p>
+        <div class="pn-grid">
+          ${isNew ? `
+          <div class="field">
+            <label>Initial stock</label>
+            <input class="control" id="pnOpeningQty" type="number" min="0" step="any"
+              placeholder="0" value="0" />
+            <p class="pn-hint">Starting count on shelf.</p>
+          </div>` : ""}
+          <div class="field">
+            <label>Unit price (₱)</label>
+            <input class="control" id="pnPrice" type="number" min="0" step="any"
+              placeholder="e.g. 120.00" value="${HP.esc(it.price !== null && it.price !== undefined ? String(it.price) : "")}" />
+            <p class="pn-hint">Price of a single unit.</p>
+          </div>
+        </div>
+        <div class="pn-grid">
+          <div class="field">
+            <label>Reorder below (Par)</label>
+            <input class="control" id="pnPar" type="number" min="0" step="any"
+              placeholder="e.g. 2" value="${HP.esc(it.par === 0 || it.par ? String(it.par) : "")}" />
+            <p class="pn-hint">Low-stock warning threshold.</p>
+          </div>
+          <div class="field">
+            <label>Expiry date</label>
+            <input class="control" id="pnExpiryDate" type="date"
+              value="${HP.esc(String(it.expiryDate || ""))}" />
+            <p class="pn-hint">Optional shelf life date.</p>
+          </div>
         </div>
         <div class="field">
           <label>Note</label>
@@ -265,6 +388,8 @@
     if (clash) return HP.toast(`“${name}” (${unit}) is already on the shelf.`, "danger");
 
     const par = K.num(document.getElementById("pnPar").value);
+    const priceVal = K.num(document.getElementById("pnPrice").value);
+    const expiryDate = (document.getElementById("pnExpiryDate").value || "").trim() || null;
     const catSel = document.getElementById("pnCat").value;
     const category = catSel === "__other__"
       ? document.getElementById("pnCatOther").value.trim()
@@ -272,6 +397,9 @@
     const fields = {
       name, unit,
       category,
+      department: K.departmentOf({ category }),
+      price: priceVal !== null && priceVal >= 0 ? K.round3(priceVal) : null,
+      expiryDate,
       par: par !== null && par >= 0 ? K.round3(par) : null,
       note: document.getElementById("pnNote").value.trim(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -284,21 +412,17 @@
     if (btn) btn.disabled = true;
     try {
       if (isNew) {
-        // No opening-count field on the add form — a brand-new item starts
-        // at zero and is stocked for real through "Record a movement" (a
-        // "received" entry), same as every later delivery. That keeps every
-        // count on the shelf backed by an actual movement someone chose,
-        // rather than a number typed once on the way in.
-        const opening = 0;
+        const openingEl = document.getElementById("pnOpeningQty");
+        const openNum = openingEl ? K.num(openingEl.value) : 0;
+        const opening = openNum !== null && openNum > 0 ? K.round3(openNum) : 0;
         const ref = db.collection("pantry").doc();
         const batch = db.batch();
         batch.set(ref, { ...fields, qty: opening });
-        // Even the first count is a movement — the ledger has no gap at the
-        // top, so a shelf audit can start from zero and add up to today.
         batch.set(db.collection("pantryLog").doc(), K.logEntry({
           itemId: ref.id, itemName: name, unit,
           delta: opening, before: 0, after: opening,
-          reason: "opening", note: "Item added to the pantry",
+          reason: "opening",
+          note: opening > 0 ? "Initial stock on shelf" : "Item added to the pantry",
         }));
         await batch.commit();
         HP.toast(`“${name}” is on the shelf.`, "ok");
@@ -645,14 +769,16 @@
     const list = visible();
     if (!list.length) return HP.toast("Nothing to export.", "warn");
     const cell = HP.csvCell;
-    const head = ["Item", "Unit", "Section", "On hand", "Par", "State", "Note", "Last moved", "By"];
+    const head = ["Item", "Unit", "Department", "Section", "Price", "On hand", "Par", "Expiry Date", "State", "Note", "Last moved", "By"];
     const lines = [head.map(cell).join(",")];
     list.forEach((it) => lines.push([
-      it.name, it.unit, it.category || "", K.round3(it.qty), it.par === 0 || it.par ? it.par : "",
+      it.name, it.unit, K.departmentOf(it), it.category || "", it.price !== null && it.price !== undefined ? it.price : "",
+      K.round3(it.qty), it.par === 0 || it.par ? it.par : "",
+      it.expiryDate || "",
       K.STATE_LABEL[K.stateOf(it)], it.note || "",
       K.fmtWhen({ at: it.updatedAt, atLocal: it.updatedAtLocal }), it.updatedByName || "",
     ].map(cell).join(",")));
-    const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "hapagpamana_pantry.csv";

@@ -33,13 +33,43 @@ window.HPPantry = (function () {
      The kitchen's vocabulary, verbatim. A pantry item's unit has to match the
      unit the recipes are written in or the issue screen cannot line them up,
      so this list is deliberately the same one chef-common.js offers. */
-  const UNITS = ["g", "kg", "mL", "L", "pc", "pcs", "packs", "cans", "bottles",
-    "trays", "cups", "tbsp", "tsp", "bundles", "sacks"];
+  const UNITS = [
+    "pcs", "pieces", "packs", "boxes", "box", "rolls", "loaf", "loafs",
+    "sacks", "sack", "gallons", "gallon", "bottles", "bottle", "cans", "can",
+    "sachet", "bars", "bar", "jars", "jar", "tetra pack", "trays",
+    "kg", "g", "mL", "L", "bundles", "tali", "cups", "tbsp", "tsp"
+  ];
 
-  /* Shelf sections — how a clerk walks the store, not how a database sorts. */
-  const CATEGORIES = ["Meat & poultry", "Seafood", "Vegetables", "Fruits",
-    "Dry goods", "Rice & grains", "Condiments & sauces", "Spices",
-    "Dairy & eggs", "Frozen", "Beverages", "Packaging", "Other"];
+  /* Shelf sections — categorized by warehouse/kitchen aisles */
+  const CATEGORIES = [
+    "Packaging", "Plastics", "Spoon and Fork", "Tissues", "Bread", "Pasta",
+    "Flour", "Rice & Egg", "Fruits", "Vegetables", "Dressings", "Condiments",
+    "Powders", "Canned Goods", "Frozen Pork", "Frozen Fish", "Frozen Chicken",
+    "Frozen Beef", "Frozen Seafoods", "Frozen Delights", "Bacons", "Cooked Dishes",
+    "Dry Fish", "Softdrinks", "Flavored Juices", "Kalinisan", "Meat & poultry",
+    "Dairy & eggs", "Spices", "Other"
+  ];
+
+  /* 7 Master Warehouse Departments */
+  const DEPARTMENTS = [
+    { key: "all", label: "All Departments", icon: "shelf" },
+    { key: "meats", label: "Frozen & Meats", icon: "meat", categories: ["Frozen Pork", "Frozen Beef", "Frozen Chicken", "Frozen Fish", "Frozen Seafoods", "Frozen Delights", "Bacons", "Cooked Dishes", "Dry Fish", "Meat & poultry"] },
+    { key: "produce", label: "Fresh Produce", icon: "leaf", categories: ["Vegetables", "Fruits"] },
+    { key: "staples", label: "Dry Goods & Staples", icon: "rice", categories: ["Rice & Egg", "Pasta", "Flour", "Bread", "Canned Goods", "Rice & grains", "Dry goods"] },
+    { key: "condiments", label: "Condiments, Seasonings & Dairy", icon: "cup", categories: ["Condiments", "Dressings", "Powders", "Dairy & eggs", "Spices", "Condiments & sauces"] },
+    { key: "beverages", label: "Beverages", icon: "cup", categories: ["Softdrinks", "Flavored Juices", "Beverages"] },
+    { key: "packaging", label: "Packaging & Disposables", icon: "box", categories: ["Packaging", "Plastics", "Spoon and Fork", "Tissues"] },
+    { key: "cleaning", label: "Cleaning & Supplies", icon: "gear", categories: ["Kalinisan", "Others", "Other"] },
+  ];
+
+  function departmentOf(it) {
+    if (it && it.department) return it.department;
+    const cat = it && it.category;
+    for (const d of DEPARTMENTS) {
+      if (d.categories && d.categories.includes(cat)) return d.label;
+    }
+    return "Cleaning & Supplies";
+  }
 
   /* Why stock moved. The reason is not decoration: liquidation and the audit
      read it to tell a delivery apart from a correction, and a correction
@@ -199,9 +229,15 @@ window.HPPantry = (function () {
     });
   }
 
+  function priceText(p) {
+    const n = num(p);
+    if (n === null || n < 0) return "—";
+    return `₱${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
   return {
-    UNITS, CATEGORIES, REASONS, reasonLabel,
-    num, round3, qtyText, signedQty,
+    UNITS, CATEGORIES, DEPARTMENTS, departmentOf, REASONS, reasonLabel,
+    num, round3, qtyText, signedQty, priceText,
     stateOf, STATE_LABEL, STATE_BADGE,
     nameKey, itemKey, indexItems, foldPlanItems, requirementRows,
     logEntry, entryTime, fmtWhen,

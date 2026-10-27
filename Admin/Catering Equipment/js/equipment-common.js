@@ -79,26 +79,29 @@ window.HPEquip = (function () {
     return (v > 0 ? "+" : "") + qtyText(v, unit);
   };
 
-  /* ── Variant state ─────────────────────────────────────────────────────
-     Same semantics as the pantry's stateOf: "low" is par-relative, so a
-     variant with no par set can only ever be out or ok. */
+  /* ── Variant state ───────────────────────────────────────────────────── */
   function stateOf(v) {
     const q = round3(v && v.qty);
-    const par = num(v && v.par);
     if (!(q > 0)) return "out";
-    if (par > 0 && q <= par) return "low";
     return "ok";
   }
-  const STATE_LABEL = { out: "Out of stock", low: "Running low", ok: "In stock" };
-  const STATE_BADGE = { out: "badge-warn", low: "badge-gold", ok: "badge-ok" };
+  const STATE_LABEL = { out: "Out of stock", partial: "Partial stock", ok: "In stock" };
+  const STATE_BADGE = { out: "badge-danger", partial: "badge-gold", ok: "badge-ok" };
 
-  // Worst state across an item's variants, for the item-level badge on the
-  // inventory table (a single item can have one variant out and one fine).
+  // Three clean states for item-level status:
+  // 1. "ok" (In stock): all variants have stock > 0
+  // 2. "partial" (Partial stock): some variants have stock, some are out
+  // 3. "out" (Out of stock): every variant is out (0 on hand)
   function itemState(item) {
-    const states = (item.variants || []).map(stateOf);
-    if (states.includes("out")) return "out";
-    if (states.includes("low")) return "low";
-    return "ok";
+    const variants = item.variants || [];
+    if (!variants.length) return "out";
+    const states = variants.map(stateOf);
+    const hasOk = states.includes("ok");
+    const hasOut = states.includes("out");
+
+    if (hasOk && hasOut) return "partial";
+    if (hasOk) return "ok";
+    return "out";
   }
 
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
