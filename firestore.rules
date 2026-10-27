@@ -100,6 +100,62 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Mobile FCM registrations. Customers manage only their own device
+    // records; notification sending remains server-only through Cloud Functions.
+    match /customers/{uid}/pushTokens/{tokenId} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(
+             ['uid', 'token', 'platform', 'active', 'createdAt', 'updatedAt'])
+        && request.resource.data.uid == uid
+        && request.resource.data.token is string
+        && request.resource.data.platform in ['android', 'ios', 'web']
+        && request.resource.data.active == true
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.token == resource.data.token
+        && request.resource.data.platform == resource.data.platform
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['active', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Orders-desk browser registrations. Role checks prevent a customer or an
+    // unrelated staff desk from subscribing to new-booking alerts.
+    match /adminNotificationTokens/{tokenId} {
+      allow read: if isOrderManager()
+        && resource.data.uid == request.auth.uid;
+      allow create: if isOrderManager()
+        && request.resource.data.keys().hasOnly(
+             ['uid', 'token', 'role', 'platform', 'active', 'createdAt', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role ==
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        && request.resource.data.token is string
+        && request.resource.data.platform == 'web'
+        && request.resource.data.active == true
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isOrderManager()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.token == resource.data.token
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.platform == resource.data.platform
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['active', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isOrderManager()
+        && resource.data.uid == request.auth.uid;
+    }
+
     // The recommendation engine's crowd signal: one document per PAIR of menu
     // items that have been ordered together, keyed `sorted([a,b]).join('__')`,
     // carrying how often that has happened.
@@ -427,15 +483,12 @@ service cloud.firestore {
 
     // ── In-app notifications ──────────────────────────────────────────────
     // Per-user notification items: only the owning member may read them or
-    // mark them as read. The app writes a notification on the member's behalf
-    // using the same uid, so creates are allowed for the owner as well.
-    // Only `isRead` may be patched by the client — everything else (title,
-    // body, type, createdAt) is written by the app server-side logic and must
-    // not be editable once stored.
+    // mark them as read. The Vercel sender creates each item through the Admin
+    // SDK; no client may forge notification history. Only `isRead` may be
+    // patched by the customer after creation.
     match /notifications/{uid}/items/{notifId} {
       allow read:   if request.auth != null && request.auth.uid == uid;
-      allow create: if (request.auth != null && request.auth.uid == uid)
-                    || isOrderManager();
+      allow create: if false;
       allow update: if request.auth != null
                     && request.auth.uid == uid
                     && request.resource.data.diff(resource.data)

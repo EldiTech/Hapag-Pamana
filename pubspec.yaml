@@ -82,6 +82,7 @@ dependencies:
   # orbit their event's floor plan and walk through it. See
   # lib/screens/user/layout_preview_page.dart.
   webview_flutter: ^4.10.0
+  firebase_messaging: ^16.7.1
 
 dependency_overrides:
   objective_c: ^9.5.0

@@ -67,4 +67,12 @@ class Env {
       ).isNotEmpty
       ? const String.fromEnvironment('FIREBASE_IOS_API_KEY')
       : (dotenv.env['FIREBASE_IOS_API_KEY'] ?? '');
+
+  /// Full Vercel Function URL, for example
+  /// https://example.vercel.app/api/notifications/booking.
+  static String get notificationApiUrl => const String.fromEnvironment(
+        'NOTIFICATION_API_URL',
+      ).isNotEmpty
+      ? const String.fromEnvironment('NOTIFICATION_API_URL')
+      : (dotenv.env['NOTIFICATION_API_URL'] ?? '');
 }

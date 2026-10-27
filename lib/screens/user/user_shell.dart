@@ -9,6 +9,7 @@ import '../../data/app_settings.dart';
 import '../../data/customer_repository.dart';
 import '../../data/member_preferences.dart';
 import '../../data/notification_repository.dart';
+import '../../data/push_notification_service.dart';
 import '../../data/booking_repository.dart';
 import '../../data/catering.dart';
 import '../../data/catering_repository.dart';
@@ -75,27 +76,23 @@ class _UserShellState extends State<UserShell> {
     // Settings screens read and write them, the Menu flags dishes against the
     // allergens they avoid, and the app's language follows the one they chose.
     // Fire-and-forget — a failed read leaves the defaults in force.
-    MemberPreferencesScope.load();
+    MemberPreferencesScope.load().then(
+      (_) => PushNotificationService.instance.syncForSignedInUser(),
+    );
     // Live ban watch: the moment customers/{uid}.banned turns true, sign out
     // and swap the shell for the suspended notice. Errors are ignored — the
     // forced sign-out itself drops read permission on the profile doc.
-    _banSub = CustomerRepository().watchBanned().listen(
-      (banned) {
-        if (!banned || _banned || !mounted) return;
-        setState(() => _banned = true);
-        CustomerRepository().signOut();
-        MemberPreferencesScope.reset();
-      },
-      onError: (_) {},
-    );
+    _banSub = CustomerRepository().watchBanned().listen((banned) {
+      if (!banned || _banned || !mounted) return;
+      setState(() => _banned = true);
+      CustomerRepository().signOut();
+      MemberPreferencesScope.reset();
+    }, onError: (_) {});
     // Live unread badge — update the bell dot as notifications land.
-    _unreadSub = NotificationRepository().watchHasUnread().listen(
-      (has) {
-        if (!mounted) return;
-        setState(() => _hasUnread = has);
-      },
-      onError: (_) {},
-    );
+    _unreadSub = NotificationRepository().watchHasUnread().listen((has) {
+      if (!mounted) return;
+      setState(() => _hasUnread = has);
+    }, onError: (_) {});
   }
 
   @override
@@ -143,86 +140,101 @@ class _UserShellState extends State<UserShell> {
               ),
             ],
           ),
-        children: [
-          Text('INCOMPLETE BOOKING', style: AppTextStyles.eyebrow),
-          const SizedBox(height: AppSpacing.sm),
-          Text('Continue your booking?', style: AppTextStyles.title),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            draft.headline.isNotEmpty
-                ? 'You were in the middle of booking ${draft.headline}. Would you like to continue where you left off?'
-                : 'You were in the middle of a catering booking. Would you like to continue where you left off?',
-            style: AppTextStyles.bodySmall,
-          ),
-          if (draft.eventDate.isNotEmpty ||
-              draft.value('venue').isNotEmpty ||
-              draft.value('pax').isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.md),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.cream,
-                borderRadius: AppRadius.smAll,
-                border: Border.all(color: AppColors.hairline),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (draft.eventDate.isNotEmpty)
-                    Row(
-                      children: [
-                        const Icon(Icons.event_outlined,
-                            size: 15, color: AppColors.goldDeep),
-                        const SizedBox(width: 8),
-                        Text(
-                          draft.eventDate,
-                          style: AppTextStyles.sans(
-                              size: 13, weight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  if (draft.value('venue').isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.place_outlined,
-                            size: 15, color: AppColors.goldDeep),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            draft.value('venue'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.sans(
-                                size: 12, color: AppColors.brown),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (draft.value('pax').isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.groups_outlined,
-                            size: 15, color: AppColors.goldDeep),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${draft.value('pax')} pax',
-                          style: AppTextStyles.sans(
-                              size: 12, color: AppColors.brown),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
+          children: [
+            Text('INCOMPLETE BOOKING', style: AppTextStyles.eyebrow),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Continue your booking?', style: AppTextStyles.title),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              draft.headline.isNotEmpty
+                  ? 'You were in the middle of booking ${draft.headline}. Would you like to continue where you left off?'
+                  : 'You were in the middle of a catering booking. Would you like to continue where you left off?',
+              style: AppTextStyles.bodySmall,
             ),
+            if (draft.eventDate.isNotEmpty ||
+                draft.value('venue').isNotEmpty ||
+                draft.value('pax').isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.cream,
+                  borderRadius: AppRadius.smAll,
+                  border: Border.all(color: AppColors.hairline),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (draft.eventDate.isNotEmpty)
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.event_outlined,
+                            size: 15,
+                            color: AppColors.goldDeep,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            draft.eventDate,
+                            style: AppTextStyles.sans(
+                              size: 13,
+                              weight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (draft.value('venue').isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.place_outlined,
+                            size: 15,
+                            color: AppColors.goldDeep,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              draft.value('venue'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.sans(
+                                size: 12,
+                                color: AppColors.brown,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (draft.value('pax').isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.groups_outlined,
+                            size: 15,
+                            color: AppColors.goldDeep,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${draft.value('pax')} pax',
+                            style: AppTextStyles.sans(
+                              size: 12,
+                              color: AppColors.brown,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
-      ),
-    );
-  });
+        ),
+      );
+    });
 
     if (!mounted) return;
     if (shouldResume == true) {
@@ -247,12 +259,12 @@ class _UserShellState extends State<UserShell> {
   }
 
   static List<int> _visibleIds(AppSettings s) => [
-        UserShell.tabHome,
-        if (s.ordering) UserShell.tabMenu,
-        UserShell.tabGabay,
-        if (s.catering) UserShell.tabPackages,
-        UserShell.tabAccount,
-      ];
+    UserShell.tabHome,
+    if (s.ordering) UserShell.tabMenu,
+    UserShell.tabGabay,
+    if (s.catering) UserShell.tabPackages,
+    UserShell.tabAccount,
+  ];
 
   /// If the moderator switches off the tab the member is looking at, fall
   /// back to Home rather than stranding the stale index.
@@ -292,14 +304,14 @@ class _UserShellState extends State<UserShell> {
   };
 
   Widget _pageFor(int id) => switch (id) {
-        UserShell.tabMenu => const UserMenuPage(),
-        // Gabay takes the navigator so a recommended package can hand off to
-        // the Packages tab, where it's actually booked.
-        UserShell.tabGabay => UserGabayPage(onNavigate: _go),
-        UserShell.tabPackages => const UserCateringPage(),
-        UserShell.tabAccount => AccountPage(onLogout: _logout),
-        _ => UserHomePage(onNavigate: _go),
-      };
+    UserShell.tabMenu => const UserMenuPage(),
+    // Gabay takes the navigator so a recommended package can hand off to
+    // the Packages tab, where it's actually booked.
+    UserShell.tabGabay => UserGabayPage(onNavigate: _go),
+    UserShell.tabPackages => const UserCateringPage(),
+    UserShell.tabAccount => AccountPage(onLogout: _logout),
+    _ => UserHomePage(onNavigate: _go),
+  };
 
   /// Leaves the (already signed-out) banned session for a fresh guest shell.
   void _leaveBanned() {
@@ -379,8 +391,11 @@ class _UserShellState extends State<UserShell> {
               ),
             ],
           ),
-          bottomNavigationBar:
-              _MemberNavBar(ids: ids, activeId: active, onSelect: _go),
+          bottomNavigationBar: _MemberNavBar(
+            ids: ids,
+            activeId: active,
+            onSelect: _go,
+          ),
         );
       },
     );
@@ -406,11 +421,21 @@ class _MemberNavBar extends StatelessWidget {
 
   static const Map<int, (IconData, IconData, String)> _items = {
     UserShell.tabHome: (Icons.home_outlined, Icons.home, 'Home'),
-    UserShell.tabMenu:
-        (Icons.restaurant_menu_outlined, Icons.restaurant_menu, 'Menu'),
-    UserShell.tabGabay: (Icons.auto_awesome_outlined, Icons.auto_awesome, 'Gabay'),
-    UserShell.tabPackages:
-        (Icons.room_service_outlined, Icons.room_service, 'Packages'),
+    UserShell.tabMenu: (
+      Icons.restaurant_menu_outlined,
+      Icons.restaurant_menu,
+      'Menu',
+    ),
+    UserShell.tabGabay: (
+      Icons.auto_awesome_outlined,
+      Icons.auto_awesome,
+      'Gabay',
+    ),
+    UserShell.tabPackages: (
+      Icons.room_service_outlined,
+      Icons.room_service,
+      'Packages',
+    ),
     UserShell.tabAccount: (Icons.person_outline, Icons.person, 'Account'),
   };
 

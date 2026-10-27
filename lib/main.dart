@@ -4,11 +4,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'app_navigation.dart';
 import 'brand.dart';
 import 'data/about_content.dart';
 import 'data/allergens.dart';
 import 'data/app_settings.dart';
 import 'data/member_preferences.dart';
+import 'data/push_notification_service.dart';
 import 'env.dart';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
@@ -19,9 +21,8 @@ Future<void> main() async {
   // Every API key the app needs comes from .env from here on — load it
   // before anything that reads one (Firebase's options included).
   await Env.load();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  PushNotificationService.registerBackgroundHandler();
   // Refresh the allergen taxonomy from the moderator-edited config without
   // holding up first paint — the built-in defaults stand until it lands.
   unawaited(AllergenTaxonomy.load());
@@ -30,6 +31,7 @@ Future<void> main() async {
   AppSettingsScope.start();
   AboutContentScope.start();
   runApp(const HapagPamanaApp());
+  unawaited(PushNotificationService.instance.start());
 }
 
 class HapagPamanaApp extends StatelessWidget {
@@ -45,6 +47,8 @@ class HapagPamanaApp extends StatelessWidget {
     return ValueListenableBuilder<MemberPreferences>(
       valueListenable: MemberPreferencesScope.notifier,
       builder: (context, prefs, _) => MaterialApp(
+        navigatorKey: AppNavigation.navigatorKey,
+        scaffoldMessengerKey: AppNavigation.messengerKey,
         title: 'HapagPamana',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),

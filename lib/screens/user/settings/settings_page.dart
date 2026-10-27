@@ -4,6 +4,7 @@ import '../../../brand.dart';
 import '../../../core/app_info.dart';
 import '../../../core/widgets/app_widgets.dart';
 import '../../../data/member_preferences.dart';
+import '../../../data/push_notification_service.dart';
 import '../../../widgets.dart';
 import '../order_tracking_page.dart';
 import 'about_route.dart';
@@ -52,8 +53,16 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   /// Saves one changed preference, reporting a failed write rather than letting
   /// the silently rolled-back switch puzzle the member.
   Future<void> _apply(MemberPreferences next) async {
+    final orderPushChanged =
+        next.orderUpdates != MemberPreferencesScope.value.orderUpdates;
     final saved = await MemberPreferencesScope.save(next);
-    if (saved || !mounted) return;
+    if (saved) {
+      if (orderPushChanged) {
+        await PushNotificationService.instance.syncForSignedInUser();
+      }
+      return;
+    }
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -101,7 +110,8 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
             delay: _d(60),
             child: SettingsSection(
               title: 'NOTIFICATIONS',
-              footnote: 'Saved to your profile — we follow these whenever we '
+              footnote:
+                  'Saved to your profile — we follow these whenever we '
                   'reach out to you about your orders.',
               rows: [
                 SettingsSwitchRow(
@@ -109,8 +119,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                   title: 'Order updates',
                   subtitle: 'Status of your orders and bookings.',
                   value: prefs.orderUpdates,
-                  onChanged: (v) =>
-                      _apply(prefs.copyWith(orderUpdates: v)),
+                  onChanged: (v) => _apply(prefs.copyWith(orderUpdates: v)),
                 ),
                 SettingsSwitchRow(
                   icon: Icons.local_offer_outlined,
@@ -124,8 +133,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                   title: 'Gabay suggestions',
                   subtitle: 'Personalised picks from your companion.',
                   value: prefs.gabaySuggestions,
-                  onChanged: (v) =>
-                      _apply(prefs.copyWith(gabaySuggestions: v)),
+                  onChanged: (v) => _apply(prefs.copyWith(gabaySuggestions: v)),
                 ),
               ],
             ),

@@ -245,6 +245,10 @@ body {
 }
 .topbar-title p { margin: 4px 0 0; font-family: var(--engraved); font-size: 0.62rem; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); }
 .topbar-actions { display: flex; align-items: center; gap: 12px; margin-bottom: 3px; }
+.push-toggle[data-state="on"] { color: var(--olive); border-color: var(--olive); }
+.push-toggle[data-state="denied"],
+.push-toggle[data-state="error"] { color: var(--danger); border-color: var(--danger); }
+.push-toggle[data-state="setup"] { opacity: 0.45; }
 
 /* "Find in the menu" — an underlined editorial field, not a pill. */
 .search {

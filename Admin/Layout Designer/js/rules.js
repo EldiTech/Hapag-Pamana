@@ -193,6 +193,22 @@ window.HPRules = (function () {
   const BY_KIND = Object.create(null);
   PIECES.forEach((p) => { BY_KIND[p.kind] = p; });
 
+  /* Blender-exported models can be added at runtime. They are deliberately
+     generic fixtures unless the designer already has a richer rule for the
+     same kind; this keeps new art selectable without inventing seating or
+     collision semantics that the model itself cannot provide. */
+  function registerAsset(def) {
+    if (!def || !def.kind || BY_KIND[def.kind]) return BY_KIND[def.kind] || null;
+    const piece = Object.assign({
+      group: "Blender Models", icon: "box", label: String(def.kind),
+      shape: "rect", w: 1.2, h: 1.2, seats: 0, top: 0.9,
+      build: String(def.kind), analysis: "fixture", blenderAsset: true,
+    }, def);
+    PIECES.push(piece);
+    BY_KIND[piece.kind] = piece;
+    return piece;
+  }
+
   /* A kind that isn't in the catalogue falls back to "other" rather than
      throwing — a plan hand-edited in the console, or written by a newer
      build of this desk, must still open. */
@@ -444,6 +460,6 @@ window.HPRules = (function () {
     EVENT_TYPES, EVENT_NAMES, DEFAULT_EVENT, eventOf, guessEvent,
     LIGHTING, LIGHTING_NAMES, DEFAULT_LIGHTING, lightingOf,
     CAMERA, SIM, HEAT, bandFor, OPTIMISE,
-    pieceOf, isPassable, heightOf, roleOf, kindsWithRole, capacityOf,
+    pieceOf, registerAsset, isPassable, heightOf, roleOf, kindsWithRole, capacityOf,
   });
 })();

@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'announcement.dart';
 import 'announcement_repository.dart';
-import 'booking.dart';
 import 'member_preferences.dart';
 import 'notification.dart';
 
@@ -58,18 +57,18 @@ class NotificationRepository {
 
     final Stream<List<AppNotification>> personalStream = uid != null
         ? _items(uid)
-            .orderBy('createdAt', descending: true)
-            .limit(50)
-            .snapshots()
-            .map((snap) => snap.docs.map(AppNotification.fromDoc).toList())
-            .handleError((e) {
-              debugPrint('NotificationRepository personalStream error: $e');
-              return <AppNotification>[];
-            })
+              .orderBy('createdAt', descending: true)
+              .limit(50)
+              .snapshots()
+              .map((snap) => snap.docs.map(AppNotification.fromDoc).toList())
+              .handleError((e) {
+                debugPrint('NotificationRepository personalStream error: $e');
+                return <AppNotification>[];
+              })
         : Stream.value(<AppNotification>[]);
 
-    final Stream<List<Announcement>> annStream =
-        AnnouncementRepository.instance.watchPublished();
+    final Stream<List<Announcement>> annStream = AnnouncementRepository.instance
+        .watchPublished();
 
     return _combine(personalStream, annStream);
   }
@@ -136,56 +135,7 @@ class NotificationRepository {
     }
   }
 
-  /// Writes an order-status notification for [uid].
-  Future<void> postOrderUpdate({
-    required String uid,
-    required String bookingId,
-    required BookingStatus status,
-  }) async {
-    final prefs = MemberPreferencesScope.value;
-    if (!prefs.orderUpdates) return;
-
-    final (title, body) = _orderUpdateCopy(status);
-
-    try {
-      await _items(uid).add({
-        'title': title,
-        'body': body,
-        'type': NotificationType.orderUpdate.wire,
-        'isRead': false,
-        'bookingId': bookingId,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      debugPrint('NotificationRepository.postOrderUpdate error: $e');
-    }
-  }
-
   // ─────────────────────────── Helpers ─────────────────────────────────────
-
-  static (String, String) _orderUpdateCopy(BookingStatus status) =>
-      switch (status) {
-        BookingStatus.pending => (
-            'Booking Received',
-            'Your catering inquiry has been received. We\'ll confirm it shortly!',
-          ),
-        BookingStatus.confirmed => (
-            'Booking Confirmed',
-            'Great news — your booking is confirmed! We\'ll be in touch for the details.',
-          ),
-        BookingStatus.completed => (
-            'Booking Completed',
-            'Your event with Hapag Pamana is done. Salamat — hope it was special!',
-          ),
-        BookingStatus.declined => (
-            'Booking Declined',
-            'Unfortunately your inquiry could not be confirmed. Please reach out to us directly.',
-          ),
-        BookingStatus.draft => (
-            'Draft Saved',
-            'Your catering inquiry draft has been saved. You can continue it from Order Tracking.',
-          ),
-      };
 
   /// Combines personal items, live published announcements, and seen states.
   Stream<List<AppNotification>> _combine(
@@ -243,12 +193,10 @@ class NotificationRepository {
             emit();
           },
         );
-        subS = _seenController.stream.listen(
-          (seen) {
-            seenSet = seen;
-            emit();
-          },
-        );
+        subS = _seenController.stream.listen((seen) {
+          seenSet = seen;
+          emit();
+        });
         // Initial emit with whatever cache exists
         emit();
       },

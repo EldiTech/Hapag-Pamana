@@ -19,6 +19,14 @@ window.firebaseConfig = {
   measurementId: "G-S4PRHFNPWH",
 };
 
+// Firebase Console -> Project settings -> Cloud Messaging -> Web Push certificates.
+// Public key: safe to ship. Browser push stays disabled while blank.
+window.HP_WEB_PUSH_VAPID_KEY = "";
+
+// Trusted sender hosted with this portal on Vercel. The function still
+// requires a Firebase Auth ID token and validates every booking server-side.
+window.HP_NOTIFICATION_API_URL = "/api/notifications/booking";
+
 /* ── Firestore transport ──────────────────────────────────────────────────
    Firestore normally streams over WebChannel. Some networks, proxies and
    browser shields break that long-lived connection: the 'Listen' channel

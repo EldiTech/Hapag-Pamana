@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'booking.dart';
-import 'notification_repository.dart';
+import 'notification_delivery_service.dart';
 
 /// Files catering bookings from the member "Book Us Now" wizard into the
 /// `bookings` collection, one document per request:
@@ -67,13 +67,10 @@ class BookingRepository {
       'status=${write['status']} authUid=$uid keys=${write.keys.toList()}',
     );
     final doc = await _db.collection('bookings').add(write);
-    // Fire-and-forget: post a "Booking Received" notification so the member
-    // sees it in their bell as soon as the wizard closes.
     unawaited(
-      NotificationRepository.instance.postOrderUpdate(
-        uid: uid,
+      NotificationDeliveryService.instance.deliver(
+        action: 'booking_created',
         bookingId: doc.id,
-        status: BookingStatus.pending,
       ),
     );
     return doc.id;
@@ -152,18 +149,16 @@ class BookingRepository {
           .where('status', isEqualTo: 'draft')
           .get();
       if (snap.docs.isEmpty) return null;
-      final drafts = snap.docs
-          .map(Booking.fromDoc)
-          .where((b) => !b.deleted)
-          .toList()
-        ..sort((a, b) {
-          final at = a.statusUpdatedAt ?? a.createdAt;
-          final bt = b.statusUpdatedAt ?? b.createdAt;
-          if (at == null && bt == null) return 0;
-          if (at == null) return -1;
-          if (bt == null) return 1;
-          return bt.compareTo(at);
-        });
+      final drafts =
+          snap.docs.map(Booking.fromDoc).where((b) => !b.deleted).toList()
+            ..sort((a, b) {
+              final at = a.statusUpdatedAt ?? a.createdAt;
+              final bt = b.statusUpdatedAt ?? b.createdAt;
+              if (at == null && bt == null) return 0;
+              if (at == null) return -1;
+              if (bt == null) return 1;
+              return bt.compareTo(at);
+            });
       return drafts.isEmpty ? null : drafts.first;
     } catch (e) {
       debugPrint('BookingRepository.fetchLatestDraft error: $e');
@@ -178,11 +173,10 @@ class BookingRepository {
     String bookingId, {
     required String sessionId,
     required String url,
-  }) =>
-      _db.collection('bookings').doc(bookingId).update({
-        'checkoutSessionId': sessionId,
-        'checkoutUrl': url,
-      });
+  }) => _db.collection('bookings').doc(bookingId).update({
+    'checkoutSessionId': sessionId,
+    'checkoutUrl': url,
+  });
 
   /// Marks [bookingId]'s downpayment settled. Only ever called after PayMongo
   /// itself has confirmed the payment on the checkout session — never on the
@@ -196,14 +190,21 @@ class BookingRepository {
     required num amount,
     String? paymentRef,
     String? method,
-  }) =>
-      _db.collection('bookings').doc(bookingId).update({
-        'paymentStatus': 'paid',
-        'paymentPaid': amount,
-        'paidAt': FieldValue.serverTimestamp(),
-        if ((paymentRef ?? '').isNotEmpty) 'paymentRef': paymentRef,
-        if ((method ?? '').isNotEmpty) 'paymentMethod': method,
-      });
+  }) async {
+    await _db.collection('bookings').doc(bookingId).update({
+      'paymentStatus': 'paid',
+      'paymentPaid': amount,
+      'paidAt': FieldValue.serverTimestamp(),
+      if ((paymentRef ?? '').isNotEmpty) 'paymentRef': paymentRef,
+      if ((method ?? '').isNotEmpty) 'paymentMethod': method,
+    });
+    unawaited(
+      NotificationDeliveryService.instance.deliver(
+        action: 'payment_paid',
+        bookingId: bookingId,
+      ),
+    );
+  }
 
   /// The signed-in member's own orders, newest first, streamed so a status move
   /// in the Orders dashboard reaches the tracking screen without a refresh.
@@ -222,17 +223,18 @@ class BookingRepository {
         .where('uid', isEqualTo: uid)
         .snapshots()
         .map((snap) {
-      final orders = snap.docs.map(Booking.fromDoc).where((b) => !b.deleted).toList()
-        ..sort((a, b) {
-          // Newest first; an order still waiting for its server timestamp
-          // (offline write) sorts to the top, where it was just filed.
-          final at = a.createdAt, bt = b.createdAt;
-          if (at == null && bt == null) return 0;
-          if (at == null) return -1;
-          if (bt == null) return 1;
-          return bt.compareTo(at);
+          final orders =
+              snap.docs.map(Booking.fromDoc).where((b) => !b.deleted).toList()
+                ..sort((a, b) {
+                  // Newest first; an order still waiting for its server timestamp
+                  // (offline write) sorts to the top, where it was just filed.
+                  final at = a.createdAt, bt = b.createdAt;
+                  if (at == null && bt == null) return 0;
+                  if (at == null) return -1;
+                  if (bt == null) return 1;
+                  return bt.compareTo(at);
+                });
+          return orders;
         });
-      return orders;
-    });
   }
 }

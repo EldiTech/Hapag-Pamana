@@ -716,6 +716,7 @@
       mergeOrders();
       renderAll();
       HP.closeModal();
+      requestBookingNotification("payment_paid", o.id);
       HP.toast(`${money(amount)} recorded for ${clientName(o)}${
         wasPending ? " — the order can now be confirmed." : "."}`);
     } catch (e) {
@@ -732,34 +733,6 @@
     declined:  (o) => `${clientName(o)}'s order was declined.`,
     pending:   (o) => `${clientName(o)}'s order is back in the pending queue.`,
   };
-
-  const NOTIF_COPY = {
-    confirmed: {
-      title: "Booking Confirmed",
-      body: "Great news — your booking is confirmed! We'll be in touch for the details.",
-    },
-    completed: {
-      title: "Booking Completed",
-      body: "Your event with Hapag Pamana is done. Salamat — hope it was special!",
-    },
-    declined: {
-      title: "Booking Declined",
-      body: "Your booking couldn't be accommodated. Tap to review your details.",
-    },
-  };
-
-  function sendCustomerNotification(uid, bookingId, status) {
-    if (!uid || !NOTIF_COPY[status]) return;
-    const { title, body } = NOTIF_COPY[status];
-    db.collection("notifications").doc(uid).collection("items").add({
-      title,
-      body,
-      type: "order_update",
-      isRead: false,
-      bookingId: bookingId,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    }).catch((e) => console.warn("HapagPamana: couldn't post customer notification —", e));
-  }
 
   /* The moves the workflow allows from each status. Validated inside the
      transaction against the doc's CURRENT status — never the copy a sheet
@@ -778,6 +751,32 @@
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedBy: HP.FB && HP.FB.auth.currentUser ? HP.FB.auth.currentUser.uid : null,
   });
+
+  // Best-effort signal to the trusted Vercel sender. It rereads the booking,
+  // validates this staff member's Firebase role, and deduplicates delivery.
+  async function requestBookingNotification(action, bookingId) {
+    const endpoint = String(window.HP_NOTIFICATION_API_URL || "").trim();
+    const user = HP.FB && HP.FB.auth.currentUser;
+    if (!endpoint || !user) return;
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action, bookingId }),
+      });
+      if (!response.ok) {
+        console.warn("HapagPamana: notification sender returned", response.status);
+      }
+    } catch (error) {
+      // The booking write already succeeded. Push failure must not fake a
+      // failed status/payment operation to the staff member.
+      console.warn("HapagPamana: notification request failed -", error);
+    }
+  }
   // A status-history entry. Client-clock Timestamp — serverTimestamp() is
   // not allowed inside array elements.
   const historyEntry = (status) => ({
@@ -844,7 +843,7 @@
       if (status === "completed" && committed && window.HPRec) {
         HPRec.recordCompletion(db, committed);
       }
-      sendCustomerNotification(o.uid || (committed && committed.uid), o.id, status);
+      if (committed) requestBookingNotification("status_changed", o.id);
       HP.toast(STATUS_TOAST[status](o), status === "declined" ? "warn" : "ok");
     } catch (e) {
       if (e && (e.code === "hp/gone" || e.code === "not-found")) {

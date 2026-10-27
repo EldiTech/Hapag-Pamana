@@ -7,11 +7,10 @@
    the model puts it. Chairs are generated from each piece's `seats` count,
    which is why the 3D view and the cover tally can never disagree.
 
-   This is a MASSING MODEL, deliberately: clean geometry in the portal's own
-   paper-and-gold palette, lit so the room reads at a glance. It answers
-   "where does the stage go, and can the guests get past the buffet" — not
-   "what will the linen look like". Photoreal would mean a GLTF furniture
-   library and baked lighting, which is a different project.
+   Blender-authored GLB prototypes provide detailed furniture and event
+   equipment with shared PBR materials. Procedural builders remain the
+   Blender-authored roots and still place dynamic Blender chairs/settings from
+   layout data, keeping the visual model synchronized with saved plans.
 
    READ-ONLY by design. Editing lives in the 2D sheet, where a click means
    one unambiguous thing; a drag in a perspective view has to guess at depth,
@@ -31,6 +30,7 @@ window.HPScene = (function () {
   "use strict";
 
   const T = window.THREE;
+  const A = window.HPAssets3D;
   const available = () => !!T;
 
   /* ── Palette ──────────────────────────────────────────────────────────
@@ -55,6 +55,7 @@ window.HPScene = (function () {
       ink:     token("--ink", "#33220F"),
       danger:  token("--danger", "#8C3320"),
       leaf:    token("--ok", "#5C7A33"),
+      bloom:   new T.Color(0xD99A8C),
     };
     // The canvas ground: a shade under the floor so the room reads as a room.
     C.bg = token("--paper", "#EFE3C6").clone().multiplyScalar(0.94);
@@ -108,7 +109,7 @@ window.HPScene = (function () {
      ballroom is mostly its walls and its floor, and a room that keeps the
      house's dark vellum under a bright setup reads as the wrong venue. The
      tint is slight by construction; the structure is still the room's. */
-  const DRESSED = ["cloth", "gold", "gilt", "leaf", "wine", "wall", "floor"];
+  const DRESSED = ["cloth", "gold", "gilt", "leaf", "bloom", "wine", "wall", "floor"];
 
   /* Which theme role each dressed material wears. `gold` and `gilt` are the
      room's two accent weights, so they take the accent at two strengths
@@ -117,12 +118,16 @@ window.HPScene = (function () {
     if (!theme) return null;
     const c = (hex) => new T.Color(hex);
     switch (name) {
-      case "cloth": return theme.accent ? c(theme.accent) : c(theme.cloth);
+      /* Linen is the broad, pale colour read from the setup photo. The accent
+         belongs on runners, napkins and trim; using it for the whole cloth
+         made a blue or purple table swallow the dinnerware. */
+      case "cloth": return theme.cloth ? c(theme.cloth) : null;
       case "gold":  return c(theme.accent);
       // The brighter accent: the same colour lifted, so a gilt edge still
       // reads as a highlight against the sashes rather than vanishing.
       case "gilt":  return c(theme.accent).lerp(new T.Color(0xffffff), 0.35);
       case "leaf":  return c(theme.bloom);
+      case "bloom": return c(theme.bloom);
       case "wine":  return c(theme.drape);
       case "wall":  return theme.wall ? c(theme.wall) : null;
       case "floor": return theme.floor ? c(theme.floor) : null;
@@ -159,6 +164,8 @@ window.HPScene = (function () {
       floor:  std(C.floor, { roughness: 0.42, metalness: 0.08 }),
       wall:   std(C.wall,  { roughness: 0.92, metalness: 0.0, side: T.DoubleSide }),
       cloth:  std(C.cloth, { roughness: 0.75, metalness: 0.02 }),
+      porcelain: std(0xF5F1E8, { roughness: 0.24, metalness: 0.02 }),
+      bloom: std(0xD99A8C, { roughness: 0.78, metalness: 0.0 }),
       wood:   std(C.wood,  { roughness: 0.38, metalness: 0.18 }),
       gold:   std(C.gold,  { roughness: 0.28, metalness: 0.75 }),
       gilt:   std(C.gilt,  { roughness: 0.18, metalness: 0.90 }),
@@ -174,6 +181,23 @@ window.HPScene = (function () {
     };
     if (theme) applyTheme();
   }
+
+  function syncAssetPalette() {
+    if (!A || !A.ready() || !M) return;
+    A.applyPalette({
+      cloth: M.cloth.color, cream: M.cloth.color, wood: M.wood.color,
+      woodLight: M.gold.color, gold: M.gilt.color, wine: M.wine.color,
+      olive: M.olive.color, leaf: M.leaf.color, dark: M.dark.color,
+    });
+  }
+
+  window.addEventListener("hpassets3dready", () => {
+    syncAssetPalette();
+    if (renderer && itemGroup) {
+      buildItems(lastItems);
+      needsDraw = true;
+    }
+  });
 
   /* ── Mount ────────────────────────────────────────────────────────────── */
   function mount(el) {
@@ -201,6 +225,8 @@ window.HPScene = (function () {
     buildLights();
     roomGroup = new T.Group(); scene.add(roomGroup);
     itemGroup = new T.Group(); scene.add(itemGroup);
+
+    if (A && A.available()) A.load();
 
     wireOrbit();
     resize();
@@ -283,7 +309,9 @@ window.HPScene = (function () {
   function clearGroup(g) {
     while (g.children.length) {
       const c = g.children.pop();
-      c.traverse((n) => { if (n.isMesh && n.geometry) n.geometry.dispose(); });
+      c.traverse((n) => {
+        if (n.isMesh && n.geometry && !n.userData.hpSharedAsset) n.geometry.dispose();
+      });
     }
   }
 
@@ -475,7 +503,25 @@ window.HPScene = (function () {
     const RU = window.HPRules;
     const name = RU ? RU.pieceOf(kind).build : kind;
     if (name === null) return null;             // spawn: a position, not a prop
-    return BUILD[name] || BUILD[kind] || BUILD.other;
+    if (!A || !A.ready() || !A.has(name)) return null;
+    return (it) => {
+      const detailed = A.clone(name, it);
+      if (!detailed) return null;
+      const g = new T.Group();
+      g.add(detailed);
+      if (name === "round") {
+        ringChairs(g, it.w / 2, it.seats, it.chair);
+        ringSettings(g, it.w / 2, it.seats, 0.835);
+      } else if (name === "rect") {
+        const longLen = Math.max(it.w, it.h);
+        const oneSide = it.kind === "head" || (it.label && (it.label.toLowerCase().includes("head") || it.label.toLowerCase().includes("classroom"))) || (it.seats <= 3 && longLen >= 1.5);
+        sideChairs(g, it.w, it.h, it.seats, it.chair, oneSide);
+        sideSettings(g, it.w, it.h, it.seats, 0.835, oneSide);
+      } else if (name === "cocktail" && it.seats) {
+        ringChairs(g, Math.max(0.25, it.w / 2), Math.min(it.seats, 4), it.chair || "stool");
+      }
+      return g;
+    };
   }
 
   function buildItems(items) {
@@ -517,29 +563,149 @@ window.HPScene = (function () {
   const CHAIR_BUILD = {
     // The house banquet chair: dressed in chair cover (clothing) matching table linen.
     pad(g) {
-      const seat = mesh(new T.BoxGeometry(0.44, 0.06, 0.44), M.cloth);
-      seat.position.y = 0.45;
+      // Full floor-length slipcover: gathered pleats, flared scalloped hem.
+      const straightSteps = 24;
+      const cornerSteps = 8;
+      const segments = 4 * (straightSteps + cornerSteps);
+      const rings = 10;
+      const pleats = 28;
+      const positions = [];
+      const indices = [];
+      const perimeter = (halfX, halfZ, radius) => {
+        const points = [];
+        const line = (start, end, nx, nz) => {
+          for (let j = 0; j < straightSteps; j++) {
+            const t = j / straightSteps;
+            points.push([
+              start[0] + (end[0] - start[0]) * t,
+              start[1] + (end[1] - start[1]) * t,
+              nx, nz
+            ]);
+          }
+        };
+        const corner = (cx, cz, startAngle, endAngle) => {
+          for (let j = 0; j < cornerSteps; j++) {
+            const t = j / cornerSteps;
+            const angle = startAngle + (endAngle - startAngle) * t;
+            const nx = Math.cos(angle);
+            const nz = Math.sin(angle);
+            points.push([cx + radius * nx, cz + radius * nz, nx, nz]);
+          }
+        };
+        line([-halfX + radius, halfZ], [halfX - radius, halfZ], 0, 1);
+        corner(halfX - radius, halfZ - radius, Math.PI / 2, 0);
+        line([halfX, halfZ - radius], [halfX, -halfZ + radius], 1, 0);
+        corner(halfX - radius, -halfZ + radius, 0, -Math.PI / 2);
+        line([halfX - radius, -halfZ], [-halfX + radius, -halfZ], 0, -1);
+        corner(-halfX + radius, -halfZ + radius, -Math.PI / 2, -Math.PI);
+        line([-halfX, -halfZ + radius], [-halfX, halfZ - radius], -1, 0);
+        corner(-halfX + radius, halfZ - radius, Math.PI, Math.PI / 2);
+        return points;
+      };
+      for (let ring = 0; ring <= rings; ring++) {
+        const t = ring / rings;
+        const flare = Math.pow(t, 1.5);
+        const outline = perimeter(
+          0.235 + 0.05 * flare,
+          0.23 + 0.05 * flare,
+          0.045 + 0.015 * flare
+        );
+        outline.forEach(([x, z, nx, nz], i) => {
+          const phase = Math.PI * 2 * pleats * i / segments;
+          const wave = (0.003 + 0.018 * flare) * Math.sin(phase);
+          const hemLift = 0.01 * Math.pow(t, 8) *
+            (0.5 + 0.5 * Math.cos(phase));
+          positions.push(
+            x + wave * nx,
+            0.425 * (1 - t) + 0.018 * t + hemLift,
+            z + wave * nz
+          );
+        });
+      }
+      for (let ring = 0; ring < rings; ring++) {
+        for (let i = 0; i < segments; i++) {
+          const a = ring * segments + i;
+          const b = ring * segments + (i + 1) % segments;
+          const c = (ring + 1) * segments + (i + 1) % segments;
+          const d = (ring + 1) * segments + i;
+          indices.push(a, b, c, a, c, d);
+        }
+      }
+      const skirtGeo = new T.BufferGeometry();
+      skirtGeo.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+      skirtGeo.setIndex(indices);
+      skirtGeo.computeVertexNormals();
+      g.add(mesh(skirtGeo, M.cloth));
+
+      const seat = mesh(new T.BoxGeometry(0.47, 0.085, 0.47, 2, 1, 2), M.cloth);
+      seat.position.y = 0.455;
       g.add(seat);
-      const back = mesh(new T.BoxGeometry(0.44, 0.5, 0.06), M.cloth);
-      back.position.set(0, 0.72, -0.18);
-      g.add(back);
-      const skirt = mesh(new T.BoxGeometry(0.44, 0.42, 0.44), M.cloth);
-      skirt.position.set(0, 0.21, 0);
-      g.add(skirt);
-      // Gold/accent ribbon sash around chair back
-      const sash = mesh(new T.BoxGeometry(0.46, 0.16, 0.09), M.gilt);
-      sash.position.set(0, 0.64, -0.18);
-      g.add(sash);
-      // Back bow accent knot
-      const knot = mesh(new T.SphereGeometry(0.06, 8, 8), M.gold);
-      knot.position.set(0, 0.64, -0.23);
-      g.add(knot);
-      const legGeo = new T.BoxGeometry(0.05, 0.45, 0.05);
-      [[-0.17, -0.17], [0.17, -0.17], [-0.17, 0.17], [0.17, 0.17]].forEach(([lx, lz]) => {
-        const l = mesh(legGeo, M.wood);
-        l.position.set(lx, 0.225, lz);
-        g.add(l);
+
+      // Padded back: rounded crown, soft front bulge, subtle rearward recline.
+      const backRows = 20;
+      const backColumns = 16;
+      const stride = backColumns + 1;
+      const surfaceSize = (backRows + 1) * stride;
+      const backPositions = [];
+      const backIndices = [];
+      [1, -1].forEach((surface) => {
+        for (let row = 0; row <= backRows; row++) {
+          const v = row / backRows;
+          const baseHeight = 0.44 + 0.64 * v;
+          const dz = Math.max(0, baseHeight - 0.98);
+          const halfWidth = baseHeight <= 0.98 ? 0.238 :
+            0.238 - (0.12 - Math.sqrt(Math.max(0, 0.12 * 0.12 - dz * dz)));
+          const centerDepth = -0.19 - 0.035 * v;
+          for (let column = 0; column <= backColumns; column++) {
+            const u = -1 + 2 * column / backColumns;
+            const height = baseHeight + 0.03 * Math.pow(v, 8) * (1 - u * u);
+            const padding = 0.01 * (1 - u * u) * Math.sin(Math.PI * v);
+            backPositions.push(
+              u * halfWidth,
+              height,
+              centerDepth + surface * (0.041 + padding)
+            );
+          }
+        }
       });
+      for (let surface = 0; surface < 2; surface++) {
+        const base = surface * surfaceSize;
+        for (let row = 0; row < backRows; row++) {
+          for (let column = 0; column < backColumns; column++) {
+            const a = base + row * stride + column;
+            const b = a + 1;
+            const d = base + (row + 1) * stride + column;
+            const c = d + 1;
+            if (surface === 0) backIndices.push(a, b, c, a, c, d);
+            else backIndices.push(a, c, b, a, d, c);
+          }
+        }
+      }
+      for (let row = 0; row < backRows; row++) {
+        const fl = row * stride;
+        const fl2 = (row + 1) * stride;
+        const rl = surfaceSize + fl;
+        const rl2 = surfaceSize + fl2;
+        backIndices.push(fl, fl2, rl2, fl, rl2, rl);
+        const fr = fl + backColumns;
+        const fr2 = fl2 + backColumns;
+        const rr = rl + backColumns;
+        const rr2 = rl2 + backColumns;
+        backIndices.push(fr, rr, rr2, fr, rr2, fr2);
+      }
+      for (let column = 0; column < backColumns; column++) {
+        const fb = column;
+        const rb = surfaceSize + column;
+        backIndices.push(fb, rb, rb + 1, fb, rb + 1, fb + 1);
+        const ft = backRows * stride + column;
+        const rt = surfaceSize + ft;
+        backIndices.push(ft, ft + 1, rt + 1, ft, rt + 1, rt);
+      }
+      const backGeo = new T.BufferGeometry();
+      backGeo.setAttribute('position', new T.Float32BufferAttribute(backPositions, 3));
+      backGeo.setIndex(backIndices);
+      backGeo.computeVertexNormals();
+      g.add(mesh(backGeo, M.cloth));
       return 0.45;
     },
 
@@ -643,12 +809,19 @@ window.HPScene = (function () {
     const spec = RU ? RU.chairOf(type) : null;
     const style = (spec && spec.style) || "pad";
     const g = new T.Group();
-    const build = CHAIR_BUILD[style] || CHAIR_BUILD.pad;
-    const seatH = build(g);
-    g.userData.seat = true;
-    g.userData.seatHeight = seatH;
-    g.userData.chairType = (spec && spec.label) || "Banquet";
-    return g;
+    const key = (type && RU && RU.CHAIRS[type]) ? type : "banquet";
+    const detailed = A && A.ready() ? A.clone("chair_" + key) : null;
+    if (detailed) {
+      // Blender's -Y public side becomes Three.js +Z. Chair backs use -Z.
+      detailed.rotation.y = Math.PI;
+      g.add(detailed);
+      const heights = { banquet: 0.455, chiavari: 0.47, modern: 0.455, stool: 0.76, executive: 0.46 };
+      g.userData.seat = true;
+      g.userData.seatHeight = heights[key] || 0.455;
+      g.userData.chairType = (spec && spec.label) || "Banquet";
+      return g;
+    }
+    return null;
   }
 
   /* Chairs evenly around a round table, each turned to face its centre.
@@ -671,6 +844,7 @@ window.HPScene = (function () {
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
       const c = chair(type);
+      if (!c) continue;
       c.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
       c.rotation.y = -a - Math.PI / 2;
       g.add(c);
@@ -693,6 +867,7 @@ window.HPScene = (function () {
       for (let i = 0; i < count; i++) {
         const t = count === 1 ? 0.5 : i / (count - 1);
         const c = chair(type);
+        if (!c) continue;
         if (isVert) {
           const x = (side ? 1 : -1) * (shortLen / 2 + 0.32);
           const z = (t - 0.5) * span;
@@ -710,44 +885,123 @@ window.HPScene = (function () {
     }
   }
 
-  // A low centrepiece — a bowl and a few leaves, so a dressed table doesn't
-  // read as a bare disc from above.
+  // A low floral centrepiece. The old single-sphere bloom read like a toy
+  // cluster from the camera; separate stems, leaves and blooms give the table
+  // the layered silhouette of the supplied reference photograph.
   function centrepiece(scale) {
     const g = new T.Group();
     const s = scale || 1;
-    const bowl = mesh(new T.CylinderGeometry(0.1 * s, 0.07 * s, 0.12 * s, 12), M.gilt);
-    bowl.position.y = 0.06 * s;
+    const bowl = mesh(new T.CylinderGeometry(0.13 * s, 0.09 * s, 0.10 * s, 20), M.gilt);
+    bowl.position.y = 0.05 * s;
     g.add(bowl);
-    const bloom = mesh(new T.SphereGeometry(0.16 * s, 12, 8), M.leaf);
-    bloom.position.y = 0.22 * s;
-    bloom.scale.y = 0.7;
-    g.add(bloom);
+    const neck = mesh(new T.CylinderGeometry(0.055 * s, 0.075 * s, 0.13 * s, 16), M.gilt);
+    neck.position.y = 0.14 * s;
+    g.add(neck);
+
+    const flowers = [
+      [-0.15, 0.23, -0.02, 0.75], [0.15, 0.25, 0.02, 0.82],
+      [0.00, 0.34, 0.01, 0.92], [-0.08, 0.42, -0.02, 0.68],
+      [0.11, 0.44, 0.04, 0.72], [0.00, 0.52, -0.01, 0.58],
+    ];
+    flowers.forEach(([x, y, z, size], i) => {
+      const stem = mesh(new T.CylinderGeometry(0.006 * s, 0.008 * s, y * s, 7), M.leaf, false);
+      stem.position.set(x * s, y * s / 2, z * s);
+      stem.rotation.z = x * 0.35;
+      g.add(stem);
+
+      const bloom = new T.Group();
+      const petalMat = i % 3 === 0 ? M.bloom : (i % 3 === 1 ? M.porcelain : M.wine);
+      for (let p = 0; p < 5; p++) {
+        const a = (p / 5) * Math.PI * 2;
+        const petal = mesh(new T.SphereGeometry(0.045 * s * size, 9, 6), petalMat, false);
+        petal.position.set(Math.cos(a) * 0.038 * s * size, 0, Math.sin(a) * 0.038 * s * size);
+        petal.scale.set(1.0, 0.55, 0.72);
+        bloom.add(petal);
+      }
+      const centre = mesh(new T.SphereGeometry(0.025 * s * size, 8, 6), M.gilt, false);
+      centre.position.y = 0.008 * s;
+      bloom.add(centre);
+      bloom.position.set(x * s, y * s, z * s);
+      g.add(bloom);
+    });
+
+    [[-0.25, 0.30, 0.02], [0.22, 0.37, -0.02], [-0.18, 0.48, 0.02], [0.20, 0.48, 0.01]]
+      .forEach(([x, y, z]) => {
+        const leaf = mesh(new T.SphereGeometry(0.065 * s, 8, 5), M.leaf, false);
+        leaf.position.set(x * s, y * s, z * s);
+        leaf.scale.set(1.5, 0.18, 0.55);
+        leaf.rotation.y = x * 2.5;
+        g.add(leaf);
+      });
     return g;
   }
 
-  /* A place setting: a plate, cutlery either side, a glass. Small — 26 cm
-     across — but it is the single thing that makes a dressed table read as
-     laid for dinner rather than as a disc of linen. Built once per cover and
-     only where a guest actually sits, so the count follows the seat count for
-     free. */
+  /* A layered place setting: charger, porcelain plate, folded napkin, shaped
+     flatware and a stemmed glass. It stays compact enough for the plan's
+     seating count while reading as dinner service from the orbit camera. */
   function placeSetting() {
+    const detailed = A && A.ready() ? A.clone("setting") : null;
+    if (!detailed) return null;
+    return detailed;
+
     const g = new T.Group();
-    const plate = mesh(new T.CylinderGeometry(0.13, 0.115, 0.012, 18), M.cloth, false);
+    const charger = mesh(new T.CylinderGeometry(0.165, 0.158, 0.009, 24), M.gilt, false);
+    charger.receiveShadow = true;
+    g.add(charger);
+    const plate = mesh(new T.CylinderGeometry(0.142, 0.126, 0.014, 24), M.porcelain, false);
+    plate.position.y = 0.010;
     plate.receiveShadow = true;
     g.add(plate);
-    const rim = mesh(new T.TorusGeometry(0.128, 0.006, 5, 20), M.gilt, false);
+    const inner = mesh(new T.CylinderGeometry(0.108, 0.098, 0.008, 24), M.porcelain, false);
+    inner.position.y = 0.020;
+    g.add(inner);
+    const rim = mesh(new T.TorusGeometry(0.137, 0.004, 5, 24), M.gilt, false);
     rim.rotation.x = Math.PI / 2;
-    rim.position.y = 0.008;
+    rim.position.y = 0.021;
     g.add(rim);
-    // Cutlery: a fork to the left, a knife to the right.
-    [[-0.175, 0.017], [0.175, 0.017]].forEach(([x, w]) => {
-      const c = mesh(new T.BoxGeometry(w, 0.004, 0.17), M.steel, false);
-      c.position.set(x, 0.002, 0);
-      g.add(c);
+
+    const napkin = mesh(new T.BoxGeometry(0.085, 0.008, 0.14), M.olive, false);
+    napkin.position.set(0.015, 0.030, 0.005);
+    napkin.rotation.y = -0.12;
+    g.add(napkin);
+
+    // Fork on the left: handle, shoulder and three fine tines.
+    const fork = new T.Group();
+    const forkHandle = mesh(new T.BoxGeometry(0.016, 0.006, 0.105), M.steel, false);
+    forkHandle.position.z = 0.045;
+    fork.add(forkHandle);
+    const forkHead = mesh(new T.BoxGeometry(0.040, 0.006, 0.012), M.steel, false);
+    forkHead.position.z = -0.010;
+    fork.add(forkHead);
+    [-0.014, 0, 0.014].forEach((x) => {
+      const tine = mesh(new T.BoxGeometry(0.006, 0.006, 0.045), M.steel, false);
+      tine.position.set(x, 0, -0.036);
+      fork.add(tine);
     });
-    const glass = mesh(new T.CylinderGeometry(0.032, 0.024, 0.11, 10), M.glass, false);
-    glass.position.set(0.13, 0.055, -0.14);
-    g.add(glass);
+    fork.position.set(-0.19, 0.006, 0);
+    g.add(fork);
+
+    // Knife on the right: a slim handle with a wider, tapered-looking blade.
+    const knife = new T.Group();
+    const knifeHandle = mesh(new T.BoxGeometry(0.017, 0.006, 0.105), M.steel, false);
+    knifeHandle.position.z = 0.045;
+    knife.add(knifeHandle);
+    const blade = mesh(new T.BoxGeometry(0.034, 0.005, 0.070), M.steel, false);
+    blade.position.set(0, 0, -0.040);
+    knife.add(blade);
+    knife.position.set(0.19, 0.006, 0);
+    g.add(knife);
+
+    // Stemmed glass, kept slightly behind the plate so it does not crowd it.
+    const bowl = mesh(new T.CylinderGeometry(0.030, 0.024, 0.085, 14, 1, true), M.glass, false);
+    bowl.position.set(0.14, 0.065, -0.14);
+    g.add(bowl);
+    const stem = mesh(new T.CylinderGeometry(0.004, 0.004, 0.075, 8), M.glass, false);
+    stem.position.set(0.14, 0.018, -0.14);
+    g.add(stem);
+    const foot = mesh(new T.CylinderGeometry(0.026, 0.026, 0.006, 14), M.glass, false);
+    foot.position.set(0.14, 0.004, -0.14);
+    g.add(foot);
     return g;
   }
 
@@ -756,6 +1010,7 @@ window.HPScene = (function () {
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
       const s = placeSetting();
+      if (!s) continue;
       s.position.set(Math.cos(a) * (radius - 0.19), top, Math.sin(a) * (radius - 0.19));
       s.rotation.y = -a - Math.PI / 2;
       g.add(s);
@@ -777,6 +1032,7 @@ window.HPScene = (function () {
       for (let i = 0; i < count; i++) {
         const t = count === 1 ? 0.5 : i / (count - 1);
         const s = placeSetting();
+        if (!s) continue;
         if (isVert) {
           const x = (side ? 1 : -1) * (shortLen / 2 - 0.2);
           const z = (t - 0.5) * span;
@@ -888,16 +1144,38 @@ window.HPScene = (function () {
     round(it) {
       const g = new T.Group();
       const r = it.w / 2;
-      const top = mesh(new T.CylinderGeometry(r, r, 0.06, 36), M.cloth);
-      top.position.y = 0.75;
+      const detailed = A && A.ready() ? A.clone("round", it) : null;
+      if (detailed) {
+        g.add(detailed);
+        ringChairs(g, r, it.seats, it.chair);
+        ringSettings(g, r, it.seats, 0.835);
+        return g;
+      }
+      const woodTop = mesh(new T.CylinderGeometry(r * 0.98, r * 0.98, 0.045, 64), M.wood);
+      woodTop.position.y = 0.755;
+      g.add(woodTop);
+      const top = mesh(new T.CylinderGeometry(r * 0.97, r * 0.97, 0.035, 64), M.cloth);
+      top.position.y = 0.795;
       g.add(top);
-      // The cloth falling to the floor — a slight taper reads as drape.
-      const skirt = mesh(new T.CylinderGeometry(r, r * 0.98, 0.75, 36, 1, true), M.cloth);
-      skirt.position.y = 0.375;
+      // A soft tapered linen skirt with a defined hem, rather than a flat
+      // cylinder that reads like a plastic drum in close-up view.
+      const skirt = mesh(new T.CylinderGeometry(r * 0.97, r * 0.91, 0.72, 64, 4, true), M.cloth);
+      skirt.position.y = 0.405;
       g.add(skirt);
-      g.add(centrepiece(Math.max(0.8, r)));
+      const hem = mesh(new T.TorusGeometry(r * 0.91, 0.018, 6, 64), M.cloth, false);
+      hem.rotation.x = Math.PI / 2;
+      hem.position.y = 0.055;
+      g.add(hem);
+      const rim = mesh(new T.TorusGeometry(r * 0.965, 0.012, 6, 64), M.gilt, false);
+      rim.rotation.x = Math.PI / 2;
+      rim.position.y = 0.817;
+      g.add(rim);
+      const runner = mesh(new T.BoxGeometry(0.20, 0.010, r * 1.78), M.olive, false);
+      runner.position.y = 0.820;
+      g.add(runner);
+      g.add(centrepiece(Math.max(0.78, r * 0.90)));
       ringChairs(g, r, it.seats, it.chair);
-      ringSettings(g, r, it.seats, 0.785);
+      ringSettings(g, r, it.seats, 0.835);
       return g;
     },
 
@@ -908,12 +1186,27 @@ window.HPScene = (function () {
       const shortLen = Math.min(it.w, it.h);
       const oneSide = it.kind === "head" || (it.label && (it.label.toLowerCase().includes("head") || it.label.toLowerCase().includes("classroom"))) || (it.seats <= 3 && longLen >= 1.5);
 
-      const top = mesh(new T.BoxGeometry(it.w, 0.06, it.h), M.cloth);
-      top.position.y = 0.75;
+      const detailed = A && A.ready() ? A.clone("rect", it) : null;
+      if (detailed) {
+        g.add(detailed);
+        sideChairs(g, it.w, it.h, it.seats, it.chair, oneSide);
+        sideSettings(g, it.w, it.h, it.seats, 0.835, oneSide);
+        return g;
+      }
+
+      const top = mesh(new T.BoxGeometry(it.w, 0.045, it.h), M.wood);
+      top.position.y = 0.755;
       g.add(top);
-      const skirt = mesh(new T.BoxGeometry(it.w, 0.75, it.h), M.cloth);
-      skirt.position.y = 0.375;
+      const linen = mesh(new T.BoxGeometry(Math.max(0.2, it.w - 0.08), 0.035, Math.max(0.2, it.h - 0.08)), M.cloth);
+      linen.position.y = 0.795;
+      g.add(linen);
+      const skirt = mesh(new T.BoxGeometry(Math.max(0.2, it.w - 0.12), 0.72, Math.max(0.2, it.h - 0.12)), M.cloth);
+      skirt.position.y = 0.405;
       g.add(skirt);
+
+      const runner = mesh(new T.BoxGeometry(isVert ? 0.20 : Math.max(0.2, it.w - 0.22), 0.010, isVert ? Math.max(0.2, it.h - 0.22) : 0.20), M.olive, false);
+      runner.position.y = 0.820;
+      g.add(runner);
 
       // Tasteful centerpiece down the table
       const nBlooms = Math.max(1, Math.floor(longLen / 1.8));
@@ -921,15 +1214,15 @@ window.HPScene = (function () {
         const c = centrepiece(0.75);
         const t = nBlooms === 1 ? 0 : (i / (nBlooms - 1) - 0.5) * (longLen - 0.8);
         if (isVert) {
-          c.position.set(oneSide ? (shortLen / 2 - 0.18) : 0, 0.78, t);
+          c.position.set(oneSide ? (shortLen / 2 - 0.18) : 0, 0.82, t);
         } else {
-          c.position.set(t, 0.78, oneSide ? -(shortLen / 2 - 0.18) : 0);
+          c.position.set(t, 0.82, oneSide ? -(shortLen / 2 - 0.18) : 0);
         }
         g.add(c);
       }
 
       sideChairs(g, it.w, it.h, it.seats, it.chair, oneSide);
-      sideSettings(g, it.w, it.h, it.seats, 0.785, oneSide);
+      sideSettings(g, it.w, it.h, it.seats, 0.835, oneSide);
       return g;
     },
 
@@ -940,6 +1233,12 @@ window.HPScene = (function () {
       const g = new T.Group();
       const r = Math.max(0.25, it.w / 2);
       const H = 1.05;
+      const detailed = A && A.ready() ? A.clone("cocktail", it) : null;
+      if (detailed) {
+        g.add(detailed);
+        if (it.seats) ringChairs(g, r, Math.min(it.seats, 4), it.chair || "stool");
+        return g;
+      }
       const top = mesh(new T.CylinderGeometry(r, r, 0.05, 24), M.cloth);
       top.position.y = H;
       g.add(top);
@@ -1582,6 +1881,7 @@ window.HPScene = (function () {
     M.floor.color = C.floor; M.wall.color = C.wall; M.cloth.color = C.cloth;
     M.wood.color = C.wood; M.gold.color = C.gold; M.gilt.color = C.gilt;
     M.olive.color = C.olive; M.wine.color = C.danger; M.leaf.color = C.leaf;
+    M.bloom.color = C.bloom;
     M.dark.color = C.ink;
     applyTheme();
     if (layout) render(layout);
@@ -1602,6 +1902,7 @@ window.HPScene = (function () {
         M[name].needsUpdate = true;
       }
     });
+    syncAssetPalette();
     if (roomGroup && roomGroup.children.length) buildRoom();
     if (itemGroup && itemGroup.children.length && lastItems.length) buildItems(lastItems);
     needsDraw = true;
@@ -1616,9 +1917,10 @@ window.HPScene = (function () {
     if (!theme) {
       readPalette();
       M.cloth.color.copy(C.cloth); M.gold.color.copy(C.gold); M.gilt.color.copy(C.gilt);
-      M.leaf.color.copy(C.leaf); M.wine.color.copy(C.danger);
+      M.leaf.color.copy(C.leaf); M.bloom.color.copy(C.bloom); M.wine.color.copy(C.danger);
       M.wall.color.copy(C.wall); M.floor.color.copy(C.floor);
       Object.keys(M).forEach((k) => { if (M[k]) M[k].needsUpdate = true; });
+      syncAssetPalette();
       if (roomGroup && roomGroup.children.length) buildRoom();
       if (itemGroup && itemGroup.children.length && lastItems.length) buildItems(lastItems);
       needsDraw = true;

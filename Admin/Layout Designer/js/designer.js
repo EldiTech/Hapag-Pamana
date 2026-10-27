@@ -105,6 +105,7 @@
   const OPT = window.HPOptimise;
   const SIM = window.HPSim;
   const S = window.HPScene;
+  const A = window.HPAssets3D;
   const PR = window.HPPresets;
   const TH = window.HPTheme;
   const PIECES = (RULES && RULES.PIECES) || [
@@ -253,11 +254,17 @@
   function boot() {
     handleHash();
     ensureDraft();
+    registerBlenderAssets();
     renderPalette();
     renderProps();
     renderTally();
     fitCanvas();
     renderThemeBtn();
+
+    /* Load the GLB even when the designer stays in 2D. This makes Blender
+       models discoverable from Add Pieces instead of waiting for a 3D tab
+       visit. scene3d.js shares the same idempotent loading promise. */
+    if (A && A.available()) A.load();
 
     if (!HP.ONLINE) {
       chipsEl.innerHTML = "";
@@ -305,6 +312,10 @@
         if (denied) HP.toast("Database access denied — update your Firestore rules.", "danger");
       });
   }
+  window.addEventListener("hpassets3dready", () => {
+    registerBlenderAssets();
+    renderPalette();
+  });
   window.addEventListener("beforeunload", (e) => {
     if (unsub) unsub();
     if (dirty) { e.preventDefault(); e.returnValue = ""; }
@@ -668,7 +679,43 @@
      reads. The groups are the catalogue's own — Tables, Catering, Event,
      Access — and the drawer opens with Tables expanded, since that is what
      the first click on an empty plan is always for. */
-  let openGroups = { Tables: true, Catering: true, Event: false, Access: false };
+  let openGroups = { Tables: true, Catering: true, Event: false, Access: false, "Blender Models": true };
+
+  function assetLabel(key) {
+    return String(key || "Blender model")
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+
+  function registerBlenderAssets() {
+    if (!A || !A.ready() || !A.catalog()) return;
+    A.catalog().forEach((asset) => {
+      /* Chairs are selected as a table property and are intentionally not
+         standalone floor-plan pieces. Known layout roots already have their
+         detailed seating/catering rules, so only genuinely new Blender roots
+         are appended to the palette. */
+      if (/^chair_/i.test(asset.key)) return;
+      const known = RULES && RULES.BY_KIND && RULES.BY_KIND[asset.key];
+      if (known) return;
+      const kind = "blender_" + String(asset.key).toLowerCase().replace(/[^a-z0-9]+/g, "_");
+      const def = {
+        kind,
+        build: asset.key,
+        label: assetLabel(asset.key),
+        group: "Blender Models",
+        icon: "box",
+        shape: "rect",
+        w: Math.max(0.3, Math.min(20, Number(asset.w) || 1.2)),
+        h: Math.max(0.3, Math.min(20, Number(asset.h) || 1.2)),
+        seats: 0,
+        top: Math.max(0, Number(asset.top) || 0.9),
+        analysis: "fixture",
+        blenderAsset: true,
+      };
+      if (RULES && RULES.registerAsset) RULES.registerAsset(def);
+      else if (!PIECES.some((p) => p.kind === kind)) PIECES.push(def);
+    });
+  }
 
   function renderPalette() {
     const byGroup = Object.create(null);
@@ -676,7 +723,8 @@
       const g = p.group || "Access";
       (byGroup[g] = byGroup[g] || []).push(p);
     });
-    paletteEl.innerHTML = PIECE_GROUPS.filter((g) => byGroup[g]).map((g) => `
+    const groups = PIECE_GROUPS.concat(Object.keys(byGroup).filter((g) => !PIECE_GROUPS.includes(g)));
+    paletteEl.innerHTML = groups.filter((g) => byGroup[g]).map((g) => `
       <div class="ld-pal-group${openGroups[g] ? " is-open" : ""}" data-group="${HP.esc(g)}">
         <button class="ld-pal-head" data-toggle="${HP.esc(g)}">
           <span>${HP.esc(g)}</span>

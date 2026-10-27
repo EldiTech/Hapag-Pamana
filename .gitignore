@@ -57,6 +57,7 @@ app.*.map.json
 # uploaded to hosting. Regenerated on every deploy and meaningless on anyone
 # else's checkout, so it is noise in `git status` rather than shared state.
 .firebase/
+.firebase-hosting/
 
 # Firebase service-account keys — unlimited access to the whole project,
 # bypassing every Firestore rule. Never commit one.

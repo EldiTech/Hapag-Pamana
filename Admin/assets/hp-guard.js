@@ -107,6 +107,9 @@
     if (!reduce && window.HP && window.HP.leaveCurtain) window.HP.leaveCurtain("Signing out…");
     dropSession();
     const go = () => location.replace("../../index.html");
-    auth.signOut().finally(() => setTimeout(go, reduce ? 0 : 700));
+    const deactivate = window.HPAdminPush && window.HPAdminPush.deactivate
+      ? window.HPAdminPush.deactivate()
+      : Promise.resolve();
+    deactivate.finally(() => auth.signOut().finally(() => setTimeout(go, reduce ? 0 : 700)));
   });
 })();

@@ -29,7 +29,9 @@ import 'payment_page.dart';
 /// detail sheet renders whatever the order actually carries rather than a fixed
 /// list of rows (see [_OrderSheet]).
 class OrderTrackingPage extends StatefulWidget {
-  const OrderTrackingPage({super.key});
+  const OrderTrackingPage({super.key, this.initialBookingId});
+
+  final String? initialBookingId;
 
   @override
   State<OrderTrackingPage> createState() => _OrderTrackingPageState();
@@ -45,7 +47,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
   // Previous statuses keyed by booking id — used to detect server-side
   // status changes so we can fire an in-app notification when the dashboard
   // moves an order forward or declines it.
-  final Map<String, BookingStatus> _prevStatuses = {};
+  bool _deepLinkHandled = false;
 
   bool _hasUnread = false;
   StreamSubscription<bool>? _unreadSub;
@@ -56,29 +58,12 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
     _sub = BookingRepository().watchMine().listen(
       (orders) {
         if (!mounted) return;
-        // Detect server-side status changes and post a notification for each.
-        for (final order in orders) {
-          if (order.isDraft) continue;
-          final prev = _prevStatuses[order.id];
-          if (prev != null && prev != order.status) {
-            final uid = (order.data['uid'] ?? '') as String;
-            if (uid.isNotEmpty) {
-              unawaited(
-                NotificationRepository.instance.postOrderUpdate(
-                  uid: uid,
-                  bookingId: order.id,
-                  status: order.status,
-                ),
-              );
-            }
-          }
-          _prevStatuses[order.id] = order.status;
-        }
         setState(() {
           _orders = orders;
           _loading = false;
           _error = false;
         });
+        _openDeepLinkedBooking(orders);
       },
       onError: (_) {
         if (!mounted) return;
@@ -89,13 +74,10 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
       },
     );
     // Live unread badge for the app bar bell.
-    _unreadSub = NotificationRepository().watchHasUnread().listen(
-      (has) {
-        if (!mounted) return;
-        setState(() => _hasUnread = has);
-      },
-      onError: (_) {},
-    );
+    _unreadSub = NotificationRepository().watchHasUnread().listen((has) {
+      if (!mounted) return;
+      setState(() => _hasUnread = has);
+    }, onError: (_) {});
   }
 
   @override
@@ -106,6 +88,29 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
   }
 
   Duration _d(int ms) => Duration(milliseconds: ms);
+
+  void _openDeepLinkedBooking(List<Booking> orders) {
+    final id = widget.initialBookingId;
+    if (_deepLinkHandled || id == null || id.isEmpty) return;
+    _deepLinkHandled = true;
+    Booking? match;
+    for (final order in orders) {
+      if (order.id == id) {
+        match = order;
+        break;
+      }
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (match != null) {
+        _openSheet(match);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('That booking is no longer available.')),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -172,7 +177,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
             open.isEmpty
                 ? 'Your past orders'
                 : 'You have ${open.length} order${open.length == 1 ? '' : 's'} '
-                    'with us',
+                      'with us',
             style: AppTextStyles.title,
           ),
         ),
@@ -429,54 +434,53 @@ extension on BookingStatus {
   // one — but the switch has to stay exhaustive, so it carries a placeholder
   // rather than a wildcard that would silently swallow a real future status.
   String get label => switch (this) {
-        BookingStatus.draft => 'Draft',
-        BookingStatus.pending => 'Pending',
-        BookingStatus.confirmed => 'Confirmed',
-        BookingStatus.completed => 'Completed',
-        BookingStatus.declined => 'Declined',
-      };
+    BookingStatus.draft => 'Draft',
+    BookingStatus.pending => 'Pending',
+    BookingStatus.confirmed => 'Confirmed',
+    BookingStatus.completed => 'Completed',
+    BookingStatus.declined => 'Declined',
+  };
 
   /// [fulfilment] narrows the [confirmed] line once the kitchen has actually
   /// started — null on every other status, and on a confirmed order that
   /// hasn't reached the Team Leader desk yet.
   String story([FulfilmentStage? fulfilment]) => switch (this) {
-        BookingStatus.draft => 'Saved, not yet sent.',
-        BookingStatus.pending =>
-          'We have your order and are going through it. We\'ll call your '
-              'contact number to confirm the details.',
-        BookingStatus.confirmed => switch (fulfilment) {
-            null || FulfilmentStage.preparing =>
-              'Your date is locked in and the kitchen is planning for it. '
-                  'We\'ll be in touch again before the day.',
-            FulfilmentStage.ready =>
-              'Cooked and packed — waiting to be sent your way.',
-            FulfilmentStage.released =>
-              'On its way to you now.',
-            FulfilmentStage.delivered =>
-              'Delivered — enjoy! We hope everything went well.',
-          },
-        BookingStatus.completed =>
-          'This one\'s done — maraming salamat for letting us cook for you.',
-        BookingStatus.declined =>
-          'We couldn\'t take this one on. Please message us and we\'ll see '
-              'what we can arrange.',
-      };
+    BookingStatus.draft => 'Saved, not yet sent.',
+    BookingStatus.pending =>
+      'We have your order and are going through it. We\'ll call your '
+          'contact number to confirm the details.',
+    BookingStatus.confirmed => switch (fulfilment) {
+      null || FulfilmentStage.preparing =>
+        'Your date is locked in and the kitchen is planning for it. '
+            'We\'ll be in touch again before the day.',
+      FulfilmentStage.ready =>
+        'Cooked and packed — waiting to be sent your way.',
+      FulfilmentStage.released => 'On its way to you now.',
+      FulfilmentStage.delivered =>
+        'Delivered — enjoy! We hope everything went well.',
+    },
+    BookingStatus.completed =>
+      'This one\'s done — maraming salamat for letting us cook for you.',
+    BookingStatus.declined =>
+      'We couldn\'t take this one on. Please message us and we\'ll see '
+          'what we can arrange.',
+  };
 
   Color get tint => switch (this) {
-        BookingStatus.draft => AppColors.brownSoft,
-        BookingStatus.pending => AppColors.goldDeep,
-        BookingStatus.confirmed => AppColors.olive,
-        BookingStatus.completed => AppColors.brown,
-        BookingStatus.declined => const Color(0xFF8C2F1F),
-      };
+    BookingStatus.draft => AppColors.brownSoft,
+    BookingStatus.pending => AppColors.goldDeep,
+    BookingStatus.confirmed => AppColors.olive,
+    BookingStatus.completed => AppColors.brown,
+    BookingStatus.declined => const Color(0xFF8C2F1F),
+  };
 
   IconData get icon => switch (this) {
-        BookingStatus.draft => Icons.edit_note_rounded,
-        BookingStatus.pending => Icons.hourglass_top_rounded,
-        BookingStatus.confirmed => Icons.event_available_rounded,
-        BookingStatus.completed => Icons.check_circle_rounded,
-        BookingStatus.declined => Icons.do_not_disturb_on_outlined,
-      };
+    BookingStatus.draft => Icons.edit_note_rounded,
+    BookingStatus.pending => Icons.hourglass_top_rounded,
+    BookingStatus.confirmed => Icons.event_available_rounded,
+    BookingStatus.completed => Icons.check_circle_rounded,
+    BookingStatus.declined => Icons.do_not_disturb_on_outlined,
+  };
 }
 
 /// How an order's downpayment reads to the member. [PaymentState.none] — an
@@ -484,26 +488,25 @@ extension on BookingStatus {
 /// asking for a payment the team already settled by hand would be wrong.
 extension on PaymentState {
   String? get note => switch (this) {
-        PaymentState.awaiting =>
-          'We hold your date once the downpayment lands.',
-        PaymentState.paid => 'Downpayment received — thank you.',
-        PaymentState.quoteNeeded =>
-          'We\'ll send you a quotation, then arrange the downpayment with you.',
-        PaymentState.none => null,
-      };
+    PaymentState.awaiting => 'We hold your date once the downpayment lands.',
+    PaymentState.paid => 'Downpayment received — thank you.',
+    PaymentState.quoteNeeded =>
+      'We\'ll send you a quotation, then arrange the downpayment with you.',
+    PaymentState.none => null,
+  };
 
   IconData get icon => switch (this) {
-        PaymentState.awaiting => Icons.lock_outline_rounded,
-        PaymentState.paid => Icons.verified_outlined,
-        PaymentState.quoteNeeded => Icons.request_quote_outlined,
-        PaymentState.none => Icons.receipt_long_outlined,
-      };
+    PaymentState.awaiting => Icons.lock_outline_rounded,
+    PaymentState.paid => Icons.verified_outlined,
+    PaymentState.quoteNeeded => Icons.request_quote_outlined,
+    PaymentState.none => Icons.receipt_long_outlined,
+  };
 
   Color get tint => switch (this) {
-        PaymentState.awaiting => AppColors.goldDeep,
-        PaymentState.paid => AppColors.olive,
-        _ => AppColors.brownSoft,
-      };
+    PaymentState.awaiting => AppColors.goldDeep,
+    PaymentState.paid => AppColors.olive,
+    _ => AppColors.brownSoft,
+  };
 }
 
 // ════════════════════════════ The order card ════════════════════════════
@@ -551,10 +554,7 @@ class _OrderCard extends StatelessWidget {
             if (order.eventDate.isNotEmpty)
               _MetaLine(icon: Icons.event_outlined, text: order.eventDate),
             if (order.value('venue').isNotEmpty)
-              _MetaLine(
-                icon: Icons.place_outlined,
-                text: order.value('venue'),
-              ),
+              _MetaLine(icon: Icons.place_outlined, text: order.value('venue')),
             if (order.value('pax').isNotEmpty)
               _MetaLine(
                 icon: Icons.groups_outlined,
@@ -657,10 +657,7 @@ class _DraftCard extends StatelessWidget {
           if (draft.eventDate.isNotEmpty)
             _MetaLine(icon: Icons.event_outlined, text: draft.eventDate),
           if (draft.value('venue').isNotEmpty)
-            _MetaLine(
-              icon: Icons.place_outlined,
-              text: draft.value('venue'),
-            ),
+            _MetaLine(icon: Icons.place_outlined, text: draft.value('venue')),
           if (draft.value('pax').isNotEmpty)
             _MetaLine(
               icon: Icons.groups_outlined,
@@ -750,7 +747,9 @@ class _StatusTrack extends StatelessWidget {
 
   String get _caption {
     if (status == BookingStatus.declined) return 'Received · not taken on';
-    if (status == BookingStatus.pending) return 'Received · awaiting confirmation';
+    if (status == BookingStatus.pending) {
+      return 'Received · awaiting confirmation';
+    }
     if (status == BookingStatus.completed) return 'Completed · thank you';
     // confirmed: name whichever of "Confirmed"/the fulfilment stage is
     // current, so the caption always matches the segment the track lands on.
@@ -781,8 +780,8 @@ class _StatusTrack extends StatelessWidget {
                     color: declined
                         ? status.tint.withValues(alpha: i == 0 ? 0.55 : 0.16)
                         : i < done
-                            ? AppColors.gold
-                            : AppColors.hairline,
+                        ? AppColors.gold
+                        : AppColors.hairline,
                   ),
                 ),
               ),
@@ -916,16 +915,47 @@ class _OrderSheet extends StatelessWidget {
   /// fixed list — a package's courses vary, and a fixed list either shows the
   /// wrong count or nothing at all for a package that doesn't match it.
   static const Set<String> _nonCourseKeys = {
-    'kindOfFunction', 'functionDate', 'venue', 'pax',
-    'clientName', 'contactNumber', 'email', 'address',
-    'ingress', 'egress', 'functionStart', 'foodServing', 'programEnd',
-    'deliveryTime', 'package', 'notes', 'setupStyle',
-    'menu', 'menuAddOns', 'bookingType',
-    'uid', 'status', 'createdAt', 'statusUpdatedAt', 'history', 'deleted',
-    'paymentStatus', 'paymentTotal', 'paymentDue', 'paymentPaid', 'paidAt',
-    'packageTotal', 'addOnsTotal', 'discountTotal', 'packageDiscount',
-    'addOnsDiscountTotal', 'appliedPromos',
-    'paymentRef', 'paymentMethod', 'checkoutUrl', 'checkoutSessionId',
+    'kindOfFunction',
+    'functionDate',
+    'venue',
+    'pax',
+    'clientName',
+    'contactNumber',
+    'email',
+    'address',
+    'ingress',
+    'egress',
+    'functionStart',
+    'foodServing',
+    'programEnd',
+    'deliveryTime',
+    'package',
+    'notes',
+    'setupStyle',
+    'menu',
+    'menuAddOns',
+    'bookingType',
+    'uid',
+    'status',
+    'createdAt',
+    'statusUpdatedAt',
+    'history',
+    'deleted',
+    'paymentStatus',
+    'paymentTotal',
+    'paymentDue',
+    'paymentPaid',
+    'paidAt',
+    'packageTotal',
+    'addOnsTotal',
+    'discountTotal',
+    'packageDiscount',
+    'addOnsDiscountTotal',
+    'appliedPromos',
+    'paymentRef',
+    'paymentMethod',
+    'checkoutUrl',
+    'checkoutSessionId',
     'fulfilment',
   };
 
@@ -1003,7 +1033,8 @@ class _OrderSheet extends StatelessWidget {
           title: 'THE EVENT',
           rows: [
             if (order.eventDate.isNotEmpty) ('Date', order.eventDate),
-            if (order.value('venue').isNotEmpty) ('Venue', order.value('venue')),
+            if (order.value('venue').isNotEmpty)
+              ('Venue', order.value('venue')),
             if (order.value('pax').isNotEmpty) ('Pax', order.value('pax')),
             if (order.value('package').isNotEmpty)
               ('Package', order.value('package')),
@@ -1035,7 +1066,8 @@ class _OrderSheet extends StatelessWidget {
               ('Name', order.value('clientName')),
             if (order.value('contactNumber').isNotEmpty)
               ('Contact', order.value('contactNumber')),
-            if (order.value('email').isNotEmpty) ('Email', order.value('email')),
+            if (order.value('email').isNotEmpty)
+              ('Email', order.value('email')),
             if (order.value('address').isNotEmpty)
               ('Address', order.value('address')),
           ],
@@ -1071,7 +1103,9 @@ class _MoneySection extends StatelessWidget {
     if (state == PaymentState.none) return const SizedBox.shrink();
 
     final paid = state == PaymentState.paid;
-    final settled = paid ? (order.paymentPaid > 0 ? order.paymentPaid : order.paymentDue) : 0;
+    final settled = paid
+        ? (order.paymentPaid > 0 ? order.paymentPaid : order.paymentDue)
+        : 0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.lg),
@@ -1106,9 +1140,15 @@ class _MoneySection extends StatelessWidget {
               _MoneyRow(label: '  · Add-ons', value: peso(order.addOnsTotal)),
             ],
             if (order.discountTotal > 0) ...[
-              _MoneyRow(label: '  · Promo discount', value: '-${peso(order.discountTotal)}'),
+              _MoneyRow(
+                label: '  · Promo discount',
+                value: '-${peso(order.discountTotal)}',
+              ),
               if (order.appliedPromos.isNotEmpty)
-                _MoneyRow(label: '  · Applied promos', value: order.appliedPromos.join(', ')),
+                _MoneyRow(
+                  label: '  · Applied promos',
+                  value: order.appliedPromos.join(', '),
+                ),
             ],
             if (order.paymentDue > 0)
               _MoneyRow(
@@ -1118,7 +1158,9 @@ class _MoneySection extends StatelessWidget {
               ),
             _MoneyRow(
               label: paid ? 'Balance on the day' : 'Balance after',
-              value: peso(order.paymentTotal - (paid ? settled : order.paymentDue)),
+              value: peso(
+                order.paymentTotal - (paid ? settled : order.paymentDue),
+              ),
             ),
             if (paid && order.paidAt != null)
               _MoneyRow(label: 'Settled', value: _longDate(order.paidAt!)),
@@ -1310,11 +1352,7 @@ class _PaperTrail extends StatelessWidget {
                     ),
                   ),
                   if (i < steps.length - 1)
-                    Container(
-                      width: 1,
-                      height: 22,
-                      color: AppColors.hairline,
-                    ),
+                    Container(width: 1, height: 22, color: AppColors.hairline),
                 ],
               ),
               const SizedBox(width: AppSpacing.md),
@@ -1394,18 +1432,20 @@ class _TrackingSkeleton extends StatelessWidget {
 /// couldn't be read.
 class _TrackingNotice extends StatelessWidget {
   const _TrackingNotice.empty({super.key})
-      : icon = Icons.receipt_long_outlined,
-        eyebrow = 'NOTHING TO TRACK YET',
-        title = 'No orders yet',
-        message = 'Book us from the Catering tab and your order appears here '
-            'the moment it\'s sent — with its status as we work through it.';
+    : icon = Icons.receipt_long_outlined,
+      eyebrow = 'NOTHING TO TRACK YET',
+      title = 'No orders yet',
+      message =
+          'Book us from the Catering tab and your order appears here '
+          'the moment it\'s sent — with its status as we work through it.';
 
   const _TrackingNotice.error({super.key})
-      : icon = Icons.cloud_off_outlined,
-        eyebrow = 'COULDN\'T LOAD',
-        title = 'We couldn\'t reach your orders',
-        message = 'Check your connection and come back in a moment. Nothing is '
-            'lost — your orders are safe with us.';
+    : icon = Icons.cloud_off_outlined,
+      eyebrow = 'COULDN\'T LOAD',
+      title = 'We couldn\'t reach your orders',
+      message =
+          'Check your connection and come back in a moment. Nothing is '
+          'lost — your orders are safe with us.';
 
   final IconData icon;
   final String eyebrow;
@@ -1446,8 +1486,18 @@ class _TrackingNotice extends StatelessWidget {
 
 // ════════════════════════════ Dates ════════════════════════════
 const List<String> _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /// "3 Aug 2026" — for the "Sent …" line.

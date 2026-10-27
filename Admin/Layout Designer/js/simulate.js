@@ -246,7 +246,7 @@ window.HPSim = (function () {
 
     if (scene) {
       scene.traverse((n) => {
-        if (n.isMesh && n.geometry) n.geometry.dispose();
+        if (n.isMesh && n.geometry && !n.userData.hpSharedAsset) n.geometry.dispose();
       });
     }
     if (renderer) {

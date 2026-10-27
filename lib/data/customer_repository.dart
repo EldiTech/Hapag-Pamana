@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'announcement_session.dart';
+import 'push_notification_service.dart';
 import 'customer.dart';
 
 /// Thrown by [CustomerRepository.signUp] when a field that must be unique is
@@ -157,10 +158,7 @@ class CustomerRepository {
   /// `too-many-requests`, `operation-not-allowed`) and
   /// [AccountBannedException] when the credentials are right but the account
   /// is banned; callers map these to field messages or a SnackBar.
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signIn({required String email, required String password}) async {
     final cred = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
@@ -171,8 +169,7 @@ class CustomerRepository {
     // the member shell's live watcher is the backstop.
     bool banned;
     try {
-      final doc =
-          await _db.collection('customers').doc(cred.user!.uid).get();
+      final doc = await _db.collection('customers').doc(cred.user!.uid).get();
       banned = (doc.data() ?? const {})['banned'] == true;
     } catch (_) {
       banned = false;
@@ -187,6 +184,7 @@ class CustomerRepository {
   /// Signs the current customer out, returning the app to the guest side.
   Future<void> signOut() async {
     AnnouncementSession.reset();
+    await PushNotificationService.instance.deactivateCurrentToken();
     await _auth.signOut();
   }
 
@@ -223,10 +221,9 @@ class CustomerRepository {
   Future<void> updatePhoto(String? dataUrl) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
-    await _db.collection('customers').doc(uid).set(
-      {'photo': dataUrl ?? FieldValue.delete()},
-      SetOptions(merge: true),
-    );
+    await _db.collection('customers').doc(uid).set({
+      'photo': dataUrl ?? FieldValue.delete(),
+    }, SetOptions(merge: true));
   }
 
   /// Reads the signed-in member's saved settings from the `preferences` map on
@@ -252,10 +249,9 @@ class CustomerRepository {
   Future<void> savePreferences(Map<String, Object?> values) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
-    await _db.collection('customers').doc(uid).set(
-      {'preferences': values},
-      SetOptions(merge: true),
-    );
+    await _db.collection('customers').doc(uid).set({
+      'preferences': values,
+    }, SetOptions(merge: true));
   }
 
   /// Reads the signed-in customer's `customers/{uid}` profile, or null when

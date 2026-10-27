@@ -785,3 +785,453 @@ body.is-success .welcome-spin { animation: spin 0.8s linear infinite; }
     display: none;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   Login refresh · warm split-screen staff portal
+   The dark theme is the photographic-style presentation: bright brand
+   showcase on the left, deep coffee access panel on the right. The light
+   theme above remains available through the theme control.
+   ════════════════════════════════════════════════════════════════ */
+html[data-theme="dark"] .layout {
+  grid-template-columns: minmax(0, 1.62fr) minmax(410px, 0.78fr);
+  background: #160e07;
+}
+
+html[data-theme="dark"] .brand-panel {
+  display: flex;
+  padding: 72px 64px;
+  color: #3d2818;
+  background:
+    linear-gradient(135deg, rgba(255, 249, 232, 0.08), rgba(231, 211, 174, 0.04)),
+    url("admin-login-background.png") center center / cover no-repeat;
+  isolation: isolate;
+}
+
+html[data-theme="dark"] .brand-panel::before {
+  inset: 28px;
+  border-color: rgba(126, 94, 43, 0.34);
+  border-radius: 18px;
+}
+
+html[data-theme="dark"] .brand-panel::after {
+  left: 48%;
+  top: 40%;
+  width: min(82%, 760px);
+  background: radial-gradient(circle, rgba(255, 252, 239, 0.82) 0%, rgba(255, 252, 239, 0) 68%);
+  z-index: -1;
+}
+
+html[data-theme="dark"] .weave {
+  opacity: 0.16;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(80, 52, 19, 0.12) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(-45deg, rgba(80, 52, 19, 0.08) 0 1px, transparent 1px 34px);
+  mix-blend-mode: multiply;
+}
+
+html[data-theme="dark"] .weave::before,
+html[data-theme="dark"] .weave::after {
+  content: "";
+  position: absolute;
+  width: 48%;
+  height: 54%;
+  border-radius: 50%;
+  filter: blur(8px);
+  opacity: 0.55;
+  transform: rotate(-24deg);
+  background:
+    radial-gradient(ellipse at 22% 24%, rgba(56, 49, 27, 0.22) 0 9%, transparent 10%),
+    radial-gradient(ellipse at 45% 42%, rgba(56, 49, 27, 0.18) 0 10%, transparent 11%),
+    radial-gradient(ellipse at 68% 62%, rgba(56, 49, 27, 0.15) 0 8%, transparent 9%);
+}
+
+html[data-theme="dark"] .weave::before { left: -14%; top: 4%; }
+html[data-theme="dark"] .weave::after { right: -16%; bottom: -8%; transform: rotate(154deg) scale(0.86); }
+
+html[data-theme="dark"] .brand-inner { max-width: 560px; }
+html[data-theme="dark"] .medallion {
+  width: 210px;
+  height: 210px;
+  margin-bottom: 32px;
+  background: rgba(255, 249, 234, 0.9);
+  border-color: rgba(80, 52, 19, 0.26);
+  box-shadow: 0 22px 38px -24px rgba(61, 40, 24, 0.65);
+}
+
+html[data-theme="dark"] .brand-title {
+  font-size: clamp(2.8rem, 4vw, 4.1rem);
+  color: #302014;
+  letter-spacing: 1px;
+}
+html[data-theme="dark"] .brand-sub { color: #94652d; }
+html[data-theme="dark"] .engraved--light { color: rgba(80, 52, 19, 0.76); }
+html[data-theme="dark"] .engraved--light .rule { background: rgba(80, 52, 19, 0.25); }
+html[data-theme="dark"] .brand-foot { color: rgba(80, 52, 19, 0.68); }
+
+html[data-theme="dark"] .form-panel {
+  align-items: center;
+  padding: 46px 44px;
+  color: #f3e7ca;
+  background:
+    radial-gradient(90% 75% at 54% 0%, rgba(91, 57, 24, 0.36), transparent 70%),
+    linear-gradient(145deg, #24160b 0%, #120b06 58%, #090604 100%);
+}
+
+html[data-theme="dark"] .form-card {
+  max-width: 530px;
+  padding: 34px 30px 30px;
+  border: 1px solid rgba(205, 157, 76, 0.28);
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(44, 27, 13, 0.72), rgba(15, 9, 5, 0.58));
+  box-shadow: 0 28px 70px -30px rgba(0, 0, 0, 0.85), inset 0 1px rgba(255, 226, 169, 0.07);
+}
+
+html[data-theme="dark"] .seal { display: none; }
+html[data-theme="dark"] .form-card .engraved--dark { color: #e2b86d; }
+html[data-theme="dark"] .form-card .engraved--dark .rule { background: rgba(226, 184, 109, 0.34); }
+html[data-theme="dark"] .title {
+  margin-top: 18px;
+  color: #f5e8cb;
+  font-size: clamp(2.35rem, 3.3vw, 3.15rem);
+  line-height: 0.98;
+}
+html[data-theme="dark"] .subtitle { color: #c9b58e; }
+
+html[data-theme="dark"] .secure-panel {
+  margin-top: 28px;
+  padding: 24px 24px 26px;
+  border-color: rgba(205, 157, 76, 0.28);
+  border-radius: 22px;
+  background: rgba(19, 11, 6, 0.52);
+  box-shadow: 0 18px 38px -30px rgba(0, 0, 0, 0.9);
+}
+html[data-theme="dark"] .panel-head {
+  align-items: flex-start;
+  color: #e2b86d;
+  padding-bottom: 18px;
+  margin-bottom: 22px;
+  border-color: rgba(205, 157, 76, 0.18);
+}
+html[data-theme="dark"] .panel-head-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+html[data-theme="dark"] .panel-head-copy strong { font-size: 0.69rem; letter-spacing: 2.4px; }
+html[data-theme="dark"] .panel-head-copy small {
+  color: #a99778;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+html[data-theme="dark"] .field label { color: #eadfc8; }
+html[data-theme="dark"] .input-wrap input {
+  min-height: 54px;
+  background: rgba(53, 32, 15, 0.62);
+  border-color: rgba(205, 157, 76, 0.22);
+  border-radius: 15px;
+  color: #f5e8cb;
+}
+html[data-theme="dark"] .input-wrap input:focus {
+  background: rgba(68, 41, 18, 0.78);
+  border-color: #d9a85c;
+  box-shadow: 0 0 0 4px rgba(217, 168, 92, 0.12);
+}
+html[data-theme="dark"] .input-wrap input::placeholder { color: rgba(203, 184, 138, 0.55); }
+html[data-theme="dark"] .input-wrap .lead,
+html[data-theme="dark"] .reveal { color: #c9a25c; }
+html[data-theme="dark"] .reveal:hover { background: rgba(217, 168, 92, 0.1); color: #f3d08d; }
+html[data-theme="dark"] .remember { color: #c9b58e; }
+html[data-theme="dark"] .remember .box { border-color: rgba(226, 184, 109, 0.62); }
+html[data-theme="dark"] .remember input:checked + .box { background: #e6c98f; border-color: #e6c98f; color: #2b1a0c; }
+html[data-theme="dark"] .link-gold { color: #e2b86d; }
+
+html[data-theme="dark"] .btn-primary {
+  min-height: 56px;
+  margin-top: 22px;
+  color: #382310;
+  background: linear-gradient(100deg, #f2dfb7, #fff4d7 50%, #e5c78c);
+  box-shadow: 0 14px 26px -18px rgba(241, 205, 137, 0.8);
+}
+html[data-theme="dark"] .btn-primary:hover {
+  color: #241507;
+  background: linear-gradient(100deg, #ffeac0, #fff8e7 50%, #edcf96);
+  box-shadow: 0 18px 30px -16px rgba(241, 205, 137, 0.9);
+}
+html[data-theme="dark"] .authorized { color: rgba(211, 187, 143, 0.7); }
+html[data-theme="dark"] .theme-toggle-login {
+  top: 24px;
+  right: 24px;
+  background: rgba(38, 23, 11, 0.72);
+  border-color: rgba(217, 168, 92, 0.45);
+  color: #e2b86d;
+  box-shadow: 0 10px 28px -16px #000;
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 1100px) and (min-width: 900px) {
+  html[data-theme="dark"] .layout { grid-template-columns: minmax(0, 1.35fr) minmax(380px, 0.9fr); }
+  html[data-theme="dark"] .brand-panel { padding-inline: 36px; }
+  html[data-theme="dark"] .form-panel { padding-inline: 24px; }
+}
+
+@media (max-width: 899px) {
+  html[data-theme="dark"] .form-panel {
+    min-height: 100dvh;
+    padding: 32px 18px;
+  }
+  html[data-theme="dark"] .form-card { padding: 28px 20px 24px; }
+  html[data-theme="dark"] .mobile-logo { display: block; width: 128px; margin-bottom: 22px; }
+}
+
+/* ─────────────────────── Backgrounds in both themes ─────────────────────── */
+.panel-head-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.panel-head-copy strong { font-size: 0.69rem; letter-spacing: 2.2px; }
+.panel-head-copy small {
+  color: var(--brown-soft);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+html[data-theme="light"] .brand-panel {
+  color: #3d2818;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 237, 0.16), rgba(231, 211, 174, 0.06)),
+    url("admin-login-background.png") center center / cover no-repeat;
+}
+
+html[data-theme="light"] .brand-panel::after {
+  background: radial-gradient(circle, rgba(255, 252, 239, 0.38) 0%, rgba(255, 252, 239, 0) 68%);
+}
+
+html[data-theme="light"] .form-panel {
+  background:
+    linear-gradient(90deg, rgba(252, 248, 239, 0.94), rgba(246, 239, 223, 0.9)),
+    url("admin-login-background.png") center right / cover no-repeat;
+  background-blend-mode: screen, normal;
+}
+
+html[data-theme="light"] .form-card {
+  max-width: 530px;
+  padding: 34px 30px 30px;
+  border: 1px solid rgba(126, 94, 43, 0.24);
+  border-radius: 28px;
+  background: rgba(255, 252, 244, 0.82);
+  box-shadow: 0 28px 70px -30px rgba(80, 52, 19, 0.48), inset 0 1px rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+html[data-theme="light"] .secure-panel {
+  margin-top: 28px;
+  padding: 24px 24px 26px;
+  border-color: rgba(126, 94, 43, 0.22);
+  border-radius: 22px;
+  background: rgba(255, 252, 244, 0.64);
+  box-shadow: 0 18px 38px -30px rgba(80, 52, 19, 0.45);
+}
+
+html[data-theme="light"] .panel-head {
+  align-items: flex-start;
+  padding-bottom: 18px;
+  margin-bottom: 22px;
+}
+
+html[data-theme="light"] .input-wrap input {
+  min-height: 54px;
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(126, 94, 43, 0.22);
+}
+
+html[data-theme="light"] .btn-primary {
+  min-height: 56px;
+  margin-top: 22px;
+  background: linear-gradient(100deg, #503413, #70481f 50%, #503413);
+  box-shadow: 0 14px 26px -18px rgba(80, 52, 19, 0.8);
+}
+
+html[data-theme="light"] .btn-primary:hover {
+  background: linear-gradient(100deg, #62421e, #80572a 50%, #62421e);
+}
+
+html[data-theme="dark"] .form-panel {
+  background:
+    linear-gradient(145deg, rgba(36, 22, 11, 0.94), rgba(9, 6, 4, 0.97)),
+    url("admin-login-background.png") center right / cover no-repeat;
+  background-blend-mode: multiply, normal;
+}
+
+html[data-theme="dark"] .panel-head-copy small { color: #a99778; }
+
+/* ───────── Login design-system normalization ─────────
+   Same type scale, control sizes, spacing, and radii in both themes. */
+:root {
+  --login-display-size: clamp(2.35rem, 3.15vw, 3rem);
+  --login-subtitle-size: 0.84rem;
+  --login-label-size: 0.76rem;
+  --login-body-size: 0.78rem;
+  --login-micro-size: 0.68rem;
+  --login-control-height: 54px;
+  --login-card-radius: 28px;
+  --login-panel-radius: 22px;
+  --login-control-radius: 15px;
+}
+
+.form-panel {
+  padding: 46px 44px;
+}
+
+.form-card {
+  max-width: 530px;
+  padding: 34px 30px 30px;
+  border-radius: var(--login-card-radius);
+}
+
+.brand-title {
+  font-size: clamp(2.8rem, 4vw, 4.1rem);
+  line-height: 0.96;
+}
+
+.brand-sub {
+  font-size: 0.75rem;
+  letter-spacing: 3.6px;
+  line-height: 1.35;
+}
+
+.brand-foot {
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.engraved {
+  font-size: var(--login-micro-size);
+  letter-spacing: 2.4px;
+  line-height: 1.4;
+}
+
+.title {
+  margin: 18px 0 8px;
+  font-size: var(--login-display-size);
+  line-height: 0.98;
+}
+
+.subtitle {
+  margin: 0 0 28px;
+  font-size: var(--login-subtitle-size);
+  line-height: 1.45;
+}
+
+.secure-panel {
+  margin-top: 28px;
+  padding: 24px 24px 26px;
+  border-radius: var(--login-panel-radius);
+}
+
+.panel-head {
+  min-height: 44px;
+  gap: 10px;
+  padding-bottom: 18px;
+  margin-bottom: 22px;
+  font-size: var(--login-micro-size);
+  letter-spacing: 2.2px;
+  line-height: 1.25;
+}
+
+.panel-head-copy {
+  gap: 5px;
+}
+
+.panel-head-copy strong {
+  font-size: var(--login-micro-size);
+  letter-spacing: 2.2px;
+  line-height: 1.2;
+}
+
+.panel-head-copy small {
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.field label {
+  margin-bottom: 9px;
+  font-size: var(--login-label-size);
+  line-height: 1.35;
+}
+
+.input-wrap input {
+  height: var(--login-control-height);
+  min-height: var(--login-control-height);
+  border-radius: var(--login-control-radius);
+  padding: 14px 48px 14px 44px;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.row {
+  min-height: 22px;
+  margin-top: 8px;
+}
+
+.remember,
+.link-gold {
+  font-size: var(--login-body-size);
+  line-height: 1.3;
+}
+
+.btn-primary {
+  height: 56px;
+  min-height: 56px;
+  margin-top: 22px;
+  padding: 15px 24px;
+  font-size: var(--login-body-size);
+  letter-spacing: 2px;
+  line-height: 1.2;
+}
+
+.authorized {
+  font-size: var(--login-micro-size);
+  line-height: 1.4;
+}
+
+html[data-theme="light"] .form-card {
+  border-color: rgba(126, 94, 43, 0.24);
+  background: rgba(255, 252, 244, 0.82);
+}
+
+html[data-theme="light"] .secure-panel {
+  border-color: rgba(126, 94, 43, 0.22);
+  background: rgba(255, 252, 244, 0.64);
+}
+
+html[data-theme="dark"] .form-card {
+  border-color: rgba(205, 157, 76, 0.28);
+}
+
+html[data-theme="dark"] .secure-panel {
+  border-color: rgba(205, 157, 76, 0.28);
+}
+
+@media (max-width: 899px) {
+  .form-panel {
+    min-height: 100dvh;
+    padding: 32px 18px;
+  }
+
+  .form-card {
+    padding: 28px 20px 24px;
+  }
+
+  .mobile-logo {
+    width: 128px;
+    margin-bottom: 22px;
+  }
+}
