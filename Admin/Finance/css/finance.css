@@ -1,0 +1,529 @@
+/* ════════════════════════════════════════════════════════════════
+   HapagPamana · Finance — page-specific styles.
+   Loaded AFTER the shared Heirloom Editorial stylesheet
+   (../../Content Moderator/css/global.css); only what the costing board,
+   the costing sheet and the requisition slip add on top lives here.
+   Everything inherits the shared tokens, so dark mode follows automatically.
+
+   The slip is deliberately the most printed thing in the whole portal: it
+   leaves the building in someone's hand, so it's set as a document —
+   ruled, signed and footed — rather than as another panel of UI.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Costing board (table) ──────────────────────────────────────── */
+.cost-row { cursor: pointer; }
+.due-past { color: var(--danger); }
+
+/* Type badge — the little icon inside the chip (same as Orders / the kitchen). */
+.order-type .ic { display: inline-flex; }
+.order-type .ic svg { width: 12px; height: 12px; }
+.order-type--pack { background: rgba(169, 130, 60, 0.14); color: var(--gold-deep); border-color: var(--gold-hair2); }
+
+/* A figure with its footnote under it — the ingredients and money columns. */
+.cell-money strong {
+  display: block; font-family: var(--display); font-size: 1.05rem;
+  font-weight: 700; color: var(--ink); line-height: 1.2;
+}
+.cell-money small,
+.cost-muted, .cost-unpriced, .cost-cash, .cost-unpaid, .cost-slip-no, .cost-stale {
+  display: block; margin-top: 2px; font-family: var(--text);
+  font-size: 0.76rem; font-style: italic; color: var(--ink-soft);
+}
+.cost-muted { font-style: italic; color: var(--ink-faint); }
+.cost-unpriced, .cost-unpaid { color: var(--warn); font-style: normal; }
+.cost-cash { color: var(--ok); font-style: normal; }
+.cost-stale { color: var(--danger); font-style: normal; }
+/* The slip number under a released badge — a reference, so it's set as one. */
+.cost-slip-no {
+  font-family: var(--engraved); font-size: 0.6rem; font-style: normal;
+  font-weight: 700; letter-spacing: 0.8px; color: var(--gold-deep);
+}
+.slip-ref { font-family: var(--engraved) !important; font-size: 0.82rem !important; letter-spacing: 0.6px; }
+.req-by { font-family: var(--text); font-size: 0.9rem; color: var(--ink); }
+
+/* A money stat can't count up from zero as a bare number would — it's set
+   slightly smaller so a six-figure peso total still fits the tile. */
+.stat-num--money { font-size: 1.85rem; }
+
+/* Confirm/Release, locked because a check hasn't passed. Deliberately NOT
+   `disabled`: the shared rule for that sets pointer-events: none, which would
+   swallow the click that explains the lock. (Same idiom as Orders.) */
+.is-locked { filter: grayscale(0.55); opacity: 0.72; }
+.is-locked:hover { filter: grayscale(0.2); opacity: 1; }
+.btn.is-locked { cursor: help; box-shadow: none; }
+
+/* ── Costing sheet (detail modal) ───────────────────────────────── */
+/* The sheet carries three tables and a checklist — a wider page. */
+.modal-root:has(.cost-sheet) .modal { max-width: 780px; }
+.modal-root:has(.cost-sheet) .modal-foot { flex-wrap: wrap; }
+
+/* The sheet's header band and context facts (as on the kitchen's planner). */
+.plan-sheet-head {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  padding-bottom: 14px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.plan-facts { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 7px 16px; margin-top: 4px; }
+.plan-fact {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--text); font-size: 0.85rem; color: var(--ink-soft);
+}
+.plan-fact .ic { display: inline-flex; color: var(--gold-deep); }
+.plan-fact .ic svg { width: 14px; height: 14px; }
+.plan-hint {
+  margin: 0 0 14px; font-family: var(--text); font-size: 0.85rem;
+  color: var(--ink-faint); line-height: 1.55; font-style: italic;
+}
+
+/* Each part of the costing becomes a ruled ledger section (as on the
+   booking sheet — the two documents are read side by side). */
+.order-sec { margin-bottom: 22px; }
+.order-sec:last-child { margin-bottom: 4px; }
+.order-sec h4 {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 12px;
+  font-family: var(--engraved); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 1.6px; text-transform: uppercase; color: var(--gold-deep);
+}
+.order-sec h4::after { content: ""; flex: 1; height: 1px; background: var(--gold-hair2); }
+
+/* Label/value pairs (the slip's facts). */
+.order-facts { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 22px; }
+.order-fact { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 3px 0; }
+.order-fact dt {
+  flex-shrink: 0; font-family: var(--engraved); font-size: 0.6rem; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--ink-faint);
+}
+.order-fact dd {
+  margin: 0; min-width: 0; overflow-wrap: anywhere;
+  font-family: var(--text); font-size: 0.92rem; color: var(--ink);
+}
+
+/* ── The kitchen's list (read-only) ─────────────────────────────── */
+.cost-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.cost-table th, .cost-table td {
+  text-align: left; padding: 7px 10px; vertical-align: top;
+  border-bottom: 1px dotted var(--gold-hair);
+}
+.cost-table thead th {
+  font-family: var(--engraved); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 1.1px; text-transform: uppercase; color: var(--ink-soft);
+  border-bottom: 1px solid var(--gold-hair);
+}
+.cost-table td:nth-child(2), .cost-table th:nth-child(2),
+.cost-table td:last-child, .cost-table th:last-child { text-align: right; }
+.cost-table td:last-child { font-family: var(--display); font-weight: 700; color: var(--ink); }
+/* One group header per dish — the chef's own sections, kept intact. */
+.cost-table .cost-group th {
+  padding: 11px 10px 5px; border-bottom: none;
+  font-family: var(--display); font-size: 0.98rem; font-weight: 700;
+  letter-spacing: 0; text-transform: none; color: var(--gold-deep); text-align: left;
+}
+.cost-table tbody:first-of-type .cost-group th { padding-top: 6px; }
+.cost-row-unpriced td { color: var(--ink-soft); }
+.cost-noprice {
+  font-family: var(--text); font-size: 0.76rem; font-style: italic;
+  font-weight: 400; color: var(--warn);
+}
+.cost-table tfoot th, .cost-table tfoot td {
+  padding-top: 11px; border-bottom: none; border-top: 1px solid var(--gold-hair);
+  font-family: var(--engraved); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 1.3px; text-transform: uppercase; color: var(--ink-faint);
+}
+.cost-table tfoot td {
+  font-family: var(--display); font-size: 1.1rem; letter-spacing: 0;
+  text-transform: none; color: var(--ink);
+}
+
+/* Something finance needs to see before it signs. */
+.cost-warn {
+  margin: 12px 0 0; padding: 9px 12px;
+  border: 1px solid rgba(152, 105, 27, 0.34); border-left-width: 3px;
+  border-radius: var(--r); background: rgba(152, 105, 27, 0.08);
+  font-family: var(--text); font-size: 0.83rem; line-height: 1.55; color: var(--warn);
+}
+.cost-warn--loud {
+  margin: 0 0 18px;
+  border-color: rgba(140, 51, 32, 0.4); background: rgba(140, 51, 32, 0.08); color: var(--danger);
+}
+
+/* ── Other costs (finance's own lines) ──────────────────────────── */
+.oc-rows { display: flex; flex-direction: column; gap: 7px; }
+.oc-row { display: grid; grid-template-columns: 1fr 110px 32px; gap: 7px; align-items: center; }
+.oc-row .control { padding: 8px 10px; font-size: 0.88rem; }
+.oc-row .oc-amt { text-align: right; }
+.oc-del { width: 30px; height: 30px; justify-self: center; }
+.oc-del svg { width: 14px; height: 14px; }
+.oc-del:hover { color: var(--danger); border-color: var(--danger); }
+.add-ing { margin-top: 9px; padding: 6px 12px; font-size: 0.72rem; }
+.add-ing .ic { display: inline-flex; }
+.add-ing .ic svg { width: 13px; height: 13px; }
+
+/* ── The money (a leader-ruled ledger) ──────────────────────────── */
+.cost-money { margin: 0 0 4px; }
+.cm-line { display: flex; align-items: baseline; padding: 5px 0; }
+.cm-line dt {
+  order: 0; flex: none; font-family: var(--engraved); font-size: 0.62rem; font-weight: 600;
+  letter-spacing: 1.1px; text-transform: uppercase; color: var(--ink-soft);
+}
+.cm-line::before {
+  content: ""; order: 1; flex: 1; margin: 0 9px 5px;
+  border-bottom: 1px dotted var(--gold-hair); align-self: flex-end;
+}
+.cm-line dd {
+  order: 2; flex: none; margin: 0; white-space: nowrap;
+  font-family: var(--display); font-size: 1.02rem; font-weight: 700; color: var(--ink);
+}
+.cm-total { margin-top: 4px; padding-top: 9px; border-top: 1px solid var(--gold-hair2); }
+.cm-total dd { font-size: 1.22rem; }
+.cm-good dd { color: var(--ok); }
+.cm-bad dd { color: var(--danger); }
+.cm-none dd { font-family: var(--text); font-size: 0.85rem; font-style: italic; font-weight: 400; color: var(--ink-faint); }
+.cost-quote { margin-top: 18px; }
+.cost-quote .field { margin-bottom: 0; }
+
+/* ── Is the money right? (the four checks) ──────────────────────── */
+.cost-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cost-checks--tight { margin: 14px 0; }
+.ck {
+  display: flex; align-items: flex-start; gap: 11px; padding: 10px 12px;
+  border: 1px solid var(--hair-soft); border-left-width: 3px;
+  border-radius: var(--r-lg); background: var(--paper-3);
+}
+.ck-ic { flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; }
+.ck-ic .ic { display: inline-flex; }
+.ck-ic .ic svg { width: 13px; height: 13px; }
+.ck-txt { min-width: 0; }
+.ck-txt strong {
+  display: block; font-family: var(--text); font-size: 0.9rem;
+  font-weight: 600; color: var(--ink);
+}
+.ck-txt small {
+  display: block; margin-top: 2px; font-family: var(--text);
+  font-size: 0.81rem; line-height: 1.5; color: var(--ink-soft);
+}
+.ck--ok { border-left-color: var(--ok); }
+.ck--ok .ck-ic { background: rgba(92, 122, 51, 0.14); color: var(--ok); }
+.ck--fail { border-left-color: var(--danger); background: rgba(140, 51, 32, 0.05); }
+.ck--fail .ck-ic { background: rgba(140, 51, 32, 0.12); color: var(--danger); }
+.ck--fail .ck-txt strong { color: var(--danger); }
+.ck--na { border-left-color: var(--gold-hair); }
+.ck--na .ck-ic { background: rgba(169, 130, 60, 0.14); color: var(--gold-deep); }
+
+/* ════════════════════════════════════════════════════════════════
+   THE REQUISITION SLIP — a document, not a panel.
+   ════════════════════════════════════════════════════════════════ */
+.modal-root:has(.req-slip) .modal { max-width: 700px; }
+
+.req-slip {
+  padding: 4px 2px;
+  font-family: var(--text);
+}
+.slip-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 18px; flex-wrap: wrap;
+  padding-bottom: 13px; border-bottom: 2px solid var(--gold);
+}
+.slip-brand { display: flex; align-items: center; gap: 11px; }
+.slip-brand img { width: 42px; height: 42px; object-fit: contain; }
+.slip-brand-txt { display: flex; flex-direction: column; line-height: 1.2; }
+.slip-brand-txt strong { font-family: var(--display); font-size: 1.25rem; font-weight: 700; color: var(--ink); }
+.slip-brand-txt small {
+  font-family: var(--engraved); font-size: 0.56rem; font-weight: 600;
+  letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-faint);
+}
+.slip-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.slip-kind {
+  font-family: var(--engraved); font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 2.2px; text-transform: uppercase; color: var(--gold-deep);
+}
+.slip-no { font-family: var(--display); font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+.slip-when { font-family: var(--text); font-size: 0.78rem; font-style: italic; color: var(--ink-soft); }
+
+.slip-lead {
+  margin: 14px 0 16px; font-size: 0.9rem; line-height: 1.6; color: var(--ink-soft);
+}
+.slip-facts { margin-bottom: 18px; }
+
+.slip-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+.slip-table th, .slip-table td {
+  text-align: left; padding: 7px 10px; border-bottom: 1px dotted var(--gold-hair); vertical-align: top;
+}
+.slip-table thead th {
+  font-family: var(--engraved); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 1.1px; text-transform: uppercase; color: var(--ink-soft);
+  border-bottom: 1px solid var(--gold-hair);
+}
+.slip-table td:nth-child(2), .slip-table th:nth-child(2),
+.slip-table td:last-child, .slip-table th:last-child { text-align: right; }
+.slip-table td:last-child { font-family: var(--display); font-weight: 700; color: var(--ink); }
+/* The dishes a line was drawn for — the auditor's "what was this for?". */
+.slip-table td small {
+  display: block; margin-top: 2px; font-size: 0.72rem; font-style: italic; color: var(--ink-faint);
+}
+.slip-table tfoot th, .slip-table tfoot td {
+  padding-top: 11px; border-bottom: none; border-top: 1px solid var(--gold-hair);
+  font-family: var(--engraved); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 1.3px; text-transform: uppercase; color: var(--ink-faint); text-align: right;
+}
+.slip-table tfoot td { font-family: var(--display); font-size: 1.08rem; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.slip-none, .slip-note {
+  margin: 14px 0 0; font-size: 0.86rem; font-style: italic; color: var(--ink-soft); line-height: 1.55;
+}
+.slip-note em { font-style: normal; font-family: var(--engraved); font-size: 0.6rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-faint); }
+.slip-warn {
+  margin: 14px 0 0; padding: 9px 12px;
+  border: 1px solid rgba(152, 105, 27, 0.34); border-left-width: 3px; border-radius: var(--r);
+  background: rgba(152, 105, 27, 0.08);
+  font-size: 0.82rem; line-height: 1.55; color: var(--warn);
+}
+
+/* The figure the slip exists to authorise — set as the document's headline. */
+.slip-amount {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  margin: 18px 0 4px; padding: 13px 16px;
+  border: 1px solid var(--gold); border-radius: var(--r-lg);
+  background: rgba(169, 130, 60, 0.09); box-shadow: var(--inset-top);
+}
+.slip-amount small {
+  font-family: var(--engraved); font-size: 0.64rem; font-weight: 700;
+  letter-spacing: 1.8px; text-transform: uppercase; color: var(--gold-deep);
+}
+.slip-amount strong { font-family: var(--display); font-size: 1.7rem; font-weight: 700; color: var(--ink); }
+
+/* Three signatures: the kitchen that asked, the finance that approved, the
+   hand that took the money. */
+.slip-signs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+  margin-top: 30px; padding-top: 6px;
+}
+.slip-sign { min-width: 0; }
+.slip-rule {
+  display: block; min-height: 26px; padding: 0 2px 3px;
+  border-bottom: 1px solid var(--ink-soft);
+  font-family: var(--display); font-size: 0.98rem; font-weight: 700; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.slip-sign small {
+  display: block; margin-top: 5px; font-family: var(--engraved); font-size: 0.55rem;
+  font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--ink-soft);
+}
+.slip-sign em { display: block; margin-top: 2px; font-size: 0.74rem; color: var(--ink-faint); }
+
+/* Screen-only footnote under a filed slip (who released it, when). */
+.slip-audit {
+  margin: 18px 0 0; padding-top: 12px; border-top: 1px solid var(--hair-soft);
+  font-family: var(--text); font-size: 0.78rem; font-style: italic; color: var(--ink-faint);
+}
+
+/* ── Print ──────────────────────────────────────────────────────────
+   The shared stylesheet already strips the app frame and prints just the
+   open modal (HP.printModal sets the body flag). A slip only needs the
+   dialog's chrome gone and its rows kept whole across a page break. */
+@media print {
+  body.hp-print-modal .modal-root:has(.req-slip) .modal-head { display: none !important; }
+  body.hp-print-modal .req-slip { padding: 0; }
+  body.hp-print-modal .slip-table tr,
+  body.hp-print-modal .slip-signs,
+  body.hp-print-modal .slip-amount { break-inside: avoid; }
+  body.hp-print-modal .slip-signs { margin-top: 42px; }
+}
+
+/* ── Narrow screens ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .order-facts { grid-template-columns: 1fr; }
+  .oc-row { grid-template-columns: 1fr 88px 30px; }
+  .slip-signs { grid-template-columns: 1fr; gap: 26px; }
+  .slip-head { flex-direction: column; }
+  .slip-meta { align-items: flex-start; text-align: left; }
+  .stat-num--money { font-size: 1.6rem; }
+}
+
+/* ── Received — the runs the stores filed here ────────────────────────────
+   The drawer deliberately borrows the stock clerk's liquidation sheet: same
+   figure block (.rc-money), same photo grid (.lq-thumbs), so both desks read
+   one document rather than two renderings of it. */
+
+.rcv-h {
+  font-family: var(--display);
+  font-size: 1.06rem;
+  color: var(--ink);
+  margin: 16px 0 9px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--gold-hair);
+}
+
+/* Receipts sit larger here than on the stores board: finance is reading the
+   totals off the paper, not just counting that photos exist. */
+.rcv-thumbs {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.rcv-thumbs img { aspect-ratio: 3 / 4; }
+.rcv-thumbs figcaption .rcv-by {
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+}
+
+/* An unreceipted gap is the one thing that must not read as ordinary prose. */
+.rcv-gap {
+  border-left: 3px solid var(--warn);
+  background: var(--paper-3);
+}
+
+.rcv-ack {
+  border-left: 3px solid var(--ok);
+  background: var(--paper-3);
+}
+
+.rcv-note { margin-top: 14px; }
+
+@media (max-width: 720px) {
+  .rcv-thumbs { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); }
+}
+
+/* ── Petty cash ───────────────────────────────────────────────────────────
+   The float reads as a cash box: one large balance, its movements beneath. */
+
+.pc-hero { padding: 20px 22px; }
+.pc-hero-in {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+  align-items: center;
+  justify-content: space-between;
+}
+.pc-bal small {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 4px;
+}
+.pc-bal strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 2.3rem;
+  line-height: 1.1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.pc-bal strong.is-over { color: var(--danger); }
+.pc-bal .badge { margin-top: 7px; }
+
+.pc-hero-meta { text-align: right; }
+.pc-hero-meta p {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+}
+.pc-hero-acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Before a float exists — the one call to action. */
+.pc-open { text-align: center; padding: 12px 0 6px; }
+.pc-open h3 {
+  font-family: var(--display);
+  font-size: 1.24rem;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.pc-open p {
+  max-width: 52ch;
+  margin: 0 auto 16px;
+  font-size: 0.87rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+/* Signed movement in the ledger — the column the eye lands on. */
+.pc-delta {
+  font-family: var(--display);
+  font-size: 1.02rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pc-delta.is-up { color: var(--ok); }
+.pc-delta.is-down { color: var(--brown); }
+
+@media (max-width: 720px) {
+  .pc-hero-meta { text-align: left; }
+  .pc-hero-acts { justify-content: flex-start; }
+  .pc-bal strong { font-size: 1.9rem; }
+}
+
+/* The receipt photo grid. The stock clerk's liquidation sheet renders the
+   same markup, but that rule lives in the stores' own stylesheet which this
+   dashboard doesn't load — so the grid is defined here too rather than
+   cross-linking another desk's CSS. Both must stay in step: a receipt should
+   look the same to the clerk who filed it and the officer receiving it. */
+.lq-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 11px;
+}
+.lq-thumbs figure {
+  margin: 0;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--hair-soft);
+  background: var(--paper-2);
+  box-shadow: var(--shadow-sm);
+}
+.lq-thumbs img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  cursor: zoom-in;
+  background: var(--vellum);
+}
+.lq-thumbs figcaption {
+  padding: 7px 9px;
+  font-family: var(--display);
+  font-size: 0.98rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.lq-thumbs figcaption small {
+  display: block;
+  font-family: var(--text);
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+
+/* Form furniture shared with the stores' pantry dialogs (.pn-*). Same reason
+   as the receipt grid above: the markup is deliberately identical so the two
+   desks read alike, but each dashboard has to carry the rules it uses. */
+.pn-form .pn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.pn-onhand {
+  font-family: var(--display);
+  font-size: 1.02rem;
+  color: var(--ink-soft);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hair-soft);
+  margin-bottom: 12px;
+}
+.pn-onhand strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+/* Live preview of what a movement would do to the balance. */
+.pn-preview {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--gold-hair);
+  border-radius: var(--r);
+  background: var(--paper-2);
+  font-family: var(--display);
+  font-size: 1.02rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  min-height: 42px;
+}
+.pn-preview strong { color: var(--ink); }
+.pn-preview .pn-delta { color: var(--ink-faint); font-size: 0.9rem; }
+.pn-preview .is-over { color: var(--danger); }

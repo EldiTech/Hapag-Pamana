@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Owner Overview</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:wght@500;600;700&family=Montserrat:wght@400;500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../../Content%20Moderator/css/global.css" />
+  <link rel="stylesheet" href="../css/owner.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <div class="stat-grid" id="ownerStats"></div>
+
+    <div class="owner-dash-row">
+      <section class="panel panel-pad owner-panel">
+        <h4 class="owner-panel-title">Sales overview</h4>
+        <div id="ownerSalesChart" class="owner-sales-chart"></div>
+      </section>
+      <section class="panel panel-pad owner-panel owner-panel--narrow">
+        <h4 class="owner-panel-title">Order status</h4>
+        <div id="ownerStatusList" class="owner-status-list"></div>
+      </section>
+    </div>
+
+    <section class="panel panel-pad owner-panel">
+      <h4 class="owner-panel-title">Recent orders</h4>
+      <div id="ownerRecent" class="owner-recent-list"></div>
+    </section>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../js/overview.js"></script>
+</body>
+</html>

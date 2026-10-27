@@ -1,0 +1,464 @@
+/* HapagPamana · Layout Viewer — mobile-facing 3D preview.
+   Not the admin shell: no sidebar, no topbar, no editor chrome. Just the
+   tokens layout.css's .ld-3d-* rules read, plus enough page structure to
+   host the 3D view and the "Walk the room" entry point. Values copied from
+   Admin/Content Moderator/css/global.css's :root — the same palette
+   scene3d.js reads live off these custom properties. */
+:root {
+  --paper:      #EFE3C6;
+  --paper-2:    #F8F1DE;
+  --paper-3:    #FFFBF0;
+  --vellum:     #E7D8B5;
+  --ink:        #33220F;
+  --ink-soft:   #6A5331;
+  --ink-faint:  #927A4E;
+
+  --brown:      #432C0E;
+  --brown-deep: #2A1A08;
+  --olive:      #54582F;
+
+  --gold:       #A9823C;
+  --gold-deep:  #7B591F;
+  --gold-light: #C7A04A;
+  --gilt:       #DCB661;
+
+  --ok:         #5C7A33;
+  --warn:       #98691B;
+  --danger:     #8C3320;
+
+  --hair:       rgba(67, 44, 14, 0.20);
+  --hair-soft:  rgba(67, 44, 14, 0.10);
+  --gold-hair:  rgba(169, 130, 60, 0.42);
+  --gold-hair2: rgba(169, 130, 60, 0.22);
+
+  --shadow-sm:  0 2px 12px -7px rgba(42, 26, 8, 0.45);
+  --shadow-md:  0 22px 48px -30px rgba(42, 26, 8, 0.55);
+  --shadow-lg:  0 40px 90px -38px rgba(26, 15, 5, 0.62);
+
+  --display:  "Cormorant Garamond", Georgia, serif;
+  --text:     "Spectral", Georgia, "Times New Roman", serif;
+  --engraved: "Cinzel", Georgia, serif;
+
+  --r:    4px;
+  --r-lg: 8px;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--text);
+  color: var(--ink);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+}
+
+.lv-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--hair);
+  background: var(--paper-2);
+  flex: 0 0 auto;
+}
+.lv-head h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.lv-head small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+/* Floor plan / 3D switch. Two stages share one wrapper; only one is ever
+   un-hidden (see viewer.js show()). */
+.lv-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--hair);
+}
+.lv-tab {
+  flex: 1;
+  appearance: none;
+  border: 1px solid var(--gold-hair2);
+  border-radius: var(--r-lg);
+  padding: 8px 10px;
+  background: transparent;
+  font-family: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.lv-tab.is-on {
+  background: var(--paper-3);
+  border-color: var(--gold-hair);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+.lv-tab:disabled { opacity: 0.45; }
+
+.lv-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The 2D stage. The .ld-canvas inside carries the desk's own grid and piece
+   styling from the copied layout.css; this only has to centre it and let a
+   plan larger than the phone scroll rather than spill. */
+.lv-stage2d {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  background: var(--paper);
+  -webkit-overflow-scrolling: touch;
+}
+.lv-stage2d[hidden] { display: none; }
+.lv-canvas-wrap {
+  min-width: 100%;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.lv-stage2d .ld-canvas { flex: 0 0 auto; }
+/* Read-only: the desk's hover/selection affordances would promise an edit
+   that this page cannot honour. */
+.lv-stage2d .ld-item { cursor: pointer; }
+.lv-stage2d .ld-item:hover {
+  border-color: var(--gold);
+  box-shadow: var(--shadow-sm);
+}
+.lv-stage2d .ld-item.selected {
+  border-color: var(--brown) !important;
+  box-shadow: 0 0 0 2px var(--gold-light), var(--shadow-md) !important;
+  z-index: 5;
+}
+
+.lv-zoom-tools {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 20;
+}
+.lv-zoom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--gold-hair);
+  background: var(--paper-3);
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  user-select: none;
+  touch-action: manipulation;
+}
+.lv-zoom-btn:active {
+  background: var(--vellum);
+}
+
+.lv-selection-info {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  right: 14px;
+  background: var(--paper-3);
+  border: 1px solid var(--gold);
+  border-radius: var(--r-lg);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 25;
+  animation: lvSlideUp 0.18s ease-out;
+}
+@keyframes lvSlideUp {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.lv-sel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.lv-sel-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--brown-deep);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lv-sel-meta {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.lv-sel-close {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.lv-stage-wrap > .ld-stage--3d[hidden] { display: none; }
+.lv-btn[hidden] { display: none; }
+
+.lv-stage-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+.lv-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--paper-2);
+  border-top: 1px solid var(--hair);
+}
+
+.lv-btn {
+  flex: 1;
+  appearance: none;
+  border: 1px solid var(--gold-hair);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  font-family: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--paper-3);
+  color: var(--ink);
+}
+.lv-btn.primary {
+  background: var(--gold-deep);
+  border-color: var(--gold-deep);
+  color: var(--paper-3);
+}
+.lv-btn:disabled { opacity: 0.5; }
+
+.lv-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  background: var(--paper);
+}
+
+/* ── Walkthrough (js/simulate.js), narrow phones ──────────────────────────
+   js/simulate.js and css/layout.css are copied verbatim from the Layout
+   Designer desk (Admin/Layout Designer) — built for the desk's own desktop
+   screen, where the "Guide"/"Quality" popovers (.hp-sim-pop) anchor with
+   `right: 0` against whichever toolbar button opened them. On a phone-width
+   viewport the button row wraps onto several lines, so that button can sit
+   anywhere across the screen and the popover — anchored relative to it —
+   routinely opens off past the left edge instead of over the room. Fixed
+   here rather than in the copied files: js/viewer.js tags the walkthrough
+   overlay with .hp-sim-touchfix right after HPSim.enter() creates it, and
+   these rules key off that class to win the cascade without touching the copy.
+
+   Winning is on SPECIFICITY, not order: index.html loads this file BEFORE
+   layout.css, so on a tie the copy wins. Every override here must therefore
+   out-specify its counterpart (the extra .hp-sim-touchfix class does that) or
+   carry !important. Do not add a bare .hp-sim-* rule below and expect it to
+   take — it will lose to layout.css silently. */
+@media (max-width: 480px) {
+  .hp-sim-touchfix .hp-sim-foot {
+    padding: 10px 10px 14px;
+    gap: 8px;
+  }
+  .hp-sim-touchfix .hp-sim-tools {
+    justify-content: center;
+    gap: 6px;
+  }
+  .hp-sim-touchfix .hp-sim-btn {
+    min-width: 0;
+    flex: 1 1 calc(33.333% - 6px);
+    padding: 9px 6px;
+    font-size: 0.52rem;
+  }
+  /* Pinned to the left edge and width-clamped against the viewport instead of
+     anchored to the triggering button, so it can never open past either edge.
+     Left rather than centred to sit over the control strip, which the
+     customer-view rules below move to that side. */
+  .hp-sim-touchfix .hp-sim-pop {
+    position: fixed;
+    left: 10px;
+    right: auto;
+    bottom: 96px;
+    transform: none;
+    width: min(88vw, 280px);
+    max-height: 50vh;
+  }
+}
+
+/* ── Walkthrough, customer view ───────────────────────────────────────────
+   The desk's walkthrough is a planning instrument: Guide routes to the buffet,
+   Analyse for clearance reports, Reset, a keyboard legend. A member opening
+   this from the app is not planning the room — they are looking at it — and
+   every one of those controls is either meaningless without the desk's context
+   or a way to end up somewhere confusing with no obvious way back.
+
+   So the strip is cut to what exploring actually needs:
+
+     1st person / 3rd person   the one genuinely useful choice
+     Quality                   phones vary enough that this earns its place
+     Exit                      never hide this; it is the only way out
+
+   Everything else goes, along with the "Simulation Mode" badge and status
+   panel (desk vocabulary) and the WASD legend (no keyboard on a phone).
+
+   Hidden with CSS on the .hp-sim-touchfix hook rather than by editing
+   simulate.js, for the same reason the popover fix above is: that module is a
+   verbatim copy of the desk's own (docs/mobile-3d-preview.md), and the desk
+   still wants all of these. Nothing here is load-bearing for the walkthrough —
+   the buttons keep working, they are simply not shown, so no handler in the
+   copied module is left reaching for a node that no longer exists.
+
+   Not inside the 480px media query above: this applies at every width the app
+   can present, and the walkthrough now runs landscape. */
+/*  Guide is the one control with no id of its own, so it is reached by
+    position: it is the third and last <div class="hp-sim-tool"> in the strip,
+    after Quality and the 1st/3rd-person toggle (simulate.js ~1685-1714).
+    :has([data-pop="guide"]) would say this far more plainly, but :has() is
+    unsupported on the older Android System WebViews this app still meets, and
+    there it fails silently — leaving Guide on screen with no sign anything is
+    wrong. If a tool is ever added to that strip ahead of Guide, this number
+    moves with it. */
+.hp-sim-touchfix .hp-sim-keys,
+.hp-sim-touchfix .hp-sim-badge,
+.hp-sim-touchfix .hp-sim-status-wrap,
+.hp-sim-touchfix .hp-sim-tools .hp-sim-tool:nth-of-type(1),
+.hp-sim-touchfix .hp-sim-tools .hp-sim-tool:nth-of-type(3),
+.hp-sim-touchfix [data-pop="quality"],
+.hp-sim-touchfix [data-pop="guide"],
+.hp-sim-touchfix .hp-sim-pop,
+.hp-sim-touchfix #hpSimAnalyze,
+.hp-sim-touchfix #hpSimReset,
+.hp-sim-touchfix #hpSimHide,
+.hp-sim-touchfix #hpSimFull {
+  display: none !important;
+}
+
+/* Popover positioning for mobile walkthrough (both portrait and landscape) */
+.hp-sim-touchfix .hp-sim-pop {
+  position: fixed !important;
+  left: max(14px, env(safe-area-inset-left, 14px)) !important;
+  right: auto !important;
+  bottom: max(58px, calc(env(safe-area-inset-bottom, 0px) + 54px)) !important;
+  transform: none !important;
+  width: min(280px, 85vw) !important;
+  max-height: calc(100vh - 74px) !important;
+  overflow-y: auto !important;
+  z-index: 100 !important;
+}
+
+/* Safe area padding on landscape phones */
+.hp-sim-touchfix .hp-sim-top {
+  padding-top: max(12px, env(safe-area-inset-top, 12px)) !important;
+  padding-left: max(18px, env(safe-area-inset-left, 18px)) !important;
+  padding-right: max(18px, env(safe-area-inset-right, 18px)) !important;
+}
+.hp-sim-touchfix .hp-sim-foot {
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px)) !important;
+  padding-left: max(18px, env(safe-area-inset-left, 18px)) !important;
+  padding-right: max(18px, env(safe-area-inset-right, 18px)) !important;
+}
+
+/* Prompt dismissal and tap handling */
+.hp-sim-prompt.is-dismissed,
+.hp-sim.is-locked .hp-sim-prompt {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+.hp-sim.is-touch .hp-sim-prompt {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Mobile Virtual Joystick */
+.hp-sim-joystick {
+  position: fixed;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(220, 182, 97, 0.15) 0%, rgba(20, 12, 5, 0.45) 100%);
+  border: 2px solid rgba(220, 182, 97, 0.5);
+  pointer-events: none;
+  z-index: 20;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.4);
+}
+.hp-sim-joy-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 38px;
+  height: 38px;
+  margin-top: -19px;
+  margin-left: -19px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #DCB661 0%, #7b591f 100%);
+  border: 1.5px solid #F4E9CE;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* Only HIGH and ULTRA are offered. LOW and MEDIUM exist for the desk's older
+   laptops; to a member they mostly read as "make my room look worse". This
+   hides the OPTIONS, not the setting — autoQuality() still picks from all four
+   on entry, so a modest phone can open on MEDIUM with neither remaining button
+   lit. That is fine: both on offer are upgrades from there. */
+.hp-sim-touchfix .hp-sim-opt[data-quality="LOW"],
+.hp-sim-touchfix .hp-sim-opt[data-quality="MEDIUM"] {
+  display: none !important;
+}
+
+/* The strip sits against the left edge. With the legend gone it would
+   otherwise be held right by the footer's space-between. */
+.hp-sim-touchfix .hp-sim-foot,
+.hp-sim-touchfix .hp-sim-tools {
+  justify-content: flex-start;
+}
+
+/* Three buttons instead of eight: the 33% basis from the narrow-phone rules
+   above would leave them stretched across the row. Sized to their text. */
+@media (max-width: 480px) {
+  .hp-sim-touchfix .hp-sim-btn {
+    flex: 0 1 auto;
+    padding: 9px 14px;
+    font-size: 0.6rem;
+  }
+}
+.lv-status[hidden] { display: none; }

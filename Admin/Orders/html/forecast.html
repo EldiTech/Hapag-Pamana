@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Demand Forecast</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <!-- Shares the Heirloom Editorial design system and the Orders page's
+       panel/stat/badge tokens; forecast.css adds only the chart, heatmap
+       and flag styles this page introduces. -->
+  <link rel="stylesheet" href="../../Content%20Moderator/css/global.css" />
+  <link rel="stylesheet" href="../css/orders.css" />
+  <link rel="stylesheet" href="../css/forecast.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <!-- Demand Forecasting — historical analysis (Task A) and a seasonal
+         forecast (Task B) over the same `bookings` collection Orders reads.
+         No SARIMA service: the model is a documented naive-seasonal +
+         moving-average fallback (see forecast-model.js), run client-side. -->
+    <div class="stat-grid" id="fcStats"></div>
+
+    <section class="panel fc-panel">
+      <div class="fc-panel-head">
+        <h3>Demand forecast</h3>
+        <div class="toolbar fc-controls" id="fcControls"></div>
+      </div>
+      <div class="fc-chart-wrap">
+        <svg id="fcChart" class="fc-chart" viewBox="0 0 960 320"
+             role="img" aria-label="Monthly booking demand with forecast"></svg>
+        <div class="fc-tip" id="fcTip" hidden></div>
+      </div>
+      <div class="fc-chart-legend" id="fcLegend"></div>
+    </section>
+
+    <section class="panel fc-panel">
+      <div class="fc-panel-head"><h3>Forecast by type</h3></div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>Type</th>
+              <th>Forecast</th>
+              <th>80% interval</th>
+              <th>Recommended action</th>
+            </tr>
+          </thead>
+          <tbody id="fcTableRows"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="fcTablePager"></div>
+    </section>
+
+    <div class="fc-grid-2">
+      <section class="panel fc-panel">
+        <div class="fc-panel-head"><h3>Monthly intensity</h3></div>
+        <div id="fcHeatmap" class="fc-heatmap"></div>
+        <div class="pager" id="fcHeatPager"></div>
+      </section>
+
+      <section class="panel fc-panel">
+        <div class="fc-panel-head"><h3>Philippine seasonality</h3></div>
+        <div id="fcSeasonality" class="fc-seasonality"></div>
+      </section>
+    </div>
+
+    <div class="fc-grid-2">
+      <section class="panel fc-panel">
+        <div class="fc-panel-head"><h3>Segment mix</h3></div>
+        <div id="fcSegments" class="fc-segments"></div>
+      </section>
+
+      <section class="panel fc-panel">
+        <div class="fc-panel-head"><h3>Lead time &amp; cancellations</h3></div>
+        <div id="fcLeadTime" class="fc-leadtime"></div>
+      </section>
+    </div>
+
+    <section class="panel fc-panel">
+      <div class="fc-panel-head"><h3>Model validation</h3></div>
+      <div id="fcValidation" class="fc-validation"></div>
+    </section>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../js/forecast-data.js"></script>
+  <script src="../js/forecast-analysis.js"></script>
+  <script src="../js/forecast-model.js"></script>
+  <script src="../js/forecast.js"></script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+/* ════════════════════════════════════════════════════════════════
+   HapagPamana · Booking Calendar — page-specific styles.
+   Loaded after global.css and orders.css (which supplies the shared
+   .modal-text / .panel tokens and the booking-sheet look the day
+   popover borrows). Everything inherits the shared tokens, so dark
+   mode follows automatically.
+   ════════════════════════════════════════════════════════════════ */
+
+.cal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.cal-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.cal-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+.cal-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--ink-soft); }
+.cal-tag .dot { width: 8px; height: 8px; border-radius: 50%; }
+.cal-tag--ok .dot { background: var(--ok); }
+.cal-tag--warn .dot { background: var(--warn); }
+.cal-tag--clash .dot { background: var(--danger); }
+
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.cal-nav { display: flex; align-items: center; gap: 10px; }
+.cal-nav strong { font-family: var(--display); font-size: 1.25rem; font-weight: 700; color: var(--ink); min-width: 180px; text-align: center; }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.cal-grid--dow {
+  margin-bottom: 8px; font-family: var(--engraved); font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-faint); text-align: center;
+}
+/* Weeks grid: rows share whatever height calendar.js measures as left in the
+   panel (set as an inline --cal-rows-h custom property), not a vh guess —
+   .app only sets min-height, so vh math against the topbar/panel chrome
+   drifted and the page scrolled anyway. Falls back to a fixed height if JS
+   hasn't measured yet (first paint). */
+.cal-grid:not(.cal-grid--dow) {
+  grid-auto-rows: 1fr;
+  height: var(--cal-rows-h, 480px);
+}
+.cal-day {
+  position: relative; padding: 10px; overflow: hidden;
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+  border: 1px solid var(--gold-hair2); border-radius: var(--r-lg); background: var(--paper-3);
+  font-family: var(--text); text-align: left;
+}
+.cal-day--pad { visibility: hidden; border: 0; background: none; }
+.cal-day--today { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.cal-day-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.cal-num { font-size: 1.05rem; color: var(--ink-soft); }
+.cal-day--today .cal-num { color: var(--gold-deep); font-weight: 700; }
+.cal-day--booked .cal-num { color: var(--ok); font-weight: 700; }
+.cal-today-tag {
+  padding: 2px 8px; border-radius: 999px; font-family: var(--engraved); font-size: 0.6rem;
+  font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  background: var(--gold-light); color: #3a2710;
+}
+.cal-clash-tag {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+  font-family: var(--engraved); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.6px;
+  text-transform: uppercase; background: rgba(140, 51, 32, 0.14); color: var(--danger);
+}
+.cal-clash-tag .ic { width: 11px; height: 11px; }
+.cal-count { font-size: 0.7rem; color: var(--ink-faint); }
+
+.cal-day--clash { background: rgba(140, 51, 32, 0.08); border-color: rgba(140, 51, 32, 0.4); }
+.cal-day--clash .cal-num { color: var(--danger); }
+
+.cal-chips { display: flex; flex-direction: column; gap: 4px; }
+.cal-chip {
+  display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 5px 8px;
+  border-radius: var(--r); border: 1px solid transparent; background: var(--paper-2);
+  font-size: 0.72rem; line-height: 1.3; text-align: left; cursor: pointer;
+  transition: filter 0.15s ease; overflow: hidden;
+}
+.cal-chip:hover { filter: brightness(0.97); }
+.cal-chip-time {
+  flex: 0 0 auto; font-family: var(--engraved); font-size: 0.62rem; font-weight: 700;
+  color: var(--ink-faint); white-space: nowrap;
+}
+.cal-chip-txt {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 600; color: var(--ink);
+}
+.cal-chip--confirmed { border-color: rgba(92, 122, 51, 0.35); background: rgba(92, 122, 51, 0.12); }
+.cal-chip--pending { border-color: rgba(152, 105, 27, 0.35); background: rgba(152, 105, 27, 0.12); }
+.cal-chip--clash { border-color: rgba(140, 51, 32, 0.45); background: rgba(140, 51, 32, 0.16); }
+.cal-chip--clash .cal-chip-txt { color: var(--danger); }
+.cal-chip--more {
+  background: none; border: 1px dashed var(--gold-hair2); color: var(--ink-faint);
+  justify-content: center; font-weight: 600;
+}
+.cal-chip--more:hover { border-color: var(--gold); color: var(--brown); }
+
+@media (max-width: 640px) {
+  .cal-day { min-height: 70px; padding: 6px; }
+  .cal-nav strong { min-width: 130px; font-size: 1rem; }
+  .cal-chip-time { display: none; }
+}
+
+/* Hint line + footer stat strip under the grid. */
+.cal-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--gold-hair); }
+.cal-hint { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.82rem; color: var(--ink-faint); }
+.cal-hint .ic { width: 15px; height: 15px; flex: 0 0 auto; }
+.cal-stats { display: flex; gap: 20px; flex-wrap: wrap; }
+.cal-stat { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--ink-soft); }
+.cal-stat .ic { width: 17px; height: 17px; }
+.cal-stat strong { font-family: var(--display); font-size: 1.15rem; color: var(--ink); }
+.cal-stat--ok .ic, .cal-stat--ok strong { color: var(--ok); }
+.cal-stat--warn .ic, .cal-stat--warn strong { color: var(--warn); }
+.cal-stat--clash .ic, .cal-stat--clash strong { color: var(--danger); }
+
+/* The same-day booking list, opened from a calendar cell. */
+.cal-pop-list { display: flex; flex-direction: column; gap: 8px; }
+.cal-pop-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px;
+  border: 1px solid var(--gold-hair2); border-radius: var(--r-lg); background: var(--paper-3);
+  cursor: pointer; text-align: left; text-decoration: none; transition: border-color 0.15s ease;
+}
+.cal-pop-row:hover { border-color: var(--gold); }
+.cal-pop-row--clash { border-color: rgba(140, 51, 32, 0.4); background: rgba(140, 51, 32, 0.06); }
+.cal-pop-time {
+  flex: 0 0 auto; font-family: var(--engraved); font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.4px; color: var(--ink-faint); white-space: nowrap;
+}
+.cal-pop-txt { flex: 1; min-width: 0; }
+.cal-pop-txt strong { display: block; font-family: var(--display); font-size: 0.95rem; color: var(--ink); }
+.cal-pop-txt small { color: var(--ink-faint); font-size: 0.78rem; }
+.cal-pop-row--clash .cal-pop-time { color: var(--danger); }

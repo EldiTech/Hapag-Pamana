@@ -1,0 +1,38 @@
+/* HapagPamana · Logistics — dashboard-specific styling.
+   Everything else (stat grid, badges, data table, .toolbar/.seg chips,
+   modal, .wf-* rail) comes from the shared stylesheets this dashboard
+   already links. This file only tells the two independent queues on this
+   page apart: food release (the kitchen's cook/pack/release rail) and
+   equipment pickups (Catering Equipment's own checkout/return rail). Same
+   components, same badge classes, same tab pattern on both — so without a
+   visual seam the page reads as one continuous list. A left accent rail per
+   lane plus a coloured icon chip on each heading is the seam. */
+.dispatch-lane { padding-left: 16px; border-left: 3px solid var(--gold-hair); }
+.dispatch-lane + .dispatch-lane { margin-top: 40px; }
+.dispatch-lane--food { border-left-color: var(--gold); }
+.dispatch-lane--equipment { border-left-color: #7a8c6e; }
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--engraved);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 4px;
+}
+.dispatch-lane--food .panel-title { margin-top: 0; }
+.panel-title-ic {
+  width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%;
+  font-size: 13px; line-height: 1; background: var(--vellum); border: 1px solid var(--gold-hair);
+}
+.panel-title--food .panel-title-ic { color: var(--gold-deep); border-color: var(--gold-hair); }
+.panel-title--equipment .panel-title-ic { color: #5c6e50; border-color: #b9c7ab; background: #eef2e9; }
+.panel-sub {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin: 0 0 18px;
+}

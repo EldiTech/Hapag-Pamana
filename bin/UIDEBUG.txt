@@ -1,0 +1,109 @@
+[2026-09-13 16:53:21.353] ==== launch ====
+[2026-09-13 16:53:21.354] run(): exe=D:\Projects\Hapag Pamana\SolaraV3.exe
+[2026-09-13 16:53:21.355] run(): webview2 runtime version: 152.0.4191.66
+[2026-09-13 16:53:22.306] setup: entered
+[2026-09-13 16:53:22.307] webview2: browser accelerator keys disabled
+[2026-09-13 16:53:22.307] webview2 hooks: handlers attached
+[2026-09-13 16:53:22.307] setup: startup args handled
+[2026-09-13 16:53:22.309] setup: data dirs created
+[2026-09-13 16:53:22.310] setup: always-on-top restored
+[2026-09-13 16:53:22.311] window fit: user already has a saved size/scale, leaving it alone
+[2026-09-13 16:53:22.311] setup: update check starting (blocking)
+[2026-09-13 16:53:22.312] updater: fetching manifest
+[2026-09-13 16:53:22.417] updater: manifest ok (version Some("0.1.7"))
+[2026-09-13 16:53:22.443] updater: checking SolaraV3.dll
+[2026-09-13 16:53:22.443] updater: SolaraV3.dll hash mismatch (local missing), auto_update=true
+[2026-09-13 16:53:22.443] updater: downloading SolaraV3.dll
+[2026-09-13 16:53:22.812] updater: SolaraV3.dll downloaded (15197616 bytes), verifying hash
+[2026-09-13 16:53:22.846] updater: SolaraV3.dll written to D:\Projects\Hapag Pamana\bin\dll\SolaraV3.dll
+[2026-09-13 16:53:22.848] updater: SolaraV3.dll done
+[2026-09-13 16:53:22.848] updater: checking SolaraV3.exe
+[2026-09-13 16:53:22.877] updater: SolaraV3.exe hash mismatch (local differs), auto_update=true
+[2026-09-13 16:53:22.878] updater: downloading SolaraV3.exe
+[2026-09-13 16:53:23.276] updater: SolaraV3.exe downloaded (19690864 bytes), verifying hash
+[2026-09-13 16:53:23.330] updater: SolaraV3.exe written to D:\Projects\Hapag Pamana\bin\SolaraV3.exe.tmp
+[2026-09-13 16:53:23.331] updater: SolaraV3.exe done
+[2026-09-13 16:53:23.331] updater: checking SLaunch.exe
+[2026-09-13 16:53:23.332] updater: SLaunch.exe hash mismatch (local missing), auto_update=true
+[2026-09-13 16:53:23.332] updater: downloading SLaunch.exe
+[2026-09-13 16:53:23.354] updater: SLaunch.exe downloaded (251760 bytes), verifying hash
+[2026-09-13 16:53:23.355] updater: SLaunch.exe written to D:\Projects\Hapag Pamana\bin\slaunch\SLaunch.exe
+[2026-09-13 16:53:23.355] updater: SLaunch.exe done
+[2026-09-13 16:53:23.356] setup: update check finished
+[2026-09-13 16:53:23.356] setup: writing startup asset
+[2026-09-13 16:53:23.358] asset: wrote embedded 152600 bytes to D:\Projects\Hapag Pamana\bin\DLCTBL_FRTS
+[2026-09-13 16:53:23.358] setup: startup asset ready
+[2026-09-13 16:53:23.358] setup: no migration pending, loading DLL
+[2026-09-13 16:53:23.358] dll load: preparing SolaraV3.dll
+[2026-09-13 16:53:23.514] copy_dll: temp copy ready at D:\Projects\Hapag Pamana\bin\dll\SolaraV3_loaded_1789289603358.dll
+[2026-09-13 16:53:23.515] start_solara: loading library D:\Projects\Hapag Pamana\bin\dll\SolaraV3_loaded_1789289603358.dll
+[2026-09-13 16:53:23.733] start_solara: library loaded, resolving Start symbol
+[2026-09-13 16:53:23.733] start_solara: calling Start() with guid b5b3e302-8956-4a06-968e-c302d1afc8c3
+[2026-09-13 16:53:23.917] start_solara: Start() returned 55896
+[2026-09-13 16:53:23.917] dll load: Start() returned bridge port 55896 — storing library handle
+[2026-09-13 16:53:23.918] post-load: we own port 55896 — bridge is up
+[2026-09-13 16:53:23.918] periodic check: spawning
+[2026-09-13 16:53:23.918] periodic check: spawn returned
+[2026-09-13 16:53:23.918] periodic check: task running
+[2026-09-13 16:53:23.918] setup: spawn_periodic_check returned
+[2026-09-13 16:53:23.918] setup: spawn_search_blacklist_fetch returned
+[2026-09-13 16:53:23.918] discord: init entered
+[2026-09-13 16:53:23.919] discord: setting read (enabled=false)
+[2026-09-13 16:53:23.919] discord: state managed
+[2026-09-13 16:53:23.919] discord: worker thread spawned
+[2026-09-13 16:53:23.919] discord: worker thread running
+[2026-09-13 16:53:23.919] discord: init returning
+[2026-09-13 16:53:23.919] setup: discord rpc initialized, setup returning Ok
+[2026-09-13 16:53:23.920] run event: ready
+[2026-09-13 16:53:23.963] webview page load started: http://tauri.localhost/
+[2026-09-13 16:53:23.985] search blacklist: loaded (2 keywords, 1 desc, 13 code, 0 patterns, 0 ids, 13 creators)
+[2026-09-13 16:53:24.093] webview page load finished: http://tauri.localhost/
+[2026-09-13 16:53:24.159] [frontend] boot: starting
+[2026-09-13 16:53:24.227] [frontend] boot: splash initialized
+[2026-09-13 16:53:24.263] [frontend] boot: custom themes loaded
+[2026-09-13 16:53:24.280] [frontend] scan_clients ok, 1 client(s)
+[2026-09-13 16:53:24.325] usercount: initial beat failed: https://solara.gg/count: 405 Method Not Allowed
+[2026-09-13 16:53:24.336] [frontend] boot: theme applied
+[2026-09-13 16:53:24.447] [frontend] boot: tabs restored, count: 0
+[2026-09-13 16:53:24.458] [frontend] boot: tabs rendered
+[2026-09-13 16:53:24.459] [frontend] boot: theme grid rendered
+[2026-09-13 16:53:24.460] [frontend] boot: booting monaco
+[2026-09-13 16:53:24.490] [frontend] boot: view restored
+[2026-09-13 16:53:24.490] [frontend] boot: complete, finishing splash
+[2026-09-13 16:53:27.897] [frontend] boot: splash finished
+[2026-09-13 16:53:27.897] [frontend] boot: checking legacy migration
+[2026-09-13 16:53:27.904] [frontend] boot: migration check done
+[2026-09-13 16:53:27.918] [frontend] boot: boot done
+[2026-09-13 16:58:23.921] periodic check: tick, running update check
+[2026-09-13 16:58:24.149] updater: downloading SolaraV3.exe
+[2026-09-13 16:58:25.056] updater: SolaraV3.exe downloaded (19690864 bytes), verifying hash
+[2026-09-13 16:58:25.117] updater: SolaraV3.exe written to D:\Projects\Hapag Pamana\bin\SolaraV3.exe.tmp
+[2026-09-13 16:58:25.122] periodic check: tick finished
+[2026-09-13 17:03:25.126] periodic check: tick, running update check
+[2026-09-13 17:03:25.785] updater: downloading SolaraV3.exe
+[2026-09-13 17:03:26.298] updater: SolaraV3.exe downloaded (19690864 bytes), verifying hash
+[2026-09-13 17:03:26.355] updater: SolaraV3.exe written to D:\Projects\Hapag Pamana\bin\SolaraV3.exe.tmp
+[2026-09-13 17:03:26.381] periodic check: tick finished
+[2026-09-13 17:08:26.383] periodic check: tick, running update check
+[2026-09-13 17:08:26.893] updater: downloading SolaraV3.exe
+[2026-09-13 17:08:27.326] updater: SolaraV3.exe downloaded (19690864 bytes), verifying hash
+[2026-09-13 17:08:27.401] updater: SolaraV3.exe written to D:\Projects\Hapag Pamana\bin\SolaraV3.exe.tmp
+[2026-09-13 17:08:27.445] periodic check: tick finished
+[2026-09-13 17:13:27.448] periodic check: tick, running update check
+[2026-09-13 17:13:27.582] updater: downloading SolaraV3.exe
+[2026-09-13 17:13:27.980] updater: SolaraV3.exe downloaded (19690864 bytes), verifying hash
+[2026-09-13 17:13:28.037] updater: SolaraV3.exe written to D:\Projects\Hapag Pamana\bin\SolaraV3.exe.tmp
+[2026-09-13 17:13:28.040] periodic check: tick finished
+[2026-09-13 17:18:28.043] periodic check: tick, running update check
+[2026-09-13 17:18:28.550] updater: downloading SolaraV3.exe
+[2026-09-13 17:18:28.953] updater: SolaraV3.exe downloaded (19690864 bytes), verifying hash
+[2026-09-13 17:18:29.000] updater: SolaraV3.exe written to D:\Projects\Hapag Pamana\bin\SolaraV3.exe.tmp
+[2026-09-13 17:18:29.046] periodic check: tick finished
+[2026-09-13 17:23:29.049] periodic check: tick, running update check
+[2026-09-13 17:23:29.244] updater: downloading SolaraV3.exe
+[2026-09-13 17:23:29.708] updater: SolaraV3.exe downloaded (19690864 bytes), verifying hash
+[2026-09-13 17:23:29.761] updater: SolaraV3.exe written to D:\Projects\Hapag Pamana\bin\SolaraV3.exe.tmp
+[2026-09-13 17:23:29.764] periodic check: tick finished
+[2026-09-13 17:25:59.510] [frontend] scan_clients ok, 2 client(s)
+[2026-09-13 17:26:03.108] run event: exit (clean shutdown)
+[2026-09-13 17:26:03.108] exit: terminating process to guarantee DLL threads stop

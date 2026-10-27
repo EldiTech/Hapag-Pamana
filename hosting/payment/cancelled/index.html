@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Payment cancelled — HapagPamana</title>
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f7f1e6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #3a2a17;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .card {
+    max-width: 420px;
+    text-align: center;
+  }
+  .seal {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: #3a2a17;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .seal svg { width: 32px; height: 32px; }
+  h1 {
+    font-size: 22px;
+    margin: 0 0 10px;
+  }
+  p {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #6b5843;
+    margin: 0 0 24px;
+  }
+  .btn {
+    display: inline-block;
+    padding: 14px 28px;
+    background: #3a2a17;
+    color: #f7ecd8;
+    text-decoration: none;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .btn:active { opacity: 0.85; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="seal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#d4a94a" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </div>
+    <h1>Payment cancelled</h1>
+    <p>No charge was made. Your booking is still saved — you can pay later from Order Tracking.</p>
+    <a class="btn" href="hapagpamana://payment/cancelled" id="returnBtn">RETURN TO APP</a>
+  </div>
+  <script>
+    // Best-effort auto-return — silently does nothing if the app isn't
+    // installed to handle the scheme, leaving the button as the fallback.
+    location.href = document.getElementById('returnBtn').href;
+  </script>
+</body>
+</html>

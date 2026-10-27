@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Receiving</title>
+
+  <link rel="icon" type="image/png" href="../../assets/HapagPamana.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../../Content%20Moderator/css/global.css" />
+  <link rel="stylesheet" href="../../Purchasing/css/purchasing.css" />
+  <link rel="stylesheet" href="../css/stock.css" />
+</head>
+<body>
+  <template id="tpl-view">
+    <!-- What purchasing has handed over, waiting to be checked in line by
+         line: quantity accepted, quantity rejected, and why. -->
+    <div class="stat-grid" id="recvStats"></div>
+
+    <div class="seg" id="recvChips"></div>
+
+    <section class="panel">
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Slip</th>
+              <th>Client</th>
+              <th>Event</th>
+              <th>Lines</th>
+              <th>Checked</th>
+              <th>Stage</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="recvRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </template>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../../firebase-config.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../../assets/hp-guard.js"></script>
+  <script src="../../assets/hp-core.js"></script>
+  <script src="../../assets/hp-shell.js"></script>
+  <script src="../../assets/hp-procurement.js"></script>
+  <script src="../../assets/hp-pantry.js"></script>
+  <script src="../js/receiving.js"></script>
+</body>
+</html>

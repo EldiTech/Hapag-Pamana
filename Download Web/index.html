@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hapag Pamana - Get the App</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cream: '#F6EFDF',
+            'cream-edge': '#EADFC8',
+            espresso: '#2A1A0B',
+            brown: '#503413',
+            'brown-soft': '#7A5630',
+            olive: '#44462B',
+            gold: '#AF854A',
+            'gold-deep': '#7E5E2B',
+            'hairline': 'rgba(175, 133, 74, 0.2)',
+          },
+          fontFamily: {
+            serif: ['"Playfair Display"', 'Georgia', 'serif'],
+            sans: ['"Montserrat"', 'sans-serif'],
+            engraved: ['"Cinzel"', 'Georgia', 'serif'],
+          },
+          animation: {
+            'fade-in': 'fadeIn 1s ease-out forwards',
+            'fade-up': 'fadeUp 1s ease-out forwards',
+            'float': 'float 8s ease-in-out infinite',
+            'glow': 'glow 4s infinite alternate',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' }
+            },
+            fadeUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' }
+            },
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-15px)' },
+            },
+            glow: {
+              '0%': { opacity: '0.4', filter: 'blur(40px)' },
+              '100%': { opacity: '0.8', filter: 'blur(60px)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-cream text-espresso dark:bg-espresso dark:text-cream antialiased overflow-x-hidden selection:bg-gold/30 selection:text-espresso dark:selection:text-cream relative font-sans transition-colors duration-500">
+  
+  <!-- Global ambient background -->
+  <div class="fixed inset-0 pointer-events-none z-[-1] transition-opacity duration-500 opacity-50 dark:opacity-90">
+    <div class="absolute inset-0 bg-radial-vignette"></div>
+    <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-gold/5 blur-[120px] rounded-full mix-blend-screen animate-glow"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-brown/40 blur-[100px] rounded-full mix-blend-screen"></div>
+    <div class="absolute inset-0 bg-grain opacity-10 mix-blend-overlay"></div>
+  </div>
+
+  <!-- Header with Dark/Light Toggle -->
+  <header class="absolute top-0 w-full px-6 py-6 flex justify-end z-50 max-w-7xl mx-auto left-1/2 -translate-x-1/2">
+    <button id="theme-toggle" class="p-3 rounded-full bg-espresso/5 dark:bg-cream/5 border border-espresso/10 dark:border-cream/10 hover:bg-espresso/10 dark:hover:bg-cream/10 transition-colors shadow-sm">
+      <!-- Moon / Sun Icon -->
+      <svg id="theme-icon-dark" class="hidden w-5 h-5 text-espresso dark:text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+      <svg id="theme-icon-light" class="block w-5 h-5 text-espresso dark:text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+    </button>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 sm:px-12 lg:px-20 pt-20 lg:pt-28 pb-20">
+    
+    <!-- Hero Section -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center min-h-[75vh]">
+      
+      <!-- Left: Copy & CTA -->
+      <div class="flex flex-col items-start z-10 animate-fade-in">
+        <h2 class="font-engraved text-xs sm:text-sm font-semibold tracking-[0.25em] text-gold uppercase mb-6">Food Industry & Heritage</h2>
+        
+        <h1 class="font-serif text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-8 drop-shadow-lg text-espresso dark:text-cream transition-colors duration-500">
+          Hapag Pamana
+        </h1>
+        
+        <p class="font-serif italic text-xl sm:text-2xl text-espresso/90 dark:text-cream/90 mb-6 transition-colors duration-500">
+          Filipino heritage, brought closer to home.
+        </p>
+        
+        <p class="font-sans text-sm sm:text-base text-espresso/70 dark:text-cream/70 leading-relaxed font-light mb-12 max-w-md transition-colors duration-500">
+          Explore heirloom recipes, discover catering experiences, and connect with the stories behind Filipino food traditions.
+        </p>
+        
+        <!-- CTA -->
+        <a href="hapag-pamana-release.apk" download class="group relative inline-flex items-center justify-center gap-4 px-10 py-5 bg-gold/10 dark:bg-brown/30 backdrop-blur-md text-espresso dark:text-cream font-engraved text-xs sm:text-sm font-semibold tracking-[0.15em] uppercase rounded border border-gold/30 hover:border-gold hover:bg-gold/20 dark:hover:bg-brown/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_40px_-10px_rgba(175,133,74,0.4)] active:translate-y-0 w-full sm:w-auto">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gold group-hover:text-espresso dark:group-hover:text-cream transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span>Download for Android</span>
+        </a>
+        
+        <!-- Version Info -->
+        <div class="mt-8 flex items-center gap-4 text-xs font-sans text-espresso/50 dark:text-cream/50 tracking-wide uppercase transition-colors duration-500">
+          <span>Android 8.0+</span>
+          <span class="w-1 h-1 rounded-full bg-gold/50"></span>
+          <span>APK</span>
+          <span class="w-1 h-1 rounded-full bg-gold/50"></span>
+          <span>Version 1.0.0</span>
+        </div>
+      </div>
+      
+      <!-- Right: Phone Mockup -->
+      <div class="relative w-full max-w-[320px] lg:max-w-[360px] mx-auto z-10 animate-fade-up">
+        <!-- Subtle back glow -->
+        <div class="absolute inset-0 bg-gold/20 blur-[60px] rounded-full transform scale-110"></div>
+        
+        <!-- The Phone -->
+        <div class="relative bg-[#1A1A1A] rounded-[44px] p-2 sm:p-3 border-[3px] border-[#333] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.9),inset_0_0_20px_rgba(255,255,255,0.1)] animate-float">
+          <!-- Notch -->
+          <div class="absolute top-2 sm:top-3 left-1/2 -translate-x-1/2 w-1/3 h-[25px] bg-[#1A1A1A] rounded-b-3xl z-20"></div>
+          
+          <!-- Screen -->
+          <div class="bg-cream rounded-[34px] overflow-hidden relative w-full aspect-[9/19.5] shadow-inner flex flex-col">
+            <!-- Simulated App UI (Hapag Pamana mobile theme) -->
+            <!-- Header -->
+            <div class="bg-[#F6EFDF] pt-12 pb-4 px-6 flex justify-between items-center shadow-sm z-10 relative">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full border border-[#503413] flex items-center justify-center text-[8px] font-serif font-bold text-[#503413] leading-none overflow-hidden relative">
+                   <div class="absolute top-1/2 left-1/2 w-4 h-4 -translate-x-1/2 -translate-y-1/2 border border-[#503413] opacity-30 rotate-45"></div>
+                   HP
+                </div>
+                <div class="font-serif font-bold text-[13px] text-[#503413]">Hapag Pamana</div>
+              </div>
+              <div class="px-3 py-1.5 rounded-full bg-[#F6EFDF] border border-[#AF854A]/40 flex items-center gap-1.5 shadow-sm">
+                 <svg class="w-3 h-3 text-[#503413]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+                 <span class="font-sans font-medium text-[10px] text-[#503413]">Luis</span>
+              </div>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="flex-1 bg-[#F6EFDF] px-6 py-4 overflow-y-auto flex flex-col gap-5 relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <!-- Grid background pattern fake -->
+              <div class="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PHBhdGggZD0iTTAgMjBMMjAgMEw0MCAyMEwyMCA0MHoiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzUwMzQxMyIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3N2Zz4=')]"></div>
+              
+              <div class="relative z-10">
+                <div class="font-engraved text-[8px] text-[#7E5E2B] tracking-[0.2em] uppercase mb-2">Maligayang Pagbalik</div>
+                <h2 class="font-serif font-bold text-[#503413] text-2xl leading-tight mb-2">Kumusta,<br>Luis!</h2>
+                <p class="font-sans text-[11px] text-[#503413]/80 leading-relaxed mb-6">Browse today's kitchen and plan your next handaan with us.</p>
+                
+                <button class="bg-[#503413] text-[#F6EFDF] px-6 py-3 rounded-full font-engraved text-[9px] tracking-widest font-semibold flex items-center gap-2 shadow-md">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                  Browse The Menu
+                </button>
+              </div>
+              
+              <div class="relative z-10 mt-2">
+                <div class="flex justify-between items-baseline mb-3">
+                  <h3 class="font-serif font-bold text-[#503413] text-lg">Featured</h3>
+                  <span class="font-sans text-[10px] text-[#7E5E2B] font-semibold">See all</span>
+                </div>
+                
+                <div class="w-full rounded-[20px] bg-[#FCF8EF] overflow-hidden shadow-sm border border-[#AF854A]/10 pb-4">
+                  <div class="h-40 bg-[#503413] relative overflow-hidden flex items-center justify-center">
+                     <img src="https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=400&auto=format&fit=crop" class="w-full h-full object-cover" alt="Paella Verde">
+                     <div class="absolute inset-0 bg-gradient-to-t from-[#2A1A0B]/60 to-transparent"></div>
+                  </div>
+                  <div class="px-5 mt-4">
+                    <div class="font-serif font-bold text-[#503413] text-base mb-1">Paella Verde</div>
+                    <div class="font-sans text-[10px] text-[#7A5630]">Rice</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Bottom Nav -->
+            <div class="h-[60px] bg-[#F6EFDF] flex items-center justify-between px-6 z-20 pb-2 relative shadow-[0_-2px_10px_rgba(80,52,19,0.05)]">
+              <div class="flex flex-col items-center gap-1 mt-1">
+                <svg class="w-[18px] h-[18px] text-[#503413]" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                <span class="font-sans text-[9px] font-bold text-[#503413]">Home</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 mt-1 opacity-70">
+                <svg class="w-[18px] h-[18px] text-[#503413]" fill="currentColor" viewBox="0 0 24 24"><path d="M11 20H9v-5.5l-3.7-3.7a3 3 0 01-.88-2.16L4.42 3h2v5.6c0 .2.1.5.29.7L10 12.6v7.4zm10-7V3h-2v4.9c0 .3-.11.5-.31.7L15.38 12 12 8.6V13h3.5l1.63 1.6c.55.5.87 1.3.87 2V20h2v-3.3c0-1.3-.53-2.5-1.46-3.5L19.8 12 21 13z"/></svg>
+                <span class="font-sans text-[9px] font-bold text-[#503413]">Menu</span>
+              </div>
+              <div class="flex flex-col items-center -mt-6">
+                <div class="w-14 h-14 rounded-full bg-[#3F2810] border-[6px] border-[#F6EFDF] shadow-sm flex flex-col items-center justify-center gap-0.5 relative z-10">
+                  <svg class="w-[18px] h-[18px] text-white opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4a4 4 0 00-4 4v1H6a2 2 0 00-2 2v2h16v-2a2 2 0 00-2-2h-2V8a4 4 0 00-4-4z"></path></svg>
+                  <div class="w-[18px] h-[1px] bg-white opacity-50"></div>
+                </div>
+                <span class="font-engraved text-[7px] font-bold text-[#7E5E2B] tracking-widest mt-0.5">GABAY</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 mt-1 opacity-70">
+                <svg class="w-[18px] h-[18px] text-[#503413]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3c-4.42 0-8 3.58-8 8h16c0-4.42-3.58-8-8-8zm-6 8c0 3.31 2.69 6 6 6s6-2.69 6-6H6z" /></svg>
+                <span class="font-sans text-[9px] font-bold text-[#503413]">Packages</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 mt-1 opacity-70">
+                <svg class="w-[18px] h-[18px] text-[#503413]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                <span class="font-sans text-[9px] font-bold text-[#503413]">Account</span>
+              </div>
+            </div>
+            
+            <!-- Overlay shine -->
+            <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 pointer-events-none"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Origin Story Section -->
+    <section class="mt-24 lg:mt-32 max-w-3xl mx-auto text-center px-4">
+      <h3 class="font-engraved text-xs font-semibold tracking-[0.2em] text-gold uppercase mb-8">Our Origin Story</h3>
+      
+      <div class="relative inline-block w-full">
+         <div class="absolute -top-6 -left-6 text-6xl text-gold/20 font-serif">"</div>
+         <p class="font-serif text-xl sm:text-2xl text-espresso dark:text-cream leading-relaxed italic relative z-10 transition-colors duration-500">
+           We tried to open a small canteen back in 2016. It did not work out &mdash; but it was an exciting experience for us. We went back to being a small family of employees, working every day to make ends meet...
+         </p>
+         <div class="absolute -bottom-10 -right-6 text-6xl text-gold/20 font-serif">"</div>
+      </div>
+      
+      <div class="mt-12">
+        <p class="font-sans text-sm text-espresso/70 dark:text-cream/70 leading-relaxed font-light transition-colors duration-500">
+          Little did we know that with a little effort, prayer and grit, this small business would become our lifeline.
+        </p>
+      </div>
+    </section>
+
+    <!-- App Gallery Section -->
+    <section class="mt-24 lg:mt-32 border-t border-hairline pt-20">
+      <div class="flex justify-between items-end mb-12">
+         <div>
+            <h3 class="font-engraved text-xs font-semibold tracking-[0.2em] text-gold uppercase mb-3">App Gallery</h3>
+            <h2 class="font-serif text-3xl sm:text-4xl text-espresso dark:text-cream transition-colors duration-500">A Premium Experience</h2>
+         </div>
+      </div>
+      
+      <div class="flex overflow-x-auto gap-8 sm:gap-12 pb-12 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] w-full items-center">
+        
+        <!-- Screen 1: Menu -->
+        <div class="snap-center shrink-0 w-[280px] sm:w-[320px]">
+          <div class="relative bg-[#1A1A1A] rounded-[44px] p-2 border-[3px] border-[#333] shadow-xl">
+             <div class="bg-[#F6EFDF] rounded-[34px] overflow-hidden relative w-full aspect-[9/19.5] shadow-inner flex flex-col pt-12 px-6">
+                <div class="font-serif font-bold text-[#503413] text-2xl mb-6">Our Menu</div>
+                <!-- Categories -->
+                <div class="flex gap-2 mb-6 overflow-x-hidden">
+                   <div class="px-4 py-1.5 rounded-full bg-[#503413] text-[#F6EFDF] text-[10px] font-sans font-semibold">Ulam</div>
+                   <div class="px-4 py-1.5 rounded-full bg-transparent border border-[#503413]/20 text-[#503413] text-[10px] font-sans">Kakanin</div>
+                   <div class="px-4 py-1.5 rounded-full bg-transparent border border-[#503413]/20 text-[#503413] text-[10px] font-sans">Rice</div>
+                </div>
+                <!-- Products -->
+                <div class="flex flex-col gap-4 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-4" id="gallery-menu-products">
+                   <div class="text-center font-sans text-[10px] text-[#503413]/50 animate-pulse mt-4">Loading menu...</div>
+                </div>
+             </div>
+          </div>
+        </div>
+
+        <!-- Screen 2: Product Detail -->
+        <div class="snap-center shrink-0 w-[280px] sm:w-[320px]">
+          <div class="relative bg-[#1A1A1A] rounded-[44px] p-2 border-[3px] border-[#333] shadow-xl">
+             <div class="bg-[#F6EFDF] rounded-[34px] overflow-hidden relative w-full aspect-[9/19.5] shadow-inner flex flex-col" id="gallery-detail-screen">
+                <div class="w-full h-full flex items-center justify-center font-sans text-[10px] text-[#503413]/50 animate-pulse">Loading detail...</div>
+             </div>
+          </div>
+        </div>
+
+        <!-- Screen 3: Cart / Tray -->
+        <div class="snap-center shrink-0 w-[280px] sm:w-[320px]">
+          <div class="relative bg-[#1A1A1A] rounded-[44px] p-2 border-[3px] border-[#333] shadow-xl">
+             <div class="bg-[#F6EFDF] rounded-[34px] overflow-hidden relative w-full aspect-[9/19.5] shadow-inner flex flex-col pt-12 px-6">
+                <div class="flex items-center gap-4 mb-8">
+                   <svg class="w-5 h-5 text-[#503413]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                   <div class="font-serif font-bold text-[#503413] text-xl">Your Tray</div>
+                </div>
+                
+                <div class="flex-1 overflow-hidden flex flex-col gap-6">
+                   <!-- Cart Item -->
+                   <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-3">
+                         <div class="w-10 h-10 rounded-full bg-[#503413] overflow-hidden">
+                           <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=100&auto=format&fit=crop" class="w-full h-full object-cover">
+                         </div>
+                         <div>
+                            <div class="font-serif font-bold text-[#503413] text-xs">Kare-Kare</div>
+                            <div class="font-engraved font-bold text-[#7E5E2B] text-[9px]">P 450</div>
+                         </div>
+                      </div>
+                      <div class="font-sans text-[10px] text-[#503413] font-bold">x1</div>
+                   </div>
+                   <!-- Cart Item -->
+                   <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-3">
+                         <div class="w-10 h-10 rounded-full bg-[#503413] overflow-hidden">
+                           <img src="https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=100&auto=format&fit=crop" class="w-full h-full object-cover">
+                         </div>
+                         <div>
+                            <div class="font-serif font-bold text-[#503413] text-xs">Paella Verde</div>
+                            <div class="font-engraved font-bold text-[#7E5E2B] text-[9px]">P 550</div>
+                         </div>
+                      </div>
+                      <div class="font-sans text-[10px] text-[#503413] font-bold">x2</div>
+                   </div>
+                   
+                   <div class="mt-auto border-t border-[#AF854A]/20 pt-6 pb-6">
+                      <div class="flex justify-between items-end mb-6">
+                         <span class="font-sans text-[11px] text-[#503413]">Total</span>
+                         <span class="font-engraved font-bold text-[#503413] text-lg">P 1,550</span>
+                      </div>
+                      <button class="w-full bg-[#503413] text-[#F6EFDF] py-4 rounded-full font-engraved text-[11px] tracking-widest font-semibold shadow-md">
+                         CHECKOUT
+                      </button>
+                   </div>
+                </div>
+             </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Info Sections -->
+    <div class="mt-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 border-t border-hairline pt-20 animate-fade-up">
+      
+      <!-- Features -->
+      <div class="col-span-1 md:col-span-2 space-y-12">
+        <div>
+          <h3 class="font-engraved text-xs font-semibold tracking-[0.2em] text-gold uppercase mb-8">What You Can Explore</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            <!-- F1 -->
+            <div>
+              <div class="font-engraved text-xs text-gold-deep mb-2">01 &mdash; Heirloom Recipes</div>
+              <h4 class="font-serif text-xl text-espresso dark:text-cream mb-2 transition-colors duration-500">Discover Traditions</h4>
+              <p class="font-sans text-sm text-espresso/60 dark:text-cream/60 leading-relaxed font-light transition-colors duration-500">Explore authentic Filipino recipes passed down through generations, preserved digitally for you.</p>
+            </div>
+            <!-- F2 -->
+            <div>
+              <div class="font-engraved text-xs text-gold-deep mb-2">02 &mdash; Catering</div>
+              <h4 class="font-serif text-xl text-espresso dark:text-cream mb-2 transition-colors duration-500">Curated Experiences</h4>
+              <p class="font-sans text-sm text-espresso/60 dark:text-cream/60 leading-relaxed font-light transition-colors duration-500">Browse our catering offerings and plan your next event with premium Filipino cuisine.</p>
+            </div>
+            <!-- F3 -->
+            <div>
+              <div class="font-engraved text-xs text-gold-deep mb-2">03 &mdash; Heritage</div>
+              <h4 class="font-serif text-xl text-espresso dark:text-cream mb-2 transition-colors duration-500">The Stories Behind</h4>
+              <p class="font-sans text-sm text-espresso/60 dark:text-cream/60 leading-relaxed font-light transition-colors duration-500">Learn about the rich culture, regional ingredients, and history of our featured dishes.</p>
+            </div>
+            <!-- F4 -->
+            <div>
+              <div class="font-engraved text-xs text-gold-deep mb-2">04 &mdash; Premium UI</div>
+              <h4 class="font-serif text-xl text-espresso dark:text-cream mb-2 transition-colors duration-500">Elegant Experience</h4>
+              <p class="font-sans text-sm text-espresso/60 dark:text-cream/60 leading-relaxed font-light transition-colors duration-500">Enjoy a beautifully crafted interface that honors the warmth and aesthetics of the Filipino home.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Installation -->
+      <div class="col-span-1">
+        <h3 class="font-engraved text-xs font-semibold tracking-[0.2em] text-gold uppercase mb-8">How To Install</h3>
+        <div class="space-y-4 font-sans text-sm text-espresso/70 dark:text-cream/70 font-light transition-colors duration-500">
+          <div class="flex items-start gap-4">
+            <span class="font-engraved text-gold-deep text-[10px] mt-1">01</span>
+            <p>Download the APK file.</p>
+          </div>
+          <div class="flex items-start gap-4">
+            <span class="font-engraved text-gold-deep text-[10px] mt-1">02</span>
+            <p>Open the downloaded file.</p>
+          </div>
+          <div class="flex items-start gap-4">
+            <span class="font-engraved text-gold-deep text-[10px] mt-1">03</span>
+            <p>Allow installation from unknown sources if Android requests permission.</p>
+          </div>
+          <div class="flex items-start gap-4">
+            <span class="font-engraved text-gold-deep text-[10px] mt-1">04</span>
+            <p>Install Hapag Pamana.</p>
+          </div>
+          <div class="flex items-start gap-4">
+            <span class="font-engraved text-gold-deep text-[10px] mt-1">05</span>
+            <p>Open the application and enjoy.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR & Specs -->
+      <div class="col-span-1 space-y-12">
+        <div>
+          <h3 class="font-engraved text-xs font-semibold tracking-[0.2em] text-gold uppercase mb-6">Scan To Download</h3>
+          <div class="p-4 bg-cream rounded inline-block shadow-lg border border-gold/40">
+             <!-- Public QR code generator API pointing to a relative APK link (using localhost placeholder since exact domain is unknown) -->
+             <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=hapag-pamana-release.apk&bgcolor=F6EFDF&color=2A1A0B" alt="QR Code" class="w-32 h-32 opacity-90 mix-blend-multiply">
+          </div>
+          <p class="font-sans text-xs text-espresso/50 dark:text-cream/50 mt-4 font-light transition-colors duration-500">Scan this QR code with your Android phone to download directly.</p>
+        </div>
+        
+        <div>
+          <h3 class="font-engraved text-xs font-semibold tracking-[0.2em] text-gold uppercase mb-6">System Requirements</h3>
+          <ul class="font-sans text-sm text-espresso/70 dark:text-cream/70 font-light space-y-2 transition-colors duration-500">
+            <li>Android 8.0 or later</li>
+            <li>Internet connection required</li>
+            <li>Version: 1.0.0</li>
+          </ul>
+        </div>
+      </div>
+      
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-hairline py-12 mt-12 bg-black/5 dark:bg-espresso/50 transition-colors duration-500">
+    <div class="max-w-7xl mx-auto px-6 sm:px-12 lg:px-20 flex flex-col md:flex-row justify-between items-center gap-6">
+      <div class="flex flex-col items-center md:items-start">
+        <h4 class="font-serif text-lg text-espresso dark:text-cream transition-colors duration-500">Hapag Pamana</h4>
+        <p class="font-engraved text-[10px] text-gold-deep uppercase tracking-widest mt-1">Food Industry & Heritage</p>
+      </div>
+      
+      <div class="flex items-center gap-8 font-sans text-xs text-espresso/50 dark:text-cream/50 uppercase tracking-widest transition-colors duration-500">
+        <a href="#" class="hover:text-gold transition-colors">Privacy</a>
+        <a href="#" class="hover:text-gold transition-colors">Terms</a>
+        <a href="#" class="hover:text-gold transition-colors">Support</a>
+      </div>
+      
+      <div class="font-sans text-xs text-espresso/30 dark:text-cream/30 transition-colors duration-500">
+        &copy; 2026 Version 1.0.0
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const themeToggle = document.getElementById('theme-toggle');
+    const iconDark = document.getElementById('theme-icon-dark');
+    const iconLight = document.getElementById('theme-icon-light');
+    const htmlElement = document.documentElement;
+
+    // Load from local storage or default to dark mode
+    let isDark = true;
+    if (localStorage.getItem('theme') === 'light') {
+       isDark = false;
+       htmlElement.classList.remove('dark');
+    }
+
+    const updateIcons = () => {
+       if (isDark) {
+          iconDark.classList.add('hidden');
+          iconDark.classList.remove('block');
+          iconLight.classList.add('block');
+          iconLight.classList.remove('hidden');
+       } else {
+          iconDark.classList.add('block');
+          iconDark.classList.remove('hidden');
+          iconLight.classList.add('hidden');
+          iconLight.classList.remove('block');
+       }
+    };
+    
+    updateIcons();
+
+    themeToggle.addEventListener('click', () => {
+       isDark = !isDark;
+       if (isDark) {
+          htmlElement.classList.add('dark');
+          localStorage.setItem('theme', 'dark');
+       } else {
+          htmlElement.classList.remove('dark');
+          localStorage.setItem('theme', 'light');
+       }
+       updateIcons();
+    });
+  </script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDokGGoVNFZIJujMFC52yzkOTnG_sxeT4E",
+      authDomain: "hapagpamana-39687.firebaseapp.com",
+      projectId: "hapagpamana-39687",
+      storageBucket: "hapagpamana-39687.firebasestorage.app",
+      messagingSenderId: "369246306524",
+      appId: "1:369246306524:web:f3a4b31aa39e8370b97419",
+      measurementId: "G-S4PRHFNPWH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function fetchProducts() {
+      try {
+         const q = query(collection(db, "products"), where("available", "==", true));
+         const snapshot = await getDocs(q);
+         const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+         
+         renderGallery(products);
+      } catch (e) {
+         console.error("Error fetching products", e);
+      }
+    }
+
+    function renderGallery(products) {
+       const menuContainer = document.getElementById("gallery-menu-products");
+       const detailContainer = document.getElementById("gallery-detail-screen");
+       
+       if (products.length === 0) return;
+
+       // Render Menu
+       let menuHtml = '';
+       products.slice(0, 3).forEach(p => {
+          const imageSrc = p.image ? (p.image.startsWith('data:') ? p.image : p.image) : 'https://images.unsplash.com/photo-1543362906-acfc16c67564?q=80&w=200&auto=format&fit=crop';
+          const priceStr = p.addOnPrice ? `P ${p.addOnPrice}` : (p.price ? `P ${p.price}` : 'P ---');
+          
+          menuHtml += `
+             <div class="flex gap-4 items-center bg-[#FCF8EF] p-3 rounded-2xl border border-[#AF854A]/10">
+                <div class="w-16 h-16 rounded-xl bg-[#503413] overflow-hidden shrink-0">
+                   <img src="${imageSrc}" class="w-full h-full object-cover">
+                </div>
+                <div class="overflow-hidden">
+                   <div class="font-serif font-bold text-[#503413] text-sm whitespace-nowrap overflow-hidden text-ellipsis">${p.name}</div>
+                   <div class="font-sans text-[9px] text-[#7A5630] mb-1">${p.category || 'Specialty'}</div>
+                   <div class="font-engraved font-bold text-[#7E5E2B] text-[10px]">${priceStr}</div>
+                </div>
+             </div>
+          `;
+       });
+       if (menuContainer) menuContainer.innerHTML = menuHtml;
+
+       // Render Detail (using first product)
+       const mainProduct = products[0];
+       const mainImageSrc = mainProduct.image || 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=400&auto=format&fit=crop';
+       const mainPriceStr = mainProduct.addOnPrice ? `P ${mainProduct.addOnPrice}` : (mainProduct.price ? `P ${mainProduct.price}` : 'P ---');
+       
+       if (detailContainer) {
+          detailContainer.innerHTML = `
+              <div class="h-[45%] w-full bg-[#503413] relative">
+                 <img src="${mainImageSrc}" class="w-full h-full object-cover">
+                 <div class="absolute top-10 left-4 w-8 h-8 rounded-full bg-black/40 backdrop-blur flex items-center justify-center">
+                   <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                 </div>
+              </div>
+              <div class="flex-1 bg-[#F6EFDF] -mt-6 rounded-t-3xl relative px-6 pt-8">
+                 <div class="font-engraved text-[10px] text-[#7E5E2B] tracking-[0.1em] uppercase mb-1">Heritage Recipe</div>
+                 <div class="font-serif font-bold text-[#503413] text-3xl mb-4 leading-tight">${mainProduct.name}</div>
+                 <p class="font-sans text-[11px] text-[#503413]/80 leading-relaxed mb-8 h-12 overflow-hidden text-ellipsis line-clamp-3">
+                   ${mainProduct.description || 'Our signature dish, slow-cooked for hours. A true heirloom celebration.'}
+                 </p>
+                 
+                 <button class="w-full bg-[#503413] text-[#F6EFDF] py-4 rounded-full font-engraved text-[11px] tracking-widest font-semibold">
+                    ADD TO TRAY &mdash; ${mainPriceStr}
+                 </button>
+              </div>
+          `;
+       }
+    }
+
+    fetchProducts();
+  </script>
+</body>
+</html>

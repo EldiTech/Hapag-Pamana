@@ -1,0 +1,274 @@
+/* HapagPamana · Purchasing — the checklist and receipt drawer.
+   Layered on Content Moderator/css/global.css, which owns the shell, the
+   tables, the modal chrome, the badges and every colour token used here.
+   Nothing in this file pins its own palette: the portal ships a light paper
+   theme with a dark variant, and hardcoded colours would survive only one
+   of them. */
+
+/* Stage badges reuse the shell's .badge / .badge-* classes — hp-procurement.js
+   names the variant per stage.
+
+   Money that has gone the wrong way: over the slip, or unaccounted for. */
+.is-over { color: var(--danger); font-weight: 600; }
+
+/* ── A wider modal for the checklist ─────────────────────────────────── */
+.modal--wide { max-width: min(1040px, 94vw); }
+
+/* ── Checklist head ──────────────────────────────────────────────────── */
+.ck-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.ck-client { margin: 0; font-family: var(--display); font-size: 1.15rem; color: var(--ink); }
+.ck-meta { margin: 3px 0 0; color: var(--ink-faint); font-size: 0.86rem; }
+
+.ck-money { display: flex; gap: 26px; }
+.ck-money span { display: flex; flex-direction: column; text-align: right; }
+.ck-money small {
+  font-family: var(--engraved);
+  font-size: 0.6rem;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+.ck-money strong {
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.ck-note {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: var(--r);
+  background: rgba(152, 105, 27, 0.1);
+  border: 1px solid rgba(152, 105, 27, 0.28);
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
+/* ── The table ───────────────────────────────────────────────────────── */
+.ck-wrap {
+  max-height: min(54vh, 540px);
+  overflow: auto;
+  border: 1px solid var(--hair-soft);
+  border-radius: var(--r);
+}
+.ck-table { width: 100%; }
+.ck-table th, .ck-table td { vertical-align: top; }
+.ck-table .ck-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ck-table .ck-line { font-weight: 700; color: var(--ink); }
+.ck-tick { width: 52px; text-align: center; }
+
+/* Dish headers ride along as the buyer scrolls a long list. */
+.ck-dish th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-top: 14px;
+  font-family: var(--engraved);
+  font-size: 0.64rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  background: var(--vellum);
+  border-bottom: 1px solid var(--gold-hair2);
+}
+
+/* Inputs sit quietly until touched — a checklist of forty lines should not
+   read as a hundred boxes shouting for attention. */
+.ck-table input[type="number"],
+.ck-table input[type="text"] {
+  width: 100%;
+  min-width: 72px;
+  padding: 5px 8px;
+  border-radius: var(--r);
+  border: 1px solid transparent;
+  background: rgba(255, 251, 240, 0.5);
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 0.86rem;
+}
+.ck-table input:hover { border-color: var(--gold-hair2); background: var(--paper-3); }
+.ck-table input:focus {
+  outline: none;
+  border-color: var(--gold);
+  background: var(--paper-3);
+  box-shadow: 0 0 0 3px var(--gold-hair2);
+}
+.ck-table input:disabled { opacity: 0.5; cursor: not-allowed; background: transparent; }
+.ck-table input.ck-note { margin-top: 5px; font-size: 0.8rem; color: var(--ink-soft); }
+.ck-table .ck-num input { text-align: right; }
+
+/* The tick itself — the one control that should be unmissable. */
+.ck-box { display: inline-flex; cursor: pointer; }
+.ck-box input { position: absolute; opacity: 0; width: 0; height: 0; }
+.ck-box .box {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r);
+  border: 1.5px solid var(--gold-hair);
+  background: var(--paper-3);
+  color: transparent;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.ck-box .box svg { width: 15px; height: 15px; }
+.ck-box input:checked + .box {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: var(--paper-3);
+}
+.ck-box input:focus-visible + .box { box-shadow: 0 0 0 3px var(--gold-hair2); }
+.ck-box input:disabled + .box { opacity: 0.45; cursor: not-allowed; }
+
+.ck-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gold-hair2);
+}
+.ck-hint { margin: 0; font-size: 0.84rem; color: var(--ink-faint); font-style: italic; }
+.ck-tot { margin: 0; font-size: 0.86rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+/* ── Receipts ────────────────────────────────────────────────────────── */
+.rc-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--gold-hair2);
+}
+.rc-client { margin: 0; font-family: var(--display); font-size: 1.1rem; color: var(--ink); }
+.rc-money { display: flex; gap: 24px; }
+.rc-money span { display: flex; flex-direction: column; text-align: right; }
+.rc-money small {
+  font-family: var(--engraved);
+  font-size: 0.6rem;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+.rc-money strong {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-add { margin: 18px 0; display: grid; gap: 12px; }
+.rc-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px;
+  border: 1.5px dashed var(--gold-hair);
+  border-radius: var(--r-lg);
+  background: rgba(255, 251, 240, 0.45);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 0.92rem;
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.rc-drop:hover { border-color: var(--gold); background: var(--paper-3); color: var(--brown); }
+.rc-drop .ic svg { width: 19px; height: 19px; }
+
+.rc-fields { display: flex; flex-wrap: wrap; gap: 12px; }
+.rc-fields label {
+  flex: 1 1 12rem;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: var(--engraved);
+  font-size: 0.6rem;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+.rc-fields input {
+  padding: 8px 10px;
+  border-radius: var(--r);
+  border: 1px solid var(--hair);
+  background: var(--paper-3);
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 0.92rem;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.rc-fields input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-hair2);
+}
+
+.rc-status { margin: 0; font-size: 0.86rem; color: var(--ink-soft); }
+.rc-status.is-bad { color: var(--danger); font-weight: 600; }
+
+.rc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.rc-card {
+  position: relative;
+  margin: 0;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--hair-soft);
+  background: var(--paper-2);
+  box-shadow: var(--shadow-sm);
+}
+.rc-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  cursor: zoom-in;
+  background: var(--vellum);
+}
+.rc-card figcaption { padding: 8px 10px; display: grid; gap: 2px; }
+.rc-card figcaption strong {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.rc-card figcaption small { font-size: 0.76rem; color: var(--ink-soft); }
+.rc-card .rc-by { color: var(--ink-faint); font-style: italic; }
+.rc-del {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  background: var(--paper-3);
+  border: 1px solid var(--hair);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 720px) {
+  .ck-money, .rc-money { width: 100%; justify-content: space-between; gap: 14px; }
+  .ck-money strong, .rc-money strong { font-size: 1.1rem; }
+  .ck-wrap { max-height: none; }
+}

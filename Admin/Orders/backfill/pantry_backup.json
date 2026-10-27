@@ -1,0 +1,85 @@
+{
+  "exportedAt": "2026-10-27T08:44:55.254Z",
+  "totalPantryItems": 1,
+  "totalPantryLogs": 2,
+  "pantry": [
+    {
+      "id": "vknbPsCd2r0IJUy9CfYp",
+      "name": "dawddd",
+      "unit": "kg",
+      "category": "Meat & poultry",
+      "par": 5,
+      "note": "",
+      "nearExpiryThresholdDays": 5,
+      "updatedByName": "Luis David Espino",
+      "qty": 6,
+      "updatedAtLocal": 1789778001278,
+      "updatedAt": {
+        "_seconds": 1789778000,
+        "_nanoseconds": 936000000
+      }
+    }
+  ],
+  "pantryLog": [
+    {
+      "id": "PAdIxSPbjpgrDhmUoI56",
+      "itemId": "vknbPsCd2r0IJUy9CfYp",
+      "itemName": "dawddd",
+      "unit": "kg",
+      "delta": 0,
+      "before": 0,
+      "after": 0,
+      "reason": "opening",
+      "note": "Item added to the pantry",
+      "batchId": null,
+      "movementType": "opening",
+      "sourceSlipId": null,
+      "sourceLineKey": null,
+      "linkedEventId": null,
+      "reasonCode": null,
+      "expiryDate": null,
+      "unitCost": null,
+      "overrideBy": null,
+      "operationId": null,
+      "bookingId": null,
+      "clientName": null,
+      "byUid": "SpUpSeCbFTZUNRJOLMZP0es3vUj1",
+      "byName": "Luis David Espino",
+      "atLocal": 1789777980327,
+      "at": {
+        "_seconds": 1789777980,
+        "_nanoseconds": 450000000
+      }
+    },
+    {
+      "id": "ckFopZyb6M8gPZDY8xYU",
+      "itemId": "vknbPsCd2r0IJUy9CfYp",
+      "itemName": "dawddd",
+      "unit": "kg",
+      "delta": 6,
+      "before": 0,
+      "after": 6,
+      "reason": "received",
+      "note": "",
+      "batchId": null,
+      "movementType": "received",
+      "sourceSlipId": null,
+      "sourceLineKey": null,
+      "linkedEventId": null,
+      "reasonCode": null,
+      "expiryDate": null,
+      "unitCost": null,
+      "overrideBy": null,
+      "operationId": null,
+      "bookingId": null,
+      "clientName": null,
+      "byUid": "SpUpSeCbFTZUNRJOLMZP0es3vUj1",
+      "byName": "Luis David Espino",
+      "atLocal": 1789778001279,
+      "at": {
+        "_seconds": 1789778000,
+        "_nanoseconds": 936000000
+      }
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#503413" />
+  <title>HapagPamana · Layout Preview</title>
+
+  <!-- The app hands the plan over from onPageFinished (see
+       lib/screens/user/layout_preview_page.dart). That callback is documented
+       to fire once the document has loaded, but Android's WebView has never
+       been strict about it — it can fire early, and it can fire more than
+       once. If it lands before js/viewer.js has run, `window.HPViewer.show(…)`
+       is a call on `undefined`: a TypeError inside the WebView, which
+       runJavaScript does NOT propagate back to Dart. The plan would be lost
+       silently and the member would sit on "Loading your layout…" forever.
+
+       So the bridge exists from the first parsed byte of <head>, before any
+       network-fetched script, and simply banks whatever arrives. viewer.js
+       replaces this with the real implementation and drains the queue at the
+       very END of its IIFE — not where it defines HPViewer, which is above
+       the `view`/`mounted3d` declarations that rendering touches. -->
+  <script>
+    window.HPViewer = {
+      _q: [],
+      show: function (payload) { window.HPViewer._q.push(payload); },
+    };
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="css/viewer.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+</head>
+<body>
+  <header class="lv-head">
+    <h1 id="lvTitle">Your event layout</h1>
+    <small id="lvSub">Loading…</small>
+  </header>
+
+  <div class="lv-tabs" role="tablist" aria-label="Layout view">
+    <button class="lv-tab is-on" id="lvTab2d" role="tab" aria-selected="true" aria-controls="lvStage2d">Floor plan</button>
+    <button class="lv-tab" id="lvTab3d" role="tab" aria-selected="false" aria-controls="ldStage3d">3D view</button>
+  </div>
+
+  <div class="lv-body">
+    <div class="lv-stage-wrap">
+      <!-- 2D: the same plan the desk draws, read-only. Pieces are positioned
+           divs (.ld-item), styled by the copied layout.css. -->
+      <div class="lv-stage2d" id="lvStage2d">
+        <div class="lv-canvas-wrap">
+          <div class="ld-canvas" id="lvCanvas"></div>
+        </div>
+      </div>
+
+      <div class="ld-stage ld-stage--3d" id="ldStage3d" hidden>
+        <div class="ld-3d-host" id="ld3dHost">
+          <span class="ld-3d-hint"><span class="ic" data-icon="eye"></span>Drag to orbit · pinch to zoom</span>
+        </div>
+      </div>
+
+      <div class="lv-status" id="lvStatus">Loading your layout…</div>
+    </div>
+
+    <div class="lv-actions">
+      <button class="lv-btn primary" id="lvWalkBtn" disabled>Walk the room</button>
+    </div>
+  </div>
+
+  <!-- Auth + Firestore only. The page reads a booking directly when opened in
+       a browser (?booking=<id>) under the customer's own persisted session;
+       inside the app it is handed the plan and touches neither. No functions
+       SDK: there is no server-side token exchange any more. -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <!-- Same pin as the admin desk (Admin/Layout Designer/html/index.html) —
+       r128 is the last build where the loader/util addons still ship as
+       plain global scripts. See that file's comment for the full reasoning. -->
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+
+  <script src="js/rules.js"></script>
+  <script src="js/scene3d.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/models.js"></script>
+
+  <!-- The crowd is loaded on the WEB, and suppressed in the app's WebView.
+       simulate.js resolves window.HPCrowd lazily on use and guards every
+       call site (its `crowd()` helper), so a page without it degrades to an
+       empty-room walkthrough rather than a broken one — and the options
+       panel's "People" row drops out on its own. viewer.js decides, from
+       ?people=0, whether this script is ever fetched; see js/viewer.js.
+       Nothing in the copied modules is edited to achieve this. -->
+  <script>
+    (function () {
+      var noPeople = new URLSearchParams(location.search).get("people") === "0";
+      if (noPeople) return;
+      // document.write keeps crowd.js ahead of simulate.js in load order,
+      // which a dynamically-appended <script> would not guarantee.
+      document.write('<script src="js\/crowd.js"><\/script>');
+    })();
+  </script>
+
+  <script src="js/simulate.js"></script>
+  <script src="js/plan2d.js"></script>
+  <script src="js/viewer.js"></script>
+</body>
+</html>
