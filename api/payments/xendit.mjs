@@ -43,7 +43,7 @@ export default {
 
         const description = cleanText(body.description, `Downpayment for ${bookingId}`);
         const lineItemName = cleanText(body.lineItemName, "Hapag Pamana downpayment");
-        const customer = customerJson(body, caller.uid);
+        const customer = customerJson(body, caller.uid, bookingId);
         const session = await xenditRequest("/sessions", "POST", {
           reference_id: bookingId,
           session_type: "PAY",
@@ -156,11 +156,13 @@ export function sessionJson(session) {
   };
 }
 
-export function customerJson(body, uid) {
+export function customerJson(body, uid, bookingId) {
   const name = cleanText(body.name, "Hapag Pamana customer");
   const parts = name.split(/\s+/).filter(Boolean);
   return {
-    reference_id: uid,
+    // Xendit requires customer.reference_id to be unique. The Firebase UID is
+    // stable across bookings, so pair it with this booking's ID instead.
+    reference_id: `${uid}${bookingId}`.replace(/[^A-Za-z0-9]/g, ""),
     type: "INDIVIDUAL",
     ...(body.email ? { email: cleanText(body.email, "") } : {}),
     ...(body.phone ? { mobile_number: cleanText(body.phone, "") } : {}),

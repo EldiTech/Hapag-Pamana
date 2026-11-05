@@ -87,3 +87,6 @@ node_modules/
 
 # Dev login page with generated custom token
 **/dev-login.html
+
+.vercel
+.env*

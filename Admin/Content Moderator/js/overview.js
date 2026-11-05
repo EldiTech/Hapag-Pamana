@@ -97,7 +97,6 @@
         </div>
         <div class="banner-actions">
           <a class="btn btn-primary btn-sm" href="products.html"><span class="ic">${HP.icon("plus")}</span>Add product</a>
-          <button class="btn btn-ghost btn-sm" id="ovExport"><span class="ic">${HP.icon("download")}</span>Export as JSON</button>
         </div>
       </section>`;
 
@@ -201,7 +200,6 @@
     HP.shell.paint(bentoEl,
       banner + productsTile + packagesTile + categoriesTile + setupsTile + featuredTile + configTile);
 
-    document.getElementById("ovExport").addEventListener("click", HP.exportData);
     if (!animated) { animated = true; animate(); }
   }
 

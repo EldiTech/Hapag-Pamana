@@ -373,7 +373,9 @@
         <small>${HP.esc(sub || "On the menu")}</small>
       </span>
       ${recipeByName(p.name)
-        ? `<span class="badge badge-ok"><span class="dot"></span>In the book</span>`
+        ? (recipeByName(p.name).draft
+          ? `<span class="badge badge-warn">Draft — review</span>`
+          : `<span class="badge badge-ok"><span class="dot"></span>In the book</span>`)
         : `<span class="badge badge-cat">No recipe yet</span>`}
     </button>`;
   }
@@ -392,9 +394,11 @@
           Use a custom name instead.</p>
       </div>`,
       `<button class="btn btn-ghost" data-close>Cancel</button>
+       <button class="btn btn-ghost" id="fillPantry"><span class="ic">${HP.icon("basket")}</span>Fill missing from pantry</button>
        <button class="btn btn-ghost" id="dishCustom"><span class="ic">${HP.icon("pencil")}</span>Write a custom name</button>`);
 
     document.getElementById("dishCustom").addEventListener("click", () => openEditor(null));
+    document.getElementById("fillPantry").addEventListener("click", fillMissingFromPantry);
 
     const listEl = document.getElementById("dishPickList");
     const searchEl = document.getElementById("dishPickSearch");
@@ -424,6 +428,113 @@
       listEl.innerHTML = `<p class="dish-pick-empty">Couldn't fetch the menu — check your connection and try again.</p>`;
     });
     searchEl.addEventListener("input", paint);
+  }
+
+  function pantryPick(items, patterns, category) {
+    const matches = items.filter((it) => patterns.some((p) => p.test(String(it.name || ""))));
+    return matches.sort((a, b) => Number(b.qty || 0) - Number(a.qty || 0))[0]
+      || items.find((it) => it.category === category)
+      || null;
+  }
+
+  function starterRecipe(dish, pantry) {
+    const name = String(dish.name || "");
+    const lower = name.toLowerCase();
+    const ingredients = [];
+    const add = (item, qty, fallbackName, fallbackUnit = "kg") => {
+      const source = item || { name: fallbackName, unit: fallbackUnit };
+      const row = {
+        name: source.name, qty, unit: source.unit || fallbackUnit,
+        packSize: 1, packUnit: source.unit || fallbackUnit,
+      };
+      const price = Number(source.price);
+      if (Number.isFinite(price) && price > 0) row.packCost = price;
+      row.cost = lineCost(row.qty, row.packCost, row.packSize, row.unit, row.packUnit);
+      ingredients.push(row);
+    };
+    const pick = (patterns, category) => pantryPick(pantry, patterns, category);
+
+    if (/pasta|macaroni|lasagna|noodle|pancit|spaghetti|linguine|fettuccine|scampi|aglio|bolognese/i.test(lower)) {
+      const pasta = lower.includes("squid ink")
+        ? pick([/squid ink pasta/i], "Pasta")
+        : lower.includes("lasagna")
+          ? pick([/lasagna pasta/i], "Pasta")
+          : lower.includes("macaroni")
+            ? pick([/elbow macaroni/i], "Pasta")
+            : lower.includes("pancit canton")
+              ? pick([/^pancit canton$/i], "Pasta")
+              : lower.includes("pancit")
+                ? pick([/sotanghon|pancit canton/i], "Pasta")
+                : lower.includes("fettuccine")
+                  ? pick([/fettuccine/i], "Pasta")
+                  : pick([/spaghetti/i], "Pasta");
+      add(pasta, 2, "Pasta");
+    } else if (/rice|paella|chahan/i.test(lower)) {
+      add(pick([/rice/i], "Rice & Egg"), 2, "Rice");
+    } else if (/dessert|fruit|lychee|halo|buko|saging|coffee jelly|creme brulee|kakanin|con yelo/i.test(lower)) {
+      add(pick([/lychee/i], "Canned Goods"), 2, "Fruit", "cans");
+      add(pick([/milk|condensed|evaporated/i], "Condiments"), 1, "Milk", "cans");
+    } else if (/vegetable|salad|potato|chop suey|pinakbet|soup|suey|pumpkin|suam/i.test(lower)) {
+      add(pick([/potato|carrot/i], "Vegetables"), 2, "Vegetables");
+      add(pick([/lettuce|cabbage|cucumber|french beans|kangkong|petchay/i], "Vegetables"), 1, "Vegetables");
+    } else if (/chicken|manok/i.test(lower)) {
+      add(pick([/chicken/i], "Frozen Chicken"), 2, "Chicken");
+    } else if (/beef|morcon|callos|caldereta|stroganoff|salpicao|shepherd|roast beef/i.test(lower)) {
+      add(pick([/beef|litson baka/i], "Frozen Beef"), 2, "Beef");
+    } else if (/pork|lechon|bagnet|bacon|ribs|embutido|longganisa|tocino|siomai/i.test(lower)) {
+      add(pick([/pork|meatloaf|bacon|tocino|longganisa/i], "Frozen Pork"), 2, "Pork");
+    } else if (/seafood|shrimp|hipon|squid|calamari|fish|salmon|marlin|tanigue|pampano|tuna|halaan|crab/i.test(lower)) {
+      add(pick([/shrimp|hipon|squid|fish|salmon|mahi|crab|tahong|dory/i], "Frozen Seafoods"), 2, "Seafood");
+    } else {
+      add(pick([/chicken|pork|beef|fish|shrimp/i], "Other"), 1, "Main ingredient");
+    }
+
+    add(pick([/onion/i], "Vegetables"), 0.5, "Onion");
+    add(pick([/garlic|pepper/i], "Powders"), 0.05, "Seasoning");
+    add(pick([/soy sauce|oyster sauce|worcestershire/i], "Condiments"), 0.1, "Seasoning");
+    if (/pasta|macaroni|lasagna|cheese|parmigiana|sandwich/i.test(lower)) {
+      add(pick([/cheese|mozzarella/i], "Dairy & eggs"), 1, "Cheese", "bars");
+    }
+    return {
+      name,
+      portions: 10,
+      remarks: "Auto-filled pantry draft. Review ingredients and quantities before using the Prep Board.",
+      ingredients,
+      totalCost: ingredients.reduce((sum, i) => sum + (i.cost || 0), 0),
+      draft: true,
+      autoFilledFromPantry: true,
+      source: "pantry-auto-fill",
+    };
+  }
+
+  async function fillMissingFromPantry() {
+    if (!products || !products.length) return;
+    const missing = products.filter((p) => !recipeByName(p.name));
+    if (!missing.length) {
+      HP.toast("All menu dishes already have recipes.", "warn");
+      return;
+    }
+    const btn = document.getElementById("fillPantry");
+    if (btn) { btn.disabled = true; btn.textContent = "Filling…"; }
+    try {
+      const snap = await db.collection("pantry").get();
+      const pantry = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const batch = db.batch();
+      missing.forEach((dish) => {
+        batch.set(db.collection("recipes").doc(), {
+          ...starterRecipe(dish, pantry),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedBy: (HP.FB && HP.FB.auth.currentUser) ? HP.FB.auth.currentUser.uid : null,
+        });
+      });
+      await batch.commit();
+      HP.toast(`${missing.length} pantry-based drafts added. Review before planning orders.`);
+      HP.closeModal();
+    } catch (e) {
+      console.error(e);
+      HP.toast("Couldn't fill recipes from the pantry — check access and try again.", "danger");
+      if (btn) { btn.disabled = false; btn.textContent = "Fill missing from pantry"; }
+    }
   }
 
   /* ── The recipe editor (mirrors the costing sheet) ────────────────────── */

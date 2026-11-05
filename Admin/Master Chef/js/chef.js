@@ -626,9 +626,12 @@
       const items = saved.length ? saved : scaledItems(recipe, servings);
       return sectionHTML(d.name, d.course, d.pax, items, {
         canReload: true,
-        note: HP.esc(saved.length
-          ? `Saved amounts — “Rescale” re-applies the recipe ×${k} (${base} portions → ${servings || "?"} pax).`
-          : `Recipe ×${k} — ${base} portions rescaled to ${servings || "?"} pax.`),
+        note: HP.esc(recipe.draft
+          ? `Pantry draft — review ingredients and quantities before issuing. Recipe ×${k} (${base} portions → ${servings || "?"} pax).`
+          : (saved.length
+            ? `Saved amounts — “Rescale” re-applies the recipe ×${k} (${base} portions → ${servings || "?"} pax).`
+            : `Recipe ×${k} — ${base} portions rescaled to ${servings || "?"} pax.`)),
+        noteWarn: !!recipe.draft,
         checkoff: true, done: doneSet.has(d.name),
       });
     };
@@ -729,14 +732,13 @@
     sheet.addEventListener("change", (e) => {
       const box = e.target.closest(".dish-done");
       if (!box) return;
-      setDishDone(o, box.dataset.dish, box.checked, saveCtx, box);
+      setDishDone(o, box.dataset.dish, box.checked, box);
     });
   }
 
-  /* Persist one dish's prepped state onto the plan doc. Re-reads the fresh
-     updatedAt into the open sheet's conflict context so the chef's own
-     check-offs never trip the overwrite warning. */
-  async function setDishDone(o, dish, done, ctx, box) {
+  /* Persist event-day progress without changing the ingredient-plan version.
+     Finance uses updatedAt to detect recipe/quantity changes. */
+  async function setDishDone(o, dish, done, box) {
     const ref = db.collection("prepPlans").doc(o.id);
     try {
       await ref.set({
@@ -744,13 +746,9 @@
         doneDishes: done
           ? firebase.firestore.FieldValue.arrayUnion(dish)
           : firebase.firestore.FieldValue.arrayRemove(dish),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedBy: HP.FB && HP.FB.auth.currentUser ? HP.FB.auth.currentUser.uid : null,
+        doneUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        doneUpdatedBy: HP.FB && HP.FB.auth.currentUser ? HP.FB.auth.currentUser.uid : null,
       }, { merge: true });
-      if (ctx) {
-        const now = await ref.get();
-        ctx.openedAt = ts(now.exists ? now.data().updatedAt : null);
-      }
     } catch (e) {
       console.error(e);
       if (box) box.checked = !done; // the flip didn't save — put it back

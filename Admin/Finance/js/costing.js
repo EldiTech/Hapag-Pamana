@@ -57,6 +57,8 @@
   let unsubOrders = null;
   let unsubPlans = () => {};
   let unsubCostings = () => {};
+  let unsubPantry = () => {};
+  let pantryItems = [];
   let watchedSig = null;     // the id set the scoped listeners cover
 
   const { ts, money, money0, dueLabel, daysUntil, eventMs } = F;
@@ -87,6 +89,13 @@
         : "Couldn't reach the database. Check your connection and reload.");
       if (denied(e)) HP.toast("Database access denied — update your Firestore rules.", "danger");
     };
+
+    // Pantry prices complete missing recipe prices when finance opens a sheet.
+    // This never edits the kitchen plan; it only builds the costing snapshot.
+    unsubPantry = db.collection("pantry").onSnapshot((snap) => {
+      pantryItems = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      renderAll();
+    }, (e) => console.warn("HapagPamana: pantry auto-cost unavailable —", e));
 
     // Live stream #1 — the confirmed orders. An order the manager completes or
     // declines leaves this query, and with it the board; its costing lives on
@@ -124,7 +133,7 @@
   }
   window.addEventListener("beforeunload", () => {
     if (unsubOrders) unsubOrders();
-    unsubPlans(); unsubCostings();
+    unsubPlans(); unsubCostings(); unsubPantry();
   });
 
   /* ── Vocabulary ──────────────────────────────────────────────────────────── */
@@ -134,6 +143,57 @@
 
   const planOf = (o) => plans.get(o.id) || null;
   const costingOf = (o) => costings.get(o.id) || null;
+
+  const nameKey = (v) => String(v || "").trim().toLowerCase()
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+  const unitKey = (v) => String(v || "").trim().toLowerCase().replace(/\s+/g, "");
+  const unitFamily = (u) => {
+    const k = unitKey(u);
+    if (k === "g" || k === "kg") return "mass";
+    if (k === "ml" || k === "l") return "volume";
+    if (["pc", "pcs", "piece", "pieces", "pack", "packs", "can", "cans", "bottle", "bottles", "tray", "trays", "bundle", "bundles", "sack", "sacks"].includes(k)) return "count";
+    return "";
+  };
+  const unitFactor = (u) => ({ g: 1, kg: 1000, ml: 1, l: 1000 }[unitKey(u)] || 1);
+  function unitRatio(from, to) {
+    const a = unitKey(from), b = unitKey(to);
+    if (a === b || (unitFamily(a) === "count" && unitFamily(b) === "count")) return 1;
+    if (unitFamily(a) && unitFamily(a) === unitFamily(b) && unitFamily(a) !== "count") {
+      return unitFactor(a) / unitFactor(b);
+    }
+    return null;
+  }
+  function autoCostItems(items) {
+    const byName = new Map();
+    pantryItems.forEach((it) => {
+      const key = nameKey(it.name);
+      if (key && Number(it.price) > 0 && !byName.has(key)) byName.set(key, it);
+    });
+    return (Array.isArray(items) ? items : []).map((it) => {
+      const qty = Number(it.qty);
+      let unitCost = Number(it.unitCost);
+      let cost = Number(it.cost);
+      let changed = false;
+      if (!(cost > 0) && unitCost > 0 && qty > 0) {
+        cost = Math.ceil(qty * unitCost);
+        changed = cost > 0;
+      }
+      if (!(cost > 0)) {
+        const pantry = byName.get(nameKey(it.ingredient));
+        const ratio = pantry && unitRatio(pantry.unit, it.unit);
+        if (pantry && ratio !== null && qty > 0) {
+          unitCost = Number(pantry.price) / ratio;
+          cost = Math.ceil(qty * unitCost);
+          changed = cost > 0;
+        }
+      }
+      return changed ? { ...it, unitCost, cost, autoCosted: true } : it;
+    });
+  }
+  const planForCosting = (plan) => plan
+    ? { ...plan, items: autoCostItems(plan.items) }
+    : plan;
 
   /* Where an order stands with finance. `waiting` is read off the kitchen's
      plan rather than stored: until the chef marks it ready there is nothing to
@@ -160,7 +220,8 @@
   // What a costing would release: the priced ingredients on the kitchen's list.
   function ingredientTotalsOf(o) {
     const c = costingOf(o);
-    const p = planOf(o);
+    const p = c && ["approved", "released"].includes(c.status) && !isStale(o)
+      ? planOf(o) : planForCosting(planOf(o));
     // A released costing answers from its own snapshot — that's the figure the
     // slip carries, and the plan may since have moved or been deleted.
     if (c && c.status === "released") {
@@ -377,7 +438,7 @@
           <td>${HP.esc(it.ingredient)}</td>
           <td>${it.qty === 0 || it.qty ? HP.esc(String(it.qty)) : "—"}</td>
           <td>${HP.esc(it.unit || "")}</td>
-          <td>${F.isPriced(it) ? HP.esc(money(it.cost)) : `<span class="cost-noprice" title="The kitchen's recipe carries no pack price for this ingredient">no price</span>`}</td>
+          <td>${F.isPriced(it) ? HP.esc(money(it.cost)) : `<span class="cost-noprice" title="No matching pantry or recipe price">no price</span>`}</td>
         </tr>`).join("")}
       </tbody>`).join("");
 
@@ -385,6 +446,7 @@
       <h4>The kitchen's list</h4>
       <p class="plan-hint">Written by the Master Chef on the prep board — amounts and
         prices are the kitchen's to change, not finance's.</p>
+      <p class="plan-hint">Pantry prices auto-fill missing amounts for this costing only.</p>
       <table class="cost-table">
         <thead><tr><th>Ingredient</th><th>Qty</th><th>Unit</th><th>Amount</th></tr></thead>
         ${bodies}
@@ -476,10 +538,12 @@
   }
 
   function openCosting(o) {
-    const plan = planOf(o);
+    const rawPlan = planOf(o);
     const costing = costingOf(o);
     const state = stateOf(o);
     const stale = isStale(o);
+    const plan = costing && ["approved", "released"].includes(costing.status) && !stale
+      ? rawPlan : planForCosting(rawPlan);
     const planMeta = plan
       ? (plan.status === "ready"
           ? { label: "Plan ready", badge: "badge-ok" }

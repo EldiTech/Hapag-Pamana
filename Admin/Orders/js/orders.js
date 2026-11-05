@@ -164,7 +164,7 @@
   const typeOf = (o) => (String(o.bookingType || "").toLowerCase() === "food pack" ? "Food Pack" : "Catering");
 
   /* ── The downpayment ──────────────────────────────────────────────────────
-     The app collects 50% of an order's total through PayMongo before the
+     The app collects 50% of an order's total through Xendit before the
      client is told their date is held, and writes the result back onto the
      booking. It matters here because confirming an order puts it on the
      Master Chef's prep board — so an order that hasn't paid its downpayment
@@ -184,12 +184,12 @@
   const paymentMeta = (o) => PAYMENT_META[paymentOf(o)] || null;
   // True only for an order the gate asked to pay, which hasn't. This is what
   // locks confirmation (see confirmOrder) — `quote_needed` and the pre-gate
-  // `none` never went through PayMongo, so there's nothing to wait for on them.
+  // `none` never went through Xendit, so there's nothing to wait for on them.
   const isUnpaid = (o) => paymentOf(o) === "awaiting";
   const isPaid = (o) => paymentOf(o) === "paid";
   /* A downpayment the order manager took by hand — cash over the counter, a
      bank transfer, a direct GCash — and recorded here (see recordPayment).
-     PayMongo never saw it, so the sheet says who did instead of showing a
+     Xendit never saw it, so the sheet says who did instead of showing a
      payment reference that doesn't exist in the dashboard. */
   const isOfflinePay = (o) => String(o.paymentSource || "") === "offline";
   const takenByOf = (o) => String(o.paymentTakenByName || "").trim();
@@ -261,7 +261,7 @@
     // hunting for "Rustic Garden Buffet" in the recipe book.
     "setupStyle",
     // The downpayment, which has its own section (see paymentHTML). The two
-    // checkout keys are PayMongo plumbing the app uses to resume an abandoned
+    // checkout keys are Xendit plumbing the app uses to resume an abandoned
     // payment — of no use on a booking sheet, so they're hidden rather than
     // dumped into "More details".
     "paymentStatus", "paymentTotal", "paymentDue", "paymentPaid", "paidAt",
@@ -373,8 +373,8 @@
     return `<span class="badge ${m.badge}" title="${HP.esc(
       m.chase ? "This order's downpayment hasn't been paid yet — it can't be confirmed until it has." :
       isPaid(o) ? (isOfflinePay(o)
-        ? `Taken outside PayMongo and recorded here${taken ? " by " + taken : ""}.`
-        : "The client has paid the 50% downpayment through PayMongo.") :
+         ? `Taken outside Xendit and recorded here${taken ? " by " + taken : ""}.`
+         : "The client has paid the 50% downpayment through Xendit.") :
       "No package price to halve — arrange the downpayment with the client.")}">${
       HP.esc(m.label)}${amount ? " · " + HP.esc(amount) : ""}</span>`;
   }
@@ -637,11 +637,11 @@
     });
   }
 
-  /* Records a downpayment the order manager took outside PayMongo. It writes the
-     same keys the app's PayMongo flow writes — so the client's Order Tracking
+  /* Records a downpayment the order manager took outside Xendit. It writes the
+     same keys the app's Xendit flow writes — so the client's Order Tracking
      reads "Downpayment received" either way — plus `paymentSource: "offline"`
      and who took it, which is what keeps the two apart on the sheet and in any
-     later reconciliation against the PayMongo dashboard. */
+     later reconciliation against the Xendit dashboard. */
   function recordPaymentModal(o) {
     const due = Number(o.paymentDue) || 0;
     const METHODS = ["Cash", "Bank transfer", "GCash (direct)", "Maya (direct)", "Cheque"];
@@ -690,7 +690,7 @@
     const btn = document.getElementById("paySave");
     if (btn) btn.disabled = true;
     const me = HP.FB && HP.FB.auth.currentUser ? HP.FB.auth.currentUser.uid : null;
-    // The same keys the app's PayMongo flow writes, so the client's Order
+    // The same keys the app's Xendit flow writes, so the client's Order
     // Tracking reads this as a settled downpayment either way.
     const paid = {
       paymentStatus: "paid",
@@ -1235,12 +1235,12 @@
       if (ts(o.paidAt)) facts.push(["Settled", fmtDateTime(ts(o.paidAt))]);
       if (val(o, "paymentMethod")) facts.push(["Paid with", val(o, "paymentMethod")]);
       if (offline && takenByOf(o)) facts.push(["Recorded by", takenByOf(o)]);
-      // PayMongo's own payment id, or — on a payment taken by hand — whatever
+       // Xendit's own payment id, or — on a payment taken by hand — whatever
       // reference the manager wrote down. Labelled for which it is: calling a
-      // receipt number a "PayMongo ref" would send the next person hunting for
+       // receipt number a "Xendit ref" would send the next person hunting for
       // it in a dashboard it was never in.
       if (val(o, "paymentRef")) {
-        facts.push([offline ? "Reference" : "PayMongo ref", val(o, "paymentRef")]);
+         facts.push([offline ? "Reference" : "Xendit ref", val(o, "paymentRef")]);
       }
     } else if (isUnpaid(o)) {
       if (due) facts.push(["Downpayment due", due]);
@@ -1249,7 +1249,7 @@
       <h4>The downpayment ${paymentBadge(o)}</h4>
       ${m.chase ? `<p class="modal-text"><strong>This order can't be confirmed until the downpayment is in.</strong> The client can settle it themselves from Order Tracking in the app — or, if you've already taken it in cash or by transfer, use <em>Record payment</em> below.</p>` : ""}
       ${paymentOf(o) === "quote_needed" ? `<p class="modal-text">This order was placed without a priced package, so the app had nothing to halve. Send the client a quotation and arrange the downpayment with them — then record it below.</p>` : ""}
-      ${offline ? `<p class="modal-text">Taken outside PayMongo and recorded here, so there's nothing to match against the PayMongo dashboard for this one.</p>` : ""}
+       ${offline ? `<p class="modal-text">Taken outside Xendit and recorded here, so there's nothing to match against the Xendit dashboard for this one.</p>` : ""}
       ${facts.length ? `<dl class="order-facts">${facts.map(([k, v]) => `
         <div class="order-fact"><dt>${HP.esc(k)}</dt><dd>${HP.esc(v)}</dd></div>`).join("")}</dl>` : ""}
     </section>`;
@@ -1349,7 +1349,7 @@
       entries.push({
         label: isOfflinePay(o) ? "Downpayment recorded" : "Downpayment paid",
         at: paidMs,
-        by: isOfflinePay(o) ? takenByOf(o) : "PayMongo",
+        by: isOfflinePay(o) ? takenByOf(o) : "Xendit",
       });
     }
     // The kitchen's and logistics' own milestones, woven in by time so the

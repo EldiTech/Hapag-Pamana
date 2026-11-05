@@ -29,12 +29,11 @@
 
   const db = HP.ONLINE ? firebase.firestore() : null;
 
-  // The 9 real assignable departments — admin/owner excluded here (minting
-  // another owner/admin from this form isn't the job of "assign a department").
+  // Assignable departments, including owner accounts. Admin stays excluded.
   const DEPARTMENTS = [
     "content_moderator", "marketing_admin", "master_chef", "production_manager",
     "purchasing_staff", "stock_clerk", "team_leader", "logistics",
-    "layout_designer", "catering_equipment",
+    "layout_designer", "catering_equipment", "owner",
   ];
   const label = (role) => HP.ROLE_LABEL[role] || role;
 
