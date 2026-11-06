@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --cream: #f6efdf;
+        --surface: #fcf8ef;
+        --espresso: #2a1a0b;
+        --brown: #503413;
+        --soft: #7a5630;
+        --olive: #44462b;
+        --gold: #af854a;
+        --gold-deep: #7e5e2b;
+        --hairline: rgba(80, 52, 19, 0.16);
+        --serif: Georgia, "Times New Roman", serif;
+        --sans: Arial, Helvetica, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--espresso);
+      }
+      body { font-family: var(--sans); }
+      #root {
+        width: 1080px;
+        height: 1920px;
+        position: relative;
+        overflow: hidden;
+        background: var(--espresso);
+      }
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 94px 76px;
+        opacity: 0;
+      }
+      .scene[data-start="0"] { opacity: 1; visibility: visible; }
+      .scene.light { background: var(--cream); color: var(--brown); }
+      .scene.dark { background: var(--espresso); color: var(--cream); }
+      .scene.olive { background: var(--olive); color: var(--cream); }
+      .kicker {
+        color: var(--gold);
+        font: 700 23px/1.1 var(--sans);
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        text-align: center;
+      }
+      .headline {
+        margin-top: 28px;
+        font: 600 94px/0.96 var(--serif);
+        letter-spacing: -0.045em;
+        text-align: center;
+      }
+      .subhead {
+        max-width: 760px;
+        margin-top: 28px;
+        color: var(--soft);
+        font: 400 31px/1.28 var(--sans);
+        text-align: center;
+      }
+      .dark .subhead, .olive .subhead { color: #d9c9a9; }
+      .logo {
+        width: 640px;
+        height: 640px;
+        object-fit: contain;
+        margin-bottom: 34px;
+        filter: drop-shadow(0 20px 40px rgba(0,0,0,0.22));
+      }
+      .tagline {
+        margin-top: 28px;
+        color: var(--gold);
+        font: 700 27px/1.2 var(--sans);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        text-align: center;
+      }
+      .phone {
+        width: 770px;
+        height: 1410px;
+        border: 17px solid #1d140c;
+        border-radius: 66px;
+        background: var(--surface);
+        box-shadow: 0 35px 80px rgba(0,0,0,0.34), inset 0 0 0 2px rgba(255,255,255,0.12);
+        overflow: hidden;
+        position: relative;
+        transform: translateY(42px) rotate(-1.8deg);
+      }
+      .phone::before {
+        content: "";
+        position: absolute;
+        top: 17px;
+        left: 50%;
+        width: 176px;
+        height: 25px;
+        border-radius: 20px;
+        background: #1d140c;
+        transform: translateX(-50%);
+        z-index: 2;
+      }
+      .screen {
+        height: 100%;
+        padding: 82px 42px 35px;
+        color: var(--brown);
+        background: var(--cream);
+      }
+      .screen.dark-screen { background: var(--espresso); color: var(--cream); }
+      .appbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; }
+      .appbar .wordmark { font: 600 34px/1 var(--serif); }
+      .appbar .menu-icon { width: 42px; height: 30px; border-top: 4px solid currentColor; border-bottom: 4px solid currentColor; position: relative; }
+      .appbar .menu-icon::after { content: ""; position: absolute; left: 0; right: 0; top: 11px; border-top: 4px solid currentColor; }
+      .hero-card { border-radius: 28px; padding: 34px; min-height: 310px; background: var(--brown); color: var(--cream); display: flex; flex-direction: column; justify-content: end; }
+      .hero-card h3 { margin: 0; max-width: 500px; font: 600 48px/0.98 var(--serif); }
+      .hero-card p { margin: 18px 0 0; color: #d9c9a9; font: 400 22px/1.3 var(--sans); }
+      .section-label { margin: 34px 0 18px; color: var(--gold-deep); font: 700 20px/1 var(--sans); letter-spacing: 0.18em; }
+      .button { display: inline-flex; align-items: center; justify-content: center; min-height: 68px; border-radius: 16px; background: var(--brown); color: var(--cream); font: 700 22px/1 var(--sans); letter-spacing: 0.08em; }
+      .button.alt { background: transparent; border: 2px solid var(--hairline); color: var(--brown); }
+      .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .filter-row { display: flex; gap: 12px; flex-wrap: wrap; }
+      .chip { padding: 16px 20px; border-radius: 99px; background: #e9ddc6; color: var(--brown); font: 700 18px/1 var(--sans); }
+      .chip.active { background: var(--brown); color: var(--cream); }
+      .menu-card { display: flex; align-items: center; gap: 20px; padding: 22px 0; border-bottom: 2px solid var(--hairline); }
+      .dish-art { width: 96px; height: 96px; flex: 0 0 auto; border-radius: 24px; background: #d6c29d; position: relative; }
+      .dish-art::after { content: ""; position: absolute; width: 50px; height: 50px; border-radius: 50%; left: 23px; top: 23px; border: 8px solid var(--olive); }
+      .menu-card h4 { margin: 0; font: 600 27px/1.08 var(--serif); }
+      .menu-card p { margin: 7px 0 0; color: var(--soft); font: 400 18px/1.2 var(--sans); }
+      .stepper { display: flex; gap: 10px; margin: 20px 0 30px; }
+      .stepper span { height: 9px; flex: 1; border-radius: 10px; background: #e1d4bd; }
+      .stepper span.active { background: var(--gold); }
+      .form-card { padding: 24px 0; border-bottom: 2px solid var(--hairline); }
+      .form-card .small { color: var(--soft); font: 700 18px/1.1 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; }
+      .form-card .value { margin-top: 11px; font: 600 31px/1.05 var(--serif); }
+      .tracking-card { padding: 28px; border-radius: 26px; background: #f0e5d2; margin-bottom: 18px; }
+      .tracking-card .eyebrow { color: var(--gold-deep); font: 700 18px/1 var(--sans); letter-spacing: 0.16em; }
+      .tracking-card h3 { margin: 15px 0 0; font: 600 42px/1 var(--serif); }
+      .timeline { margin-top: 35px; border-left: 4px solid var(--gold); padding-left: 30px; }
+      .timeline div { margin-bottom: 30px; }
+      .timeline strong { display: block; font: 600 26px/1.1 var(--serif); }
+      .timeline span { display: block; margin-top: 6px; color: var(--soft); font: 400 18px/1.3 var(--sans); }
+      .gabay-mark { width: 118px; height: 118px; margin-bottom: 28px; padding: 22px; border-radius: 50%; background: rgba(246,239,223,0.12); }
+      .question { width: 690px; margin-top: 52px; padding: 25px 30px; border: 2px solid rgba(246,239,223,0.35); border-radius: 24px; color: #eadfc8; font: 400 25px/1.25 var(--sans); }
+      .answer { width: 690px; margin-top: 18px; padding: 28px 30px; border-radius: 24px; background: var(--cream); color: var(--brown); font: 600 30px/1.12 var(--serif); }
+      .end-lockup { width: 440px; height: 440px; object-fit: contain; margin-bottom: 32px; }
+      .cta { margin-top: 40px; padding: 22px 36px; border-radius: 99px; background: var(--gold); color: var(--espresso); font: 700 23px/1 var(--sans); letter-spacing: 0.1em; }
+      .micro { position: absolute; bottom: 34px; left: 0; right: 0; text-align: center; color: rgba(246,239,223,0.6); font: 700 16px/1 var(--sans); letter-spacing: 0.18em; text-transform: uppercase; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="25" data-width="1080" data-height="1920">
+      <audio id="narration" src="narration.wav" data-start="0" data-duration="25" data-has-audio="true"></audio>
+
+      <section id="scene-hook" class="scene dark clip" data-start="0" data-duration="3">
+        <img class="logo" src="assets/HapagPamana.png" alt="HapagPamana Catering Services logo" />
+        <div class="tagline">Lutong Pinoy, Pamanang Sarap</div>
+        <div class="micro">HapagPamana Catering Services</div>
+      </section>
+
+      <section id="scene-home" class="scene light clip" data-start="3" data-duration="4">
+        <div class="kicker">A thoughtful way to celebrate</div>
+        <div class="headline">Catering,<br />with meaning.</div>
+        <div class="phone">
+          <div class="screen">
+            <div class="appbar"><span class="wordmark">HapagPamana</span><span class="menu-icon"></span></div>
+            <div class="hero-card"><h3>Lutong Pinoy,<br />Pamanang Sarap</h3><p>Plan an occasion worth remembering.</p></div>
+            <div class="section-label">START HERE</div>
+            <div class="button-row"><div class="button">BROWSE THE MENU</div><div class="button alt">BOOK US NOW</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-menu" class="scene light clip" data-start="7" data-duration="4">
+        <div class="kicker">Explore what’s prepared</div>
+        <div class="headline">Find your<br />flavour.</div>
+        <div class="phone">
+          <div class="screen">
+            <div class="appbar"><span class="wordmark">MENU</span><span class="menu-icon"></span></div>
+            <div class="section-label">MENU FILTER</div>
+            <div class="form-card"><div class="small">Select Category</div><div class="value">All Categories</div></div>
+            <div class="filter-row" style="margin-top:22px"><span class="chip active">All</span><span class="chip">Mains</span><span class="chip">Desserts</span></div>
+            <div class="section-label">THE MENU</div>
+            <div class="menu-card"><span class="dish-art"></span><span><h4>Browse the menu</h4><p>See what’s available today.</p></span></div>
+            <div class="menu-card"><span class="dish-art"></span><span><h4>Allergen Summary</h4><p>Choose with confidence.</p></span></div>
+            <div class="menu-card"><span class="dish-art"></span><span><h4>Your Dietary Preference</h4><p>Make it yours.</p></span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-booking" class="scene olive clip" data-start="11" data-duration="5">
+        <div class="kicker">Book us now</div>
+        <div class="headline">Make room<br />for everyone.</div>
+        <div class="phone">
+          <div class="screen">
+            <div class="appbar"><span class="wordmark">BOOK US NOW</span><span class="menu-icon"></span></div>
+            <div class="stepper"><span class="active"></span><span class="active"></span><span></span><span></span></div>
+            <div class="section-label">YOUR EVENT</div>
+            <div class="form-card"><div class="small">Tell us the occasion</div><div class="value">A celebration worth sharing</div></div>
+            <div class="form-card"><div class="small">Venue</div><div class="value">Choose your venue</div></div>
+            <div class="form-card"><div class="small">Details</div><div class="value">Add-ons</div></div>
+            <div class="button" style="margin-top:50px; width:100%">CONTINUE BOOKING</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-track" class="scene light clip" data-start="16" data-duration="5">
+        <div class="kicker">Everything in view</div>
+        <div class="headline">From plan<br />to paper trail.</div>
+        <div class="phone">
+          <div class="screen">
+            <div class="appbar"><span class="wordmark">Order Tracking</span><span class="menu-icon"></span></div>
+            <div class="tracking-card"><div class="eyebrow">THE EVENT</div><h3>Your celebration,<br />coming together.</h3></div>
+            <div class="timeline"><div><strong>VIEW 3D LAYOUT</strong><span>Walk through the space before the day.</span></div><div><strong>THE MENU</strong><span>Keep every course and add-on close.</span></div><div><strong>THE PAPER TRAIL</strong><span>Track your downpayment and balance.</span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-gabay" class="scene dark clip" data-start="21" data-duration="3.35">
+        <img class="gabay-mark" src="assets/Gabay.svg" alt="Gabay mark" />
+        <div class="kicker">Meet Gabay</div>
+        <div class="headline">Your catering<br />companion.</div>
+        <div class="question">What should I prepare for my event?</div>
+        <div class="answer">Let’s make it memorable.</div>
+      </section>
+
+      <section id="scene-outro" class="scene dark clip" data-start="24.35" data-duration="0.65">
+        <img class="end-lockup" src="assets/HapagPamana.png" alt="HapagPamana Catering Services logo" />
+        <div class="tagline">Lutong Pinoy, Pamanang Sarap</div>
+        <div class="cta">BOOK US NOW</div>
+      </section>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const scenes = [
+        { id: "#scene-hook", start: 0, end: 3 },
+        { id: "#scene-home", start: 3, end: 7 },
+        { id: "#scene-menu", start: 7, end: 11 },
+        { id: "#scene-booking", start: 11, end: 16 },
+        { id: "#scene-track", start: 16, end: 21 },
+        { id: "#scene-gabay", start: 21, end: 25 }
+      ];
+      scenes.forEach((scene, index) => {
+        const el = document.querySelector(scene.id);
+        const phone = el.querySelector(".phone");
+        const content = el.querySelectorAll(".kicker, .headline, .subhead, .tagline, .logo, .gabay-mark, .question, .answer, .cta, .end-lockup");
+        tl.set(el, { opacity: 1 }, scene.start);
+        if (phone) {
+          tl.fromTo(phone, { y: 90, rotate: index % 2 ? 1.8 : -1.8, scale: 0.96 }, { y: 42, rotate: index % 2 ? -1.2 : 1.2, scale: 1, duration: 0.65, ease: "power3.out" }, scene.start);
+        }
+        if (content.length) {
+          tl.fromTo(content, { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.42, stagger: 0.055, ease: "power2.out" }, scene.start + 0.12);
+        }
+        if (index < scenes.length - 1) {
+          tl.to(el, { opacity: 0, duration: 0.26, ease: "power2.in" }, scene.end - 0.26);
+        }
+      });
+      tl.set("#scene-outro", { opacity: 1 }, 24.35);
+      tl.fromTo("#scene-outro .end-lockup, #scene-outro .tagline, #scene-outro .cta", { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.08, ease: "power2.out" }, 24.45);
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
