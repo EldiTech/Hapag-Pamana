@@ -14,7 +14,7 @@ import '../../data/catering.dart';
 import '../../data/catering_repository.dart';
 import '../../data/customer_repository.dart';
 import '../../data/menu_category.dart';
-import '../../data/paymongo_config.dart';
+import '../../data/xendit_config.dart';
 import '../../data/product.dart';
 import '../../data/places_service.dart';
 import '../../data/product_repository.dart';
@@ -186,8 +186,8 @@ class _BookingPageState extends State<BookingPage> {
   /// Derived from [_validatedByStep] so a question added later is required by
   /// default; to let one through empty again, exclude it here.
   Set<String> get _required => {
-        for (final keys in _validatedByStep.values) ...keys,
-      };
+    for (final keys in _validatedByStep.values) ...keys,
+  };
 
   /// "Contains at least one actual letter" — keeps `...` and `12345` from
   /// passing for a venue or an occasion.
@@ -234,7 +234,7 @@ class _BookingPageState extends State<BookingPage> {
   /// True once the downpayment has cleared.
   bool _paid = false;
 
-  /// The PayMongo checkout page opened for this order, so a second run at the
+  /// The Xendit checkout page opened for this order, so a second run at the
   /// payment reuses it instead of opening another.
   String? _sessionId;
   String? _checkoutUrl;
@@ -299,9 +299,9 @@ class _BookingPageState extends State<BookingPage> {
   /// The whole wizard — the questions above, then the set-up step when there
   /// are setups to choose from.
   List<(String, String, String)> get _steps => [
-        ..._contentSteps,
-        if (_hasSetupStep) _setupStep,
-      ];
+    ..._contentSteps,
+    if (_hasSetupStep) _setupStep,
+  ];
 
   /// True once the moderator's setup gallery has arrived with something in it.
   /// Nothing published (or the read failed) means no set-up step: the wizard
@@ -364,20 +364,16 @@ class _BookingPageState extends State<BookingPage> {
       ..._fixedValidatedByStep,
       if (pages.isEmpty) base: const ['package'],
       for (var i = 0; i < pages.length; i++)
-        base + i: [
-          if (i == 0) 'package',
-          for (final c in pages[i]) c.key,
-        ],
+        base + i: [if (i == 0) 'package', for (final c in pages[i]) c.key],
       if (_hasSetupStep) _setupStepIndex: const ['setupStyle'],
     };
   }
 
-  TextEditingController _ctrl(String key) =>
-      _fields.putIfAbsent(key, () {
-        final c = TextEditingController();
-        c.addListener(_scheduleAutoSave);
-        return c;
-      });
+  TextEditingController _ctrl(String key) => _fields.putIfAbsent(key, () {
+    final c = TextEditingController();
+    c.addListener(_scheduleAutoSave);
+    return c;
+  });
 
   void _scheduleAutoSave() {
     if (!_initDone || _submitting || _submitted) return;
@@ -389,7 +385,8 @@ class _BookingPageState extends State<BookingPage> {
     if (_submitting || _submitted) return;
     if (!CustomerRepository().isSignedIn) return;
 
-    final hasContent = _step > 0 ||
+    final hasContent =
+        _step > 0 ||
         _addOns.isNotEmpty ||
         _fields.values.any((c) => c.text.trim().isNotEmpty);
     if (!hasContent) return;
@@ -462,15 +459,18 @@ class _BookingPageState extends State<BookingPage> {
       }
       // The phone number lives on the Firestore profile, so it arrives
       // async — fill only fields the member hasn't typed into meanwhile.
-      CustomerRepository().fetchCurrentCustomer().then((customer) {
-        if (!mounted || customer == null) return;
-        setState(() {
-          _fillIfEmpty('clientName', customer.name);
-          _fillIfEmpty('contactNumber', customer.phone);
-        });
-      }).catchError((_) {
-        // Offline / rules hiccup — the member just types it in themselves.
-      });
+      CustomerRepository()
+          .fetchCurrentCustomer()
+          .then((customer) {
+            if (!mounted || customer == null) return;
+            setState(() {
+              _fillIfEmpty('clientName', customer.name);
+              _fillIfEmpty('contactNumber', customer.phone);
+            });
+          })
+          .catchError((_) {
+            // Offline / rules hiccup — the member just types it in themselves.
+          });
     }
     // The live menu feeds the course pickers (shared app-wide listener, so
     // this doesn't re-download anything the Menu tab already has).
@@ -578,12 +578,12 @@ class _BookingPageState extends State<BookingPage> {
   /// may since have changed. An extra the moderator hasn't priced says so
   /// plainly rather than going out as a silent blank.
   List<String> get _addOnLines => [
-        for (final l in _addOns)
-          switch (_pricing.priceFor(l.dish)) {
-            final num rate => '${l.dish.name} × ${l.qty} — ${peso(rate)}/pax',
-            null => '${l.dish.name} × ${l.qty} — to be quoted',
-          },
-      ];
+    for (final l in _addOns)
+      switch (_pricing.priceFor(l.dish)) {
+        final num rate => '${l.dish.name} × ${l.qty} — ${peso(rate)}/pax',
+        null => '${l.dish.name} × ${l.qty} — to be quoted',
+      },
+  ];
 
   /// True once [_restoreAddOns] has run, so a resumed draft's extras are
   /// rebuilt exactly once — after that, an emptied [_addOns] genuinely means
@@ -733,15 +733,17 @@ class _BookingPageState extends State<BookingPage> {
                   key: const ValueKey('occasion-list'),
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('What are we celebrating?',
-                        style: AppTextStyles.title),
+                    Text(
+                      'What are we celebrating?',
+                      style: AppTextStyles.title,
+                    ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
                       allowOther
                           ? 'Pick the closest one. Nothing quite right? Choose '
-                              'Other and type it yourself.'
+                                'Other and type it yourself.'
                           : 'Hapag Serbisyo is offered strictly for these '
-                              'three functions.',
+                                'three functions.',
                       style: AppTextStyles.bodySmall,
                     ),
                     const SizedBox(height: AppSpacing.lg),
@@ -838,9 +840,8 @@ class _BookingPageState extends State<BookingPage> {
     final current = _ctrl('address').text.trim();
     final resolved = await Navigator.of(context).push<ResolvedAddress>(
       BrandPageRoute<ResolvedAddress>(
-        builder: (_) => AddressPickerPage(
-          initialAddress: current.isEmpty ? null : current,
-        ),
+        builder: (_) =>
+            AddressPickerPage(initialAddress: current.isEmpty ? null : current),
       ),
     );
     if (resolved == null || !mounted) return;
@@ -889,12 +890,12 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   static bool _isTimeKey(String key) => const {
-        'ingress',
-        'egress',
-        'functionStart',
-        'foodServing',
-        'programEnd',
-      }.contains(key);
+    'ingress',
+    'egress',
+    'functionStart',
+    'foodServing',
+    'programEnd',
+  }.contains(key);
 
   // ── Validation ────────────────────────────────────────────────────────────
   /// Every complaint against [step] — presence, then format, then the
@@ -1155,7 +1156,8 @@ class _BookingPageState extends State<BookingPage> {
           found['egress'] =
               'That leaves only ${_spanLabel(span)} to set up and pack out.';
         } else if (span != null && span > _maxSpanMins) {
-          found['egress'] = 'That\'s ${_spanLabel(span)} after ingress — '
+          found['egress'] =
+              'That\'s ${_spanLabel(span)} after ingress — '
               'please check the AM/PM.';
         }
       case 3:
@@ -1249,7 +1251,10 @@ class _BookingPageState extends State<BookingPage> {
   PackageDiscountInfo? get _packageDiscount {
     final pkg = widget.package;
     if (pkg == null || pkg.price <= 0) return null;
-    return PromoDiscountService.instance.getPackageDiscount(pkg.name, pkg.price);
+    return PromoDiscountService.instance.getPackageDiscount(
+      pkg.name,
+      pkg.price,
+    );
   }
 
   /// What the package alone comes to — its per-head discounted price times the headcount.
@@ -1274,7 +1279,11 @@ class _BookingPageState extends State<BookingPage> {
     for (final line in _addOns) {
       final rate = _pricing.priceFor(line.dish);
       if (rate != null) {
-        final disc = PromoDiscountService.instance.getAddOnDiscount(line.dish, rate, packageName: widget.package?.name);
+        final disc = PromoDiscountService.instance.getAddOnDiscount(
+          line.dish,
+          rate,
+          packageName: widget.package?.name,
+        );
         final effectiveRate = disc != null ? disc.discountedPrice : rate;
         sum += effectiveRate * line.qty;
       }
@@ -1289,7 +1298,11 @@ class _BookingPageState extends State<BookingPage> {
     for (final line in _addOns) {
       final rate = _pricing.priceFor(line.dish);
       if (rate != null) {
-        final disc = PromoDiscountService.instance.getAddOnDiscount(line.dish, rate, packageName: widget.package?.name);
+        final disc = PromoDiscountService.instance.getAddOnDiscount(
+          line.dish,
+          rate,
+          packageName: widget.package?.name,
+        );
         if (disc != null) {
           sum += disc.discountSavings * line.qty * _pax;
         }
@@ -1306,8 +1319,10 @@ class _BookingPageState extends State<BookingPage> {
 
   /// The chosen extras that carry no price, so the summary can say plainly
   /// which ones the team will still quote.
-  List<_AddOnLine> get _unpricedAddOns =>
-      [for (final l in _addOns) if (_pricing.priceFor(l.dish) == null) l];
+  List<_AddOnLine> get _unpricedAddOns => [
+    for (final l in _addOns)
+      if (_pricing.priceFor(l.dish) == null) l,
+  ];
 
   /// The order's full amount — the discounted package plus the discounted add-ons.
   num? get _orderTotal {
@@ -1341,8 +1356,8 @@ class _BookingPageState extends State<BookingPage> {
     setState(() => _submitting = true);
 
     final total = _orderTotal;
-    final num due = total != null && PayMongoConfig.isChargeable(total)
-        ? PayMongoConfig.downpaymentOn(total)
+    final num due = total != null && XenditConfig.isChargeable(total)
+        ? XenditConfig.downpaymentOn(total)
         : 0;
     final gated = due > 0;
 
@@ -1361,14 +1376,23 @@ class _BookingPageState extends State<BookingPage> {
           if (_packageTotal != null) 'packageTotal': _packageTotal,
           if (_addOnsTotal > 0) 'addOnsTotal': _addOnsTotal,
           if (_totalSavings > 0) 'discountTotal': _totalSavings,
-          if (_packageDiscount != null) 'packageDiscount': _packageDiscount!.badgeLabel,
-          if (_addOnsSavingsTotal > 0) 'addOnsDiscountTotal': _addOnsSavingsTotal,
-          if (_totalSavings > 0) 'appliedPromos': [
-            if (_packageDiscount != null) '${_packageDiscount!.promo.title} (${_packageDiscount!.badgeLabel})',
-            for (final l in _addOns)
-              if (PromoDiscountService.instance.getAddOnDiscount(l.dish, _pricing.priceFor(l.dish) ?? 0, packageName: widget.package?.name) != null)
-                '${l.dish.name} (${PromoDiscountService.instance.getAddOnDiscount(l.dish, _pricing.priceFor(l.dish) ?? 0, packageName: widget.package?.name)!.badgeLabel})',
-          ],
+          if (_packageDiscount != null)
+            'packageDiscount': _packageDiscount!.badgeLabel,
+          if (_addOnsSavingsTotal > 0)
+            'addOnsDiscountTotal': _addOnsSavingsTotal,
+          if (_totalSavings > 0)
+            'appliedPromos': [
+              if (_packageDiscount != null)
+                '${_packageDiscount!.promo.title} (${_packageDiscount!.badgeLabel})',
+              for (final l in _addOns)
+                if (PromoDiscountService.instance.getAddOnDiscount(
+                      l.dish,
+                      _pricing.priceFor(l.dish) ?? 0,
+                      packageName: widget.package?.name,
+                    ) !=
+                    null)
+                  '${l.dish.name} (${PromoDiscountService.instance.getAddOnDiscount(l.dish, _pricing.priceFor(l.dish) ?? 0, packageName: widget.package?.name)!.badgeLabel})',
+            ],
         },
       );
     } catch (e, st) {
@@ -1394,7 +1418,8 @@ class _BookingPageState extends State<BookingPage> {
       _showAlert(
         eyebrow: 'COULDN\'T SEND',
         title: 'Your booking didn\'t go through',
-        message: 'Something interrupted the send — nothing was filed. Please '
+        message:
+            'Something interrupted the send — nothing was filed. Please '
             'check your connection and tap SEND BOOKING again. Everything '
             'you\'ve filled in is still here.',
       );
@@ -1449,7 +1474,8 @@ class _BookingPageState extends State<BookingPage> {
       _showAlert(
         eyebrow: 'COULDN\'T SAVE',
         title: 'That didn\'t save',
-        message: 'Something interrupted the save. Please check your '
+        message:
+            'Something interrupted the save. Please check your '
             'connection and try again — nothing here has been lost.',
       );
       return;
@@ -1512,7 +1538,10 @@ class _BookingPageState extends State<BookingPage> {
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          flexibleSpace: const ParchmentBackground(weave: true, vignette: false),
+          flexibleSpace: const ParchmentBackground(
+            weave: true,
+            vignette: false,
+          ),
           title: Text('Book Us Now', style: AppTextStyles.heading),
         ),
         body: Stack(
@@ -1570,16 +1599,16 @@ class _BookingPageState extends State<BookingPage> {
                       // enough that a member should never have to hunt for
                       // the way to save and leave.
                       TextButton(
-                        onPressed:
-                            _submitting || _savingDraft
-                                ? null
-                                : _saveDraftAndExit,
+                        onPressed: _submitting || _savingDraft
+                            ? null
+                            : _saveDraftAndExit,
                         child: _savingDraft
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : Text(
                                 'CONTINUE LATER',
@@ -1614,8 +1643,10 @@ class _BookingPageState extends State<BookingPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('STEP ${_step + 1} OF ${_steps.length} · $eyebrow',
-                  style: AppTextStyles.eyebrow),
+              Text(
+                'STEP ${_step + 1} OF ${_steps.length} · $eyebrow',
+                style: AppTextStyles.eyebrow,
+              ),
               const SizedBox(height: AppSpacing.sm),
               Text(title, style: AppTextStyles.title),
               const SizedBox(height: AppSpacing.xs),
@@ -1648,89 +1679,84 @@ class _BookingPageState extends State<BookingPage> {
 
   // ── Step forms — at most four questions per page ──────────────────────────
   List<Widget> _stepFields(int step) => switch (step) {
-        0 => [
-            // Tap-to-pick from the common celebrations (see [_pickOccasion]).
-            // Hapag Serbisyo is offered strictly to churches, government and
-            // schools — booking it locks the list to those three.
-            _pickerField(
-              'kindOfFunction',
-              hint: 'Choose the occasion',
-              icon: Icons.celebration_outlined,
-              note: (widget.package?.isInstitutional ?? false)
-                  ? 'Hapag Serbisyo is offered strictly for church, government '
-                      'and school functions.'
-                  : null,
-              onTap: _pickOccasion,
-            ),
-            _pickerField(
-              'functionDate',
-              hint: 'Pick a date',
-              icon: Icons.event_outlined,
-              onTap: _pickDate,
-            ),
-            _pickerField(
-              'venue',
-              hint: 'Search or drop a pin on the map',
-              icon: Icons.place_outlined,
-              onTap: _pickVenue,
-            ),
-            _field(
-              'pax',
-              hint: 'e.g. 150',
-              icon: Icons.groups_outlined,
-              keyboardType: TextInputType.number,
-              // A headcount is a whole number — the field refuses anything else.
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(4),
-              ],
-            ),
-          ],
-        1 => [
-            _field(
-              'clientName',
-              icon: Icons.person_outline,
-              // Names carry no digits, so the field won't take them.
-              inputFormatters: [
-                FilteringTextInputFormatter.deny(RegExp(r'\d')),
-                LengthLimitingTextInputFormatter(60),
-              ],
-            ),
-            _field(
-              'contactNumber',
-              hint: '09xx xxx xxxx',
-              icon: Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-              // Digits and the punctuation people space numbers with, nothing
-              // else; the format itself is checked on NEXT.
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d +()\-]')),
-                LengthLimitingTextInputFormatter(20),
-              ],
-            ),
-            _pickerField(
-              'address',
-              hint: 'Search or drop a pin on the map',
-              icon: Icons.home_outlined,
-              onTap: _pickAddress,
-            ),
-          ],
-        2 => [
-            _timeField('ingress'),
-            _timeField('egress'),
-          ],
-        3 => [
-            _timeField('functionStart'),
-            _timeField('foodServing'),
-            _timeField('programEnd'),
-          ],
-        // The menu steps, built from the package's inclusions (the first
-        // carries the package line, the last the add-ons), and after them the
-        // set-up gallery when there is one.
-        _ => step == _setupStepIndex
-            ? _setupStepFields()
-            : _menuStepFields(step),
-      };
+    0 => [
+      // Tap-to-pick from the common celebrations (see [_pickOccasion]).
+      // Hapag Serbisyo is offered strictly to churches, government and
+      // schools — booking it locks the list to those three.
+      _pickerField(
+        'kindOfFunction',
+        hint: 'Choose the occasion',
+        icon: Icons.celebration_outlined,
+        note: (widget.package?.isInstitutional ?? false)
+            ? 'Hapag Serbisyo is offered strictly for church, government '
+                  'and school functions.'
+            : null,
+        onTap: _pickOccasion,
+      ),
+      _pickerField(
+        'functionDate',
+        hint: 'Pick a date',
+        icon: Icons.event_outlined,
+        onTap: _pickDate,
+      ),
+      _pickerField(
+        'venue',
+        hint: 'Search or drop a pin on the map',
+        icon: Icons.place_outlined,
+        onTap: _pickVenue,
+      ),
+      _field(
+        'pax',
+        hint: 'e.g. 150',
+        icon: Icons.groups_outlined,
+        keyboardType: TextInputType.number,
+        // A headcount is a whole number — the field refuses anything else.
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(4),
+        ],
+      ),
+    ],
+    1 => [
+      _field(
+        'clientName',
+        icon: Icons.person_outline,
+        // Names carry no digits, so the field won't take them.
+        inputFormatters: [
+          FilteringTextInputFormatter.deny(RegExp(r'\d')),
+          LengthLimitingTextInputFormatter(60),
+        ],
+      ),
+      _field(
+        'contactNumber',
+        hint: '09xx xxx xxxx',
+        icon: Icons.phone_outlined,
+        keyboardType: TextInputType.phone,
+        // Digits and the punctuation people space numbers with, nothing
+        // else; the format itself is checked on NEXT.
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[\d +()\-]')),
+          LengthLimitingTextInputFormatter(20),
+        ],
+      ),
+      _pickerField(
+        'address',
+        hint: 'Search or drop a pin on the map',
+        icon: Icons.home_outlined,
+        onTap: _pickAddress,
+      ),
+    ],
+    2 => [_timeField('ingress'), _timeField('egress')],
+    3 => [
+      _timeField('functionStart'),
+      _timeField('foodServing'),
+      _timeField('programEnd'),
+    ],
+    // The menu steps, built from the package's inclusions (the first
+    // carries the package line, the last the add-ons), and after them the
+    // set-up gallery when there is one.
+    _ => step == _setupStepIndex ? _setupStepFields() : _menuStepFields(step),
+  };
 
   /// One menu page: the package line on the first, a field per course the
   /// package includes, and the add-ons on the last.
@@ -1769,7 +1795,7 @@ class _BookingPageState extends State<BookingPage> {
       Text(
         chosen.isEmpty
             ? 'Tap a photo to choose the look. We\'ll match it as closely as '
-                'your venue allows.'
+                  'your venue allows.'
             : 'Chosen: $chosen. Tap another to change it.',
         style: AppTextStyles.bodySmall,
       ),
@@ -1832,16 +1858,26 @@ class _BookingPageState extends State<BookingPage> {
               decoration: BoxDecoration(
                 color: AppColors.gold.withValues(alpha: 0.2),
                 borderRadius: AppRadius.pillAll,
-                border: Border.all(color: AppColors.goldDeep.withValues(alpha: 0.5)),
+                border: Border.all(
+                  color: AppColors.goldDeep.withValues(alpha: 0.5),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.local_offer_rounded, size: 10, color: AppColors.goldDeep),
+                  const Icon(
+                    Icons.local_offer_rounded,
+                    size: 10,
+                    color: AppColors.goldDeep,
+                  ),
                   const SizedBox(width: 3),
                   Text(
                     'DISCOUNT ACTIVE',
-                    style: AppTextStyles.sans(size: 8.5, weight: FontWeight.w700, color: AppColors.goldDeep),
+                    style: AppTextStyles.sans(
+                      size: 8.5,
+                      weight: FontWeight.w700,
+                      color: AppColors.goldDeep,
+                    ),
                   ),
                 ],
               ),
@@ -1856,7 +1892,11 @@ class _BookingPageState extends State<BookingPage> {
               ),
               child: Text(
                 'STANDARD RATE',
-                style: AppTextStyles.sans(size: 8.5, weight: FontWeight.w600, color: AppColors.brownSoft),
+                style: AppTextStyles.sans(
+                  size: 8.5,
+                  weight: FontWeight.w600,
+                  color: AppColors.brownSoft,
+                ),
               ),
             ),
         ],
@@ -1865,12 +1905,12 @@ class _BookingPageState extends State<BookingPage> {
       Text(
         catalogue.isEmpty
             ? 'Our extras list is still loading. You can send your booking '
-                'now — we\'ll go through add-ons when we confirm.'
+                  'now — we\'ll go through add-ons when we confirm.'
             : _pricing.isEmpty
-                ? 'Anything extra you\'d like us to bring, chosen from our '
-                    'menu. We\'ll quote each one when we confirm your booking.'
-                : 'Anything extra you\'d like us to bring, chosen from our '
-                    'menu. Each is priced per head and added to your total.',
+            ? 'Anything extra you\'d like us to bring, chosen from our '
+                  'menu. We\'ll quote each one when we confirm your booking.'
+            : 'Anything extra you\'d like us to bring, chosen from our '
+                  'menu. Each is priced per head and added to your total.',
         style: AppTextStyles.bodySmall,
       ),
       if (pkgHasDisc && !hasAddOnDiscount) ...[
@@ -1884,12 +1924,20 @@ class _BookingPageState extends State<BookingPage> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.brownSoft),
+              const Icon(
+                Icons.info_outline_rounded,
+                size: 14,
+                color: AppColors.brownSoft,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   'Package promo applies to package only. Add-ons are charged at standard rates.',
-                  style: AppTextStyles.sans(size: 11, weight: FontWeight.w500, color: AppColors.brownSoft),
+                  style: AppTextStyles.sans(
+                    size: 11,
+                    weight: FontWeight.w500,
+                    color: AppColors.brownSoft,
+                  ),
                 ),
               ),
             ],
@@ -1906,12 +1954,20 @@ class _BookingPageState extends State<BookingPage> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.local_offer_rounded, size: 14, color: AppColors.goldDeep),
+              const Icon(
+                Icons.local_offer_rounded,
+                size: 14,
+                color: AppColors.goldDeep,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   'Promo discount applies to your chosen add-ons!',
-                  style: AppTextStyles.sans(size: 11, weight: FontWeight.w600, color: AppColors.goldDeep),
+                  style: AppTextStyles.sans(
+                    size: 11,
+                    weight: FontWeight.w600,
+                    color: AppColors.goldDeep,
+                  ),
                 ),
               ),
             ],
@@ -1925,14 +1981,18 @@ class _BookingPageState extends State<BookingPage> {
           unitPrice: _pricing.priceFor(line.dish),
           packageName: widget.package?.name,
           isPackageDiscounted: pkgHasDisc,
-          onAdd: line.qty < 99 ? () {
-            setState(() => line.qty++);
-            _scheduleAutoSave();
-          } : null,
-          onRemove: line.qty > 1 ? () {
-            setState(() => line.qty--);
-            _scheduleAutoSave();
-          } : null,
+          onAdd: line.qty < 99
+              ? () {
+                  setState(() => line.qty++);
+                  _scheduleAutoSave();
+                }
+              : null,
+          onRemove: line.qty > 1
+              ? () {
+                  setState(() => line.qty--);
+                  _scheduleAutoSave();
+                }
+              : null,
           onDelete: () {
             setState(() => _addOns.remove(line));
             _scheduleAutoSave();
@@ -1964,9 +2024,11 @@ class _BookingPageState extends State<BookingPage> {
 
     final lines = <String>[chosen];
     if (perHead > 0) {
-      lines.add(_pax > 0
-          ? '${peso(perHead)} per head × $_pax pax  =  ${peso(_addOnsTotal)}'
-          : '${peso(perHead)} per head — enter your headcount to see the total.');
+      lines.add(
+        _pax > 0
+            ? '${peso(perHead)} per head × $_pax pax  =  ${peso(_addOnsTotal)}'
+            : '${peso(perHead)} per head — enter your headcount to see the total.',
+      );
     }
     if (_addOnsSavingsTotal > 0) {
       lines.add('Promo discount savings: -${peso(_addOnsSavingsTotal)}');
@@ -1974,10 +2036,12 @@ class _BookingPageState extends State<BookingPage> {
       lines.add('Add-ons: Standard rate (not discounted by package promo).');
     }
     if (unpriced.isNotEmpty) {
-      lines.add(unpriced.length == _addOns.length
-          ? 'We\'ll quote these when we confirm your booking.'
-          : '${unpriced.length} of these (${unpriced.map((l) => l.dish.name).join(', ')}) '
-              'we\'ll quote when we confirm.');
+      lines.add(
+        unpriced.length == _addOns.length
+            ? 'We\'ll quote these when we confirm your booking.'
+            : '${unpriced.length} of these (${unpriced.map((l) => l.dish.name).join(', ')}) '
+                  'we\'ll quote when we confirm.',
+      );
     }
 
     return [
@@ -2024,8 +2088,9 @@ class _BookingPageState extends State<BookingPage> {
 
     final grouped = <String, List<Product>>{};
     for (final dish in catalogue) {
-      final category =
-          dish.category.trim().isEmpty ? 'More dishes' : dish.category.trim();
+      final category = dish.category.trim().isEmpty
+          ? 'More dishes'
+          : dish.category.trim();
       grouped.putIfAbsent(category, () => []).add(dish);
     }
     final names = grouped.keys.toList()
@@ -2075,7 +2140,7 @@ class _BookingPageState extends State<BookingPage> {
               label: _addOns.isEmpty
                   ? 'DONE'
                   : 'DONE · ${_addOns.length} '
-                      'ADD-ON${_addOns.length == 1 ? '' : 'S'}',
+                        'ADD-ON${_addOns.length == 1 ? '' : 'S'}',
               fullWidth: true,
               onPressed: () => Navigator.of(dialogContext).pop(),
             ),
@@ -2095,7 +2160,7 @@ class _BookingPageState extends State<BookingPage> {
               Text(
                 open == null
                     ? 'Pick a category to see the dishes available in it. '
-                        'Add-ons are priced per head.'
+                          'Add-ons are priced per head.'
                     : 'Tap to add or remove — you\'ll set how many after.',
                 style: AppTextStyles.bodySmall,
               ),
@@ -2127,8 +2192,9 @@ class _BookingPageState extends State<BookingPage> {
                       // Update the page behind the dialog (the quantity
                       // steppers) and the dialog's own check marks together.
                       setState(() {
-                        final i =
-                            _addOns.indexWhere((l) => l.dish.id == dish.id);
+                        final i = _addOns.indexWhere(
+                          (l) => l.dish.id == dish.id,
+                        );
                         if (i >= 0) {
                           _addOns.removeAt(i);
                         } else {
@@ -2212,11 +2278,11 @@ class _BookingPageState extends State<BookingPage> {
   /// A tap-to-pick time field. All five are required — see [_required] — and
   /// they're checked against each other in [_timeErrors].
   Widget _timeField(String key) => _pickerField(
-        key,
-        hint: 'Pick time',
-        icon: Icons.schedule_outlined,
-        onTap: () => _pickTime(key),
-      );
+    key,
+    hint: 'Pick time',
+    icon: Icons.schedule_outlined,
+    onTap: () => _pickTime(key),
+  );
 
   /// A course field (Soup, Beef, …). When the live menu has dishes in that
   /// course, tapping opens a picker listing all of them; when it doesn't
@@ -2233,7 +2299,8 @@ class _BookingPageState extends State<BookingPage> {
     }
     return _pickerField(
       key,
-      hint: 'Choose from ${dishes.length} dish${dishes.length == 1 ? '' : 'es'}',
+      hint:
+          'Choose from ${dishes.length} dish${dishes.length == 1 ? '' : 'es'}',
       icon: Icons.restaurant_outlined,
       onTap: () => _pickDish(key, dishes),
     );
@@ -2249,9 +2316,15 @@ class _BookingPageState extends State<BookingPage> {
       context: context,
       builder: (dialogContext) => AppDialogShell(
         children: [
-          Text('THE MENU · ${label.toUpperCase()}', style: AppTextStyles.eyebrow),
+          Text(
+            'THE MENU · ${label.toUpperCase()}',
+            style: AppTextStyles.eyebrow,
+          ),
           const SizedBox(height: AppSpacing.sm),
-          Text('Choose your ${label.toLowerCase()}', style: AppTextStyles.title),
+          Text(
+            'Choose your ${label.toLowerCase()}',
+            style: AppTextStyles.title,
+          ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             '${dishes.length} dish${dishes.length == 1 ? '' : 'es'} available '
@@ -2328,8 +2401,8 @@ class _BookingPageState extends State<BookingPage> {
               owing
                   ? 'Your booking is waiting.'
                   : _paid
-                      ? 'Your date is held.'
-                      : 'Your booking is in.',
+                  ? 'Your date is held.'
+                  : 'Your booking is in.',
               textAlign: TextAlign.center,
               style: AppTextStyles.displaySmall,
             ),
@@ -2337,16 +2410,16 @@ class _BookingPageState extends State<BookingPage> {
             Text(
               owing
                   ? 'Everything you filled in is filed under No. '
-                      '${Booking.referenceFor(_bookingId ?? '')}. We hold the '
-                      'date once the downpayment lands — finish it below, or '
-                      'any time from Order Tracking in Settings.'
+                        '${Booking.referenceFor(_bookingId ?? '')}. We hold the '
+                        'date once the downpayment lands — finish it below, or '
+                        'any time from Order Tracking in Settings.'
                   : _paid
-                      ? 'Your downpayment is in and your order is with the '
-                          'team. We\'ll reach out on your contact number to '
-                          'confirm the details and finalise the feast.'
-                      : 'We\'ll review the details and reach out on your '
-                          'contact number with a quotation, then confirm the '
-                          'date and finalise the feast.',
+                  ? 'Your downpayment is in and your order is with the '
+                        'team. We\'ll reach out on your contact number to '
+                        'confirm the details and finalise the feast.'
+                  : 'We\'ll review the details and reach out on your '
+                        'contact number with a quotation, then confirm the '
+                        'date and finalise the feast.',
               textAlign: TextAlign.center,
               style: AppTextStyles.body,
             ),
@@ -2361,7 +2434,7 @@ class _BookingPageState extends State<BookingPage> {
                   if (total == null) return;
                   _collect(
                     total: total,
-                    due: PayMongoConfig.downpaymentOn(total),
+                    due: XenditConfig.downpaymentOn(total),
                   );
                 },
               ),
@@ -2468,7 +2541,13 @@ class _AddOnLineCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final category = line.dish.category.trim();
     final rate = unitPrice;
-    final disc = rate != null ? PromoDiscountService.instance.getAddOnDiscount(line.dish, rate, packageName: packageName) : null;
+    final disc = rate != null
+        ? PromoDiscountService.instance.getAddOnDiscount(
+            line.dish,
+            rate,
+            packageName: packageName,
+          )
+        : null;
     final effectiveRate = disc != null ? disc.discountedPrice : rate;
 
     return Container(
@@ -2476,14 +2555,19 @@ class _AddOnLineCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.mdAll,
-        border: Border.all(color: disc != null ? AppColors.gold : AppColors.hairline),
+        border: Border.all(
+          color: disc != null ? AppColors.gold : AppColors.hairline,
+        ),
       ),
       child: Row(
         children: [
           ClipRRect(
             borderRadius: AppRadius.xsAll,
-            child:
-                SizedBox(width: 44, height: 44, child: ProductImage(line.dish)),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: ProductImage(line.dish),
+            ),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -2497,17 +2581,25 @@ class _AddOnLineCard extends StatelessWidget {
                         line.dish.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.sans(size: 13, weight: FontWeight.w600),
+                        style: AppTextStyles.sans(
+                          size: 13,
+                          weight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     if (disc != null) ...[
                       const SizedBox(width: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1.5,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.gold.withValues(alpha: 0.2),
                           borderRadius: AppRadius.pillAll,
-                          border: Border.all(color: AppColors.goldDeep.withValues(alpha: 0.5)),
+                          border: Border.all(
+                            color: AppColors.goldDeep.withValues(alpha: 0.5),
+                          ),
                         ),
                         child: Text(
                           disc.badgeLabel,
@@ -2521,7 +2613,10 @@ class _AddOnLineCard extends StatelessWidget {
                     ] else if (isPackageDiscounted && rate != null) ...[
                       const SizedBox(width: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1.5,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.cream,
                           borderRadius: AppRadius.pillAll,
@@ -2560,7 +2655,7 @@ class _AddOnLineCard extends StatelessWidget {
                       effectiveRate == null
                           ? 'We\'ll quote this one'
                           : '${peso(effectiveRate)} per head'
-                              '${line.qty > 1 ? ' × ${line.qty} = ${peso(effectiveRate * line.qty)} per head' : ''}',
+                                '${line.qty > 1 ? ' × ${line.qty} = ${peso(effectiveRate * line.qty)} per head' : ''}',
                       style: AppTextStyles.sans(
                         size: 11,
                         weight: FontWeight.w600,
@@ -2700,14 +2795,16 @@ class _CategoryChoiceRow extends StatelessWidget {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        AppTextStyles.sans(size: 13, weight: FontWeight.w600),
+                    style: AppTextStyles.sans(
+                      size: 13,
+                      weight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     chosen
                         ? '$dishCount dish${dishCount == 1 ? '' : 'es'} · '
-                            '$chosenCount chosen'
+                              '$chosenCount chosen'
                         : '$dishCount dish${dishCount == 1 ? '' : 'es'}',
                     style: AppTextStyles.bodySmall,
                   ),
@@ -2800,7 +2897,13 @@ class _AddOnToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rate = unitPrice;
-    final disc = rate != null ? PromoDiscountService.instance.getAddOnDiscount(dish, rate, packageName: packageName) : null;
+    final disc = rate != null
+        ? PromoDiscountService.instance.getAddOnDiscount(
+            dish,
+            rate,
+            packageName: packageName,
+          )
+        : null;
     final effectiveRate = disc != null ? disc.discountedPrice : rate;
 
     return PressableScale(
@@ -2822,7 +2925,11 @@ class _AddOnToggleRow extends StatelessWidget {
               onTap: () => showProductImageViewer(context, dish),
               child: ClipRRect(
                 borderRadius: AppRadius.xsAll,
-                child: SizedBox(width: 44, height: 44, child: ProductImage(dish)),
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: ProductImage(dish),
+                ),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -2834,8 +2941,10 @@ class _AddOnToggleRow extends StatelessWidget {
                     dish.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        AppTextStyles.sans(size: 13, weight: FontWeight.w600),
+                    style: AppTextStyles.sans(
+                      size: 13,
+                      weight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Row(
@@ -2865,11 +2974,16 @@ class _AddOnToggleRow extends StatelessWidget {
                       if (disc != null) ...[
                         const SizedBox(width: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.gold.withValues(alpha: 0.2),
                             borderRadius: AppRadius.pillAll,
-                            border: Border.all(color: AppColors.goldDeep.withValues(alpha: 0.5)),
+                            border: Border.all(
+                              color: AppColors.goldDeep.withValues(alpha: 0.5),
+                            ),
                           ),
                           child: Text(
                             disc.badgeLabel,
@@ -2954,8 +3068,10 @@ class _OccasionRow extends StatelessWidget {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        AppTextStyles.sans(size: 13, weight: FontWeight.w600),
+                    style: AppTextStyles.sans(
+                      size: 13,
+                      weight: FontWeight.w600,
+                    ),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
@@ -3015,7 +3131,11 @@ class _DishChoiceRow extends StatelessWidget {
               onTap: () => showProductImageViewer(context, dish),
               child: ClipRRect(
                 borderRadius: AppRadius.xsAll,
-                child: SizedBox(width: 44, height: 44, child: ProductImage(dish)),
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: ProductImage(dish),
+                ),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -3187,8 +3307,18 @@ class _ProgressRule extends StatelessWidget {
 /// "June 12, 2026" — spelled-out date for the booking form.
 String _formatDate(DateTime d) {
   const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   return '${months[d.month - 1]} ${d.day}, ${d.year}';
 }

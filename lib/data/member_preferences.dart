@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart' show Locale;
 
 import 'allergens.dart';
 import 'customer_repository.dart';
+import 'taste_profile.dart';
 
 /// The member's own settings, as edited on the Settings screens and stored in
 /// the `preferences` map on `customers/{uid}`.
@@ -26,6 +27,7 @@ class MemberPreferences {
     this.diet = DietStyle.none,
     this.avoidAllergens = const <String>{},
     this.language = AppLanguage.english,
+    this.tasteProfile,
   });
 
   factory MemberPreferences.fromMap(Map<String, Object?>? data) {
@@ -48,6 +50,9 @@ class MemberPreferences {
                 if (e.toString().trim().isNotEmpty) e.toString().trim(),
             },
       language: AppLanguage.fromCode(data?['language']),
+      tasteProfile: data?['tasteProfile'] is Map
+          ? TasteProfile.fromMap(data?['tasteProfile'] as Map<String, Object?>?)
+          : null,
     );
   }
 
@@ -75,6 +80,12 @@ class MemberPreferences {
   /// The language the app runs in.
   final AppLanguage language;
 
+  final TasteProfile? tasteProfile;
+
+  TasteProfile? get person => tasteProfile;
+
+  bool get gabayHealthierFirst => healthierFirst;
+
   /// True when the member has told us anything at all about how they eat.
   bool get hasDietaryNeeds =>
       diet != DietStyle.none || avoidAllergens.isNotEmpty;
@@ -84,8 +95,9 @@ class MemberPreferences {
   /// "Vegetarian · avoiding 3 allergens".
   String get dietarySummary {
     final count = avoidAllergens.length;
-    final avoiding =
-        count == 0 ? '' : 'avoiding $count allergen${count == 1 ? '' : 's'}';
+    final avoiding = count == 0
+        ? ''
+        : 'avoiding $count allergen${count == 1 ? '' : 's'}';
     if (diet == DietStyle.none) {
       if (avoiding.isEmpty) return 'Not set yet';
       // Sentence-leading, since it stands alone here.
@@ -98,23 +110,24 @@ class MemberPreferences {
   /// against the taxonomy currently in force so a key an admin has since
   /// deleted quietly stops flagging dishes.
   List<Allergen> avoidedIn(Iterable<String> keys) => [
-        for (final k in keys)
-          if (avoidAllergens.contains(k) && kAllergenByKey[k] != null)
-            kAllergenByKey[k]!,
-      ];
+    for (final k in keys)
+      if (avoidAllergens.contains(k) && kAllergenByKey[k] != null)
+        kAllergenByKey[k]!,
+  ];
 
   /// The payload written to `customers/{uid}.preferences`.
   Map<String, Object?> toMap() => {
-        'orderUpdates': orderUpdates,
-        'promotions': promotions,
-        'gabaySuggestions': gabaySuggestions,
-        'healthierFirst': healthierFirst,
-        'diet': diet.key,
-        // Sorted so an unchanged set always writes the same array and the
-        // document doesn't churn on rewrite.
-        'avoidAllergens': avoidAllergens.toList()..sort(),
-        'language': language.code,
-      };
+    'orderUpdates': orderUpdates,
+    'promotions': promotions,
+    'gabaySuggestions': gabaySuggestions,
+    'healthierFirst': healthierFirst,
+    'diet': diet.key,
+    // Sorted so an unchanged set always writes the same array and the
+    // document doesn't churn on rewrite.
+    'avoidAllergens': avoidAllergens.toList()..sort(),
+    'language': language.code,
+    if (tasteProfile != null) 'tasteProfile': tasteProfile!.toMap(),
+  };
 
   MemberPreferences copyWith({
     bool? orderUpdates,
@@ -124,6 +137,7 @@ class MemberPreferences {
     DietStyle? diet,
     Set<String>? avoidAllergens,
     AppLanguage? language,
+    TasteProfile? tasteProfile,
   }) {
     return MemberPreferences(
       orderUpdates: orderUpdates ?? this.orderUpdates,
@@ -133,6 +147,7 @@ class MemberPreferences {
       diet: diet ?? this.diet,
       avoidAllergens: avoidAllergens ?? this.avoidAllergens,
       language: language ?? this.language,
+      tasteProfile: tasteProfile ?? this.tasteProfile,
     );
   }
 
@@ -145,18 +160,20 @@ class MemberPreferences {
       other.healthierFirst == healthierFirst &&
       other.diet == diet &&
       other.language == language &&
-      setEquals(other.avoidAllergens, avoidAllergens);
+      setEquals(other.avoidAllergens, avoidAllergens) &&
+      other.tasteProfile == tasteProfile;
 
   @override
   int get hashCode => Object.hash(
-        orderUpdates,
-        promotions,
-        gabaySuggestions,
-        healthierFirst,
-        diet,
-        language,
-        Object.hashAllUnordered(avoidAllergens),
-      );
+    orderUpdates,
+    promotions,
+    gabaySuggestions,
+    healthierFirst,
+    diet,
+    language,
+    Object.hashAllUnordered(avoidAllergens),
+    tasteProfile,
+  );
 }
 
 /// How a member eats, as one choice. Deliberately a short list of the patterns
@@ -192,10 +209,8 @@ enum DietStyle {
   final String blurb;
 
   /// Resolves a stored key, falling back to [none] for anything unrecognised.
-  static DietStyle fromKey(Object? raw) => values.firstWhere(
-        (d) => d.key == raw,
-        orElse: () => DietStyle.none,
-      );
+  static DietStyle fromKey(Object? raw) =>
+      values.firstWhere((d) => d.key == raw, orElse: () => DietStyle.none);
 }
 
 /// The languages the app can run in.
@@ -218,9 +233,9 @@ enum AppLanguage {
 
   /// Resolves a stored code, falling back to [english].
   static AppLanguage fromCode(Object? raw) => values.firstWhere(
-        (l) => l.code == raw,
-        orElse: () => AppLanguage.english,
-      );
+    (l) => l.code == raw,
+    orElse: () => AppLanguage.english,
+  );
 }
 
 /// The preferences currently in force, and the one place they're read and
@@ -236,8 +251,9 @@ class MemberPreferencesScope {
 
   /// [ValueNotifier] only notifies on an actual change (see
   /// [MemberPreferences.==]), so listeners don't rebuild on a no-op save.
-  static final ValueNotifier<MemberPreferences> notifier =
-      ValueNotifier(const MemberPreferences());
+  static final ValueNotifier<MemberPreferences> notifier = ValueNotifier(
+    const MemberPreferences(),
+  );
 
   static MemberPreferences get value => notifier.value;
 

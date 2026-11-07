@@ -66,7 +66,7 @@ const List<LegalClause> _clauses = [
     'Half the order total is collected up front, and that\'s what holds your '
         'date in the kitchen\'s calendar. The balance is settled with the team '
         'on the day of the event.',
-    'The downpayment is taken on PayMongo\'s secure checkout page. If a '
+    'The downpayment is taken on Xendit\'s secure checkout page. If a '
         'payment is interrupted you can pick it up again from Order tracking; '
         'until it clears, your order is filed but your date isn\'t held.',
   ]),

@@ -9,7 +9,7 @@ import 'settings_widgets.dart';
 /// "Help & FAQ" — the questions the app actually raises, answered.
 ///
 /// The copy below describes the real flows: the two booking wizards, the 50%
-/// downpayment PayMongo collects, the statuses the Orders dashboard moves an
+/// downpayment Xendit collects, the statuses the Orders dashboard moves an
 /// order through, where the allergen tags come from, and what Gabay is (and
 /// isn't) yet. Anything the app can't do is said plainly, with the way to get
 /// it done instead — the point of a help screen is to end the question, not to
@@ -114,7 +114,7 @@ const List<_FaqGroup> _groups = [
     ),
     _Faq(
       'How can I pay the downpayment?',
-      'With GCash, Maya, GrabPay or a Visa / Mastercard, on PayMongo\'s '
+      'With GCash, Maya, GrabPay or a Visa / Mastercard, on Xendit\'s '
           'secure checkout page. Your card details never pass through this app '
           '— we only ever see that the payment cleared.',
     ),

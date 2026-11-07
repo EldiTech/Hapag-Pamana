@@ -6,11 +6,11 @@ import '../../brand.dart';
 import '../../core/format.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/booking_repository.dart';
-import '../../data/paymongo_config.dart';
-import '../../data/paymongo_service.dart';
+import '../../data/xendit_config.dart';
+import '../../data/xendit_service.dart';
 import '../../widgets.dart';
 
-/// The downpayment gate: half the order's total, settled through PayMongo before
+/// The downpayment gate: half the order's total, settled through Xendit before
 /// the team will confirm a date.
 ///
 /// Reached two ways, and it behaves the same from both:
@@ -25,14 +25,12 @@ import '../../widgets.dart';
 ///
 /// ## How payment is confirmed
 ///
-/// PayMongo hosts the payment page; the member settles up in their browser. It
+/// Xendit hosts the payment page; the member settles up in their browser. The
 /// announces the result to a webhook, which this app has no server to receive —
-/// so instead the app re-reads the checkout session ([PayMongoService.fetchCheckout])
+/// server re-reads the checkout session and confirms it before recording payment.
 /// and looks for a settled payment on it. That read happens when the member comes
 /// back to the app, and on demand from the "I'VE PAID" button. The *check* is
-/// authoritative — it's PayMongo's own record — but the write that follows is
-/// this app's, which is why the class-level warning on [PayMongoConfig] matters:
-/// a modified build could claim an order was paid for.
+/// authoritative — it's Xendit's own record — and the server owns the write.
 ///
 /// Pops `true` once the downpayment has cleared, `false` when the member leaves
 /// it for later.
@@ -54,7 +52,7 @@ class PaymentPage extends StatefulWidget {
     this.phone,
   });
 
-  /// The filed booking this pays for. Travels to PayMongo as the checkout's
+  /// The filed booking this pays for. Travels to Xendit as the checkout's
   /// reference number, so a payment can always be traced back to its order.
   final String bookingId;
 
@@ -65,7 +63,7 @@ class PaymentPage extends StatefulWidget {
   final num total;
   final num due;
 
-  /// "Catering" / "Food Pack" — for the eyebrow and PayMongo's description.
+  /// "Catering" / "Food Pack" — for the eyebrow and Xendit's description.
   final String orderKind;
 
   /// One line naming what's being paid for (the occasion, or the first dish).
@@ -87,7 +85,7 @@ class PaymentPage extends StatefulWidget {
   /// holding it needn't re-read the document.
   final void Function(String sessionId, String checkoutUrl)? onCheckoutOpened;
 
-  /// Prefills PayMongo's billing details, so the member doesn't retype them.
+  /// Prefills Xendit's customer details, so the member doesn't retype them.
   final String? clientName;
   final String? email;
   final String? phone;
@@ -98,7 +96,7 @@ class PaymentPage extends StatefulWidget {
 
 /// Which face the screen is showing.
 enum _Face {
-  /// The terms, and the button that opens PayMongo.
+  /// The terms, and the button that opens Xendit.
   review,
 
   /// Checkout is open in the browser; we're waiting to hear it went through.
@@ -108,11 +106,10 @@ enum _Face {
   done,
 }
 
-class _PaymentPageState extends State<PaymentPage>
-    with WidgetsBindingObserver {
+class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
   _Face _face = _Face.review;
 
-  /// True while a PayMongo call is in flight, so the CTA shows its spinner and
+  /// True while a Xendit call is in flight, so the CTA shows its spinner and
   /// can't be double-tapped into two checkout sessions.
   bool _busy = false;
 
@@ -126,7 +123,7 @@ class _PaymentPageState extends State<PaymentPage>
   String? _sessionId;
   String? _checkoutUrl;
 
-  /// What actually cleared, per PayMongo — shown on the done face.
+  /// What actually cleared, per Xendit — shown on the done face.
   num _paidAmount = 0;
   String? _paidMethod;
 
@@ -134,15 +131,14 @@ class _PaymentPageState extends State<PaymentPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _sessionId = widget.existingSessionId?.trim().isEmpty ?? true
-        ? null
-        : widget.existingSessionId!.trim();
+    final oldSession = widget.existingSessionId?.trim() ?? '';
+    _sessionId = oldSession.startsWith('ps-') ? oldSession : null;
     _checkoutUrl = widget.existingCheckoutUrl?.trim().isEmpty ?? true
         ? null
         : widget.existingCheckoutUrl!.trim();
     // Arriving from Order Tracking with a session already open means the member
     // may well have paid on a previous visit — so the first thing to do is ask
-    // PayMongo, rather than invite a second payment.
+    // Xendit, rather than invite a second payment.
     if (_sessionId != null) {
       _face = _Face.waiting;
       WidgetsBinding.instance.addPostFrameCallback((_) => _check(quiet: true));
@@ -168,9 +164,9 @@ class _PaymentPageState extends State<PaymentPage>
     }
   }
 
-  // ── PayMongo ──────────────────────────────────────────────────────────────
+  // ── Xendit ────────────────────────────────────────────────────────────────
   /// Opens the hosted checkout page — reusing the one already on the booking, or
-  /// asking PayMongo for a new one.
+  /// asking Xendit for a new one.
   Future<void> _pay() async {
     setState(() {
       _busy = true;
@@ -179,7 +175,8 @@ class _PaymentPageState extends State<PaymentPage>
     });
     try {
       if (_sessionId == null || _checkoutUrl == null) {
-        final session = await PayMongoService().createCheckout(
+        final session = await XenditService().createCheckout(
+          bookingId: widget.bookingId,
           reference: widget.bookingId,
           description:
               '${widget.orderKind} downpayment · No. ${widget.reference}',
@@ -190,7 +187,7 @@ class _PaymentPageState extends State<PaymentPage>
           phone: widget.phone,
         );
         if (session.checkoutUrl.isEmpty) {
-          throw const PayMongoException(
+          throw const XenditException(
             'The payment service didn\'t give us a page to open. Please try '
             'again.',
           );
@@ -225,7 +222,7 @@ class _PaymentPageState extends State<PaymentPage>
         _busy = false;
         if (opened) _face = _Face.waiting;
       });
-    } on PayMongoException catch (e) {
+    } on XenditException catch (e) {
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -235,13 +232,14 @@ class _PaymentPageState extends State<PaymentPage>
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Something interrupted the handoff to the payment service. '
+        _error =
+            'Something interrupted the handoff to the payment service. '
             'Your booking is saved — please try again.';
       });
     }
   }
 
-  /// Asks PayMongo whether the downpayment has settled, and records it if so.
+  /// Asks Xendit whether the downpayment has settled, and records it if so.
   /// [quiet] suppresses the "nothing yet" line, for the automatic checks.
   Future<void> _check({bool quiet = false}) async {
     final id = _sessionId;
@@ -252,7 +250,10 @@ class _PaymentPageState extends State<PaymentPage>
       _checkedAndUnpaid = false;
     });
     try {
-      final session = await PayMongoService().fetchCheckout(id);
+      final session = await XenditService().fetchCheckout(
+        bookingId: widget.bookingId,
+        sessionId: id,
+      );
       if (!mounted) return;
       if (!session.paid) {
         setState(() {
@@ -262,7 +263,7 @@ class _PaymentPageState extends State<PaymentPage>
         return;
       }
       await _settle(session);
-    } on PayMongoException catch (e) {
+    } on XenditException catch (e) {
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -272,20 +273,21 @@ class _PaymentPageState extends State<PaymentPage>
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'We couldn\'t check with the payment service just now. Please '
+        _error =
+            'We couldn\'t check with the payment service just now. Please '
             'try again in a moment — and if you\'ve already paid, don\'t pay '
             'twice.';
       });
     }
   }
 
-  /// Writes a payment PayMongo has confirmed onto the booking and shows the
-  /// receipt. Only ever called with a session PayMongo itself reports settled.
+  /// Writes a payment Xendit has confirmed onto the booking and shows the
+  /// receipt. Only ever called with a session Xendit reports settled.
   ///
   /// Deals with its own failures rather than throwing: the money has moved
   /// either way, so the one thing this must never do is invite another payment.
-  Future<void> _settle(CheckoutSession session) async {
-    // Record what PayMongo says cleared, not what we asked for — if the two
+  Future<void> _settle(XenditCheckout session) async {
+    // Record what Xendit says cleared, not what we asked for — if the two
     // ever disagree, the team should be able to see it.
     final amount = session.amountPesos > 0 ? session.amountPesos : widget.due;
     try {
@@ -304,7 +306,8 @@ class _PaymentPageState extends State<PaymentPage>
       // The payment went through; this only means we couldn't write it down.
       setState(() {
         _busy = false;
-        _error = 'Your payment went through, but we couldn\'t record it just '
+        _error =
+            'Your payment went through, but we couldn\'t record it just '
             'now — please don\'t pay again. Check once more in a moment, or '
             'quote reference No. ${widget.reference} and we\'ll settle it with '
             'you.';
@@ -363,8 +366,10 @@ class _PaymentPageState extends State<PaymentPage>
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          flexibleSpace:
-              const ParchmentBackground(weave: true, vignette: false),
+          flexibleSpace: const ParchmentBackground(
+            weave: true,
+            vignette: false,
+          ),
           title: Text(
             done ? 'Downpayment received' : 'Reserve your date',
             style: AppTextStyles.heading,
@@ -430,8 +435,7 @@ class _PaymentPageState extends State<PaymentPage>
             AppButton.secondary(
               label: 'PAY LATER',
               fullWidth: true,
-              onPressed:
-                  _busy ? null : () => Navigator.of(context).pop(false),
+              onPressed: _busy ? null : () => Navigator.of(context).pop(false),
             ),
           ],
         );
@@ -457,8 +461,9 @@ class _PaymentPageState extends State<PaymentPage>
                 Expanded(
                   child: AppButton.secondary(
                     label: 'PAY LATER',
-                    onPressed:
-                        _busy ? null : () => Navigator.of(context).pop(false),
+                    onPressed: _busy
+                        ? null
+                        : () => Navigator.of(context).pop(false),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
@@ -507,12 +512,12 @@ class _PaymentPageState extends State<PaymentPage>
         delay: const Duration(milliseconds: 70),
         child: Text(
           waiting
-              ? 'Finish up on the PayMongo page, then come back and tap the '
-                  'button below. We\'ll check with PayMongo — you don\'t have '
-                  'to tell us the details.'
+              ? 'Finish up on the Xendit page, then come back and tap the '
+                  'button below. We\'ll check with Xendit — you don\'t have '
+                    'to tell us the details.'
               : 'Your booking is saved. To hold the date we ask for half of '
-                  'the total now; the balance is settled with the team on the '
-                  'day of your function.',
+                    'the total now; the balance is settled with the team on the '
+                    'day of your function.',
           style: AppTextStyles.body,
         ),
       ),
@@ -576,22 +581,26 @@ class _PaymentPageState extends State<PaymentPage>
               const SizedBox(height: AppSpacing.md),
               const _NoteLine(
                 icon: Icons.account_balance_wallet_outlined,
-                text: 'Pay with GCash, Maya, GrabPay or a card on PayMongo\'s '
+                text:
+                    'Pay with GCash, Maya, GrabPay or a card on Xendit\'s '
                     'own secure page. We never see your card details.',
               ),
               const _NoteLine(
                 icon: Icons.event_available_outlined,
-                text: 'Once the downpayment lands, your order goes to the team '
+                text:
+                    'Once the downpayment lands, your order goes to the team '
                     'to confirm — they\'ll call your contact number.',
               ),
               const _NoteLine(
                 icon: Icons.bookmark_outline_rounded,
-                text: 'Not ready? Your booking is already saved. Pick the '
+                text:
+                    'Not ready? Your booking is already saved. Pick the '
                     'payment back up any time from Order Tracking.',
               ),
               _NoteLine(
                 icon: Icons.receipt_long_outlined,
-                text: 'Quote reference No. ${widget.reference} if you need to '
+                text:
+                    'Quote reference No. ${widget.reference} if you need to '
                     'talk to us about this payment.',
                 last: true,
               ),
@@ -600,20 +609,19 @@ class _PaymentPageState extends State<PaymentPage>
         ),
       ),
 
-      if (!PayMongoConfig.isLive) ...[
+      if (XenditConfig.apiUrl.isEmpty) ...[
         const SizedBox(height: AppSpacing.md),
         FadeSlideIn(
           delay: const Duration(milliseconds: 180),
           child: const _Banner(
             icon: Icons.science_outlined,
-            title: 'Test mode',
-            message: 'This app is on PayMongo\'s test keys, so no real money '
-                'moves. Use PayMongo\'s test card 4343 4343 4343 4345 with '
-                'any future expiry and any CVC.',
+            title: 'Payment setup incomplete',
+            message:
+                'Xendit is not connected to this build yet. The team must '
+                'deploy the payment endpoint before taking payments.',
           ),
         ),
       ],
-
     ];
   }
 
@@ -645,7 +653,8 @@ class _PaymentPageState extends State<PaymentPage>
           child: _Banner(
             icon: Icons.hourglass_top_rounded,
             title: 'Nothing has landed yet',
-            message: 'PayMongo hasn\'t recorded a payment on this order. If '
+            message:
+                'Xendit hasn\'t recorded a payment on this order. If '
                 'you\'ve just paid, give it a few seconds and check again — '
                 'e-wallets sometimes take a moment to settle.',
           ),
@@ -775,8 +784,8 @@ class _AmountRow extends StatelessWidget {
             color: strong
                 ? AppColors.goldDeep
                 : muted
-                    ? AppColors.brownSoft
-                    : AppColors.brown,
+                ? AppColors.brownSoft
+                : AppColors.brown,
           ),
         ),
       ],
@@ -786,11 +795,7 @@ class _AmountRow extends StatelessWidget {
 
 /// One quiet icon + sentence in the "How it works" card.
 class _NoteLine extends StatelessWidget {
-  const _NoteLine({
-    required this.icon,
-    required this.text,
-    this.last = false,
-  });
+  const _NoteLine({required this.icon, required this.text, this.last = false});
 
   final IconData icon;
   final String text;
@@ -835,8 +840,9 @@ class _Banner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tint =
-        danger ? Theme.of(context).colorScheme.error : AppColors.goldDeep;
+    final tint = danger
+        ? Theme.of(context).colorScheme.error
+        : AppColors.goldDeep;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -868,14 +874,13 @@ class _Banner extends StatelessWidget {
   }
 }
 
-/// PayMongo's method codes as the member knows them.
+/// Xendit's method codes as the member knows them.
 String _methodLabel(String code) => switch (code.toLowerCase()) {
-      'gcash' => 'GCash',
-      'paymaya' || 'maya' => 'Maya',
-      'grab_pay' => 'GrabPay',
-      'card' => 'card',
-      'billease' => 'BillEase',
-      'dob' || 'dob_ubp' => 'online banking',
-      _ => code,
-    };
-
+  'gcash' => 'GCash',
+  'paymaya' || 'maya' => 'Maya',
+  'grab_pay' => 'GrabPay',
+  'card' => 'card',
+  'billease' => 'BillEase',
+  'dob' || 'dob_ubp' => 'online banking',
+  _ => code,
+};

@@ -39,8 +39,7 @@ class BookingRepository {
   /// Order Tracking — moves it to `paid`.
   ///
   /// The id comes back because the payment that follows needs it: it travels to
-  /// PayMongo as the checkout's reference number, which is what ties a payment
-  /// in the PayMongo dashboard to the order it settled.
+  /// Xendit as the checkout's reference number, which ties payment to the order.
   Future<String> submit(
     Map<String, String> fields, {
     Map<String, Object?> payment = const {},
@@ -166,7 +165,7 @@ class BookingRepository {
     }
   }
 
-  /// Records the PayMongo checkout page opened for [bookingId], so a member who
+  /// Records the Xendit checkout page opened for [bookingId], so a member who
   /// backs out mid-payment can be handed the same page again from Order
   /// Tracking rather than opening a second one.
   Future<void> attachCheckout(
@@ -178,11 +177,11 @@ class BookingRepository {
     'checkoutUrl': url,
   });
 
-  /// Marks [bookingId]'s downpayment settled. Only ever called after PayMongo
+  /// Marks [bookingId]'s downpayment settled. Only ever called after Xendit
   /// itself has confirmed the payment on the checkout session — never on the
   /// member's word that they've paid.
   ///
-  /// [amount] is what actually cleared, per PayMongo, rather than what we asked
+  /// [amount] is what actually cleared, per Xendit, rather than what we asked
   /// for; the two should agree, and recording the former means a disagreement is
   /// visible to the team instead of papered over.
   Future<void> markPaid(

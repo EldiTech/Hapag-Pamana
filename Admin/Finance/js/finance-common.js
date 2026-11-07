@@ -157,8 +157,8 @@ window.HPFin = (function () {
      Finance's own lines on top of the kitchen's ingredients. Blank labels are
      just unused paper; a row with a label but no figure counts as zero. */
   const OTHER_COST_SUGGESTIONS = [
-    "Labour — kitchen crew", "Labour — service crew", "Transport / delivery",
-    "Rentals — tables & linen", "Gas & fuel", "Disposables & packaging",
+    "Kitchen labour", "Service labour", "Transport", "Tables & linen",
+    "Gas & fuel", "Packaging",
     "Permits & fees", "Contingency",
   ];
   function otherTotal(rows) {

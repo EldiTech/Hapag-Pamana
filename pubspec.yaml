@@ -56,13 +56,12 @@ dependencies:
   image_picker: ^1.1.2
 
   # Opens external links from the About screen — the dialer, e-mail, Google
-  # Maps and the social pages — and hands the member to PayMongo's hosted
+  # Maps and the social pages — and hands the member to Xendit's hosted
   # checkout page for a booking's downpayment. Falls back to a clipboard copy
   # when no app can handle the link.
   url_launcher: ^6.3.1
 
-  # Talks to PayMongo's Checkout Sessions API for the 50% downpayment a booking
-  # is held with (lib/data/paymongo_service.dart).
+  # Talks to the server-backed Xendit checkout for the 50% downpayment.
   http: ^1.5.0
 
   # The address step on the catering wizard: an embedded, draggable-pin map

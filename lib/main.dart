@@ -1,18 +1,12 @@
 import 'dart:async';
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app_navigation.dart';
 import 'brand.dart';
-import 'data/about_content.dart';
-import 'data/allergens.dart';
-import 'data/app_settings.dart';
+import 'app_startup.dart';
 import 'data/member_preferences.dart';
-import 'data/push_notification_service.dart';
-import 'env.dart';
-import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'widgets.dart';
 
@@ -20,18 +14,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Every API key the app needs comes from .env from here on — load it
   // before anything that reads one (Firebase's options included).
-  await Env.load();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  PushNotificationService.registerBackgroundHandler();
   // Refresh the allergen taxonomy from the moderator-edited config without
   // holding up first paint — the built-in defaults stand until it lands.
-  unawaited(AllergenTaxonomy.load());
   // Follow the dashboard's App-features switches (ordering / catering /
   // featured / maintenance) live for the whole session.
-  AppSettingsScope.start();
-  AboutContentScope.start();
   runApp(const HapagPamanaApp());
-  unawaited(PushNotificationService.instance.start());
+  unawaited(AppStartup.initialize());
 }
 
 class HapagPamanaApp extends StatelessWidget {

@@ -25,8 +25,6 @@ window.HP_DASHBOARD = {
       { key: "allergens",     href: "allergens.html",     icon: "leaf",      label: "Allergens" },
       { key: "settings",      href: "settings.html",      icon: "gear",      label: "Settings" },
     ],
-    // exportData lives on the content store (js/store.js) — resolve lazily.
-    export: { label: "Export as JSON", fn: () => window.HP.exportData() },
     routeTransitions: true,
   },
 };

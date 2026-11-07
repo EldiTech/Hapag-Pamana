@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app_startup.dart';
 import '../brand.dart';
 import '../data/customer_repository.dart';
 import '../widgets.dart';
@@ -45,7 +46,8 @@ class _SplashScreenState extends State<SplashScreen>
     _advanceTimer = Timer(const Duration(milliseconds: _holdMs), _goHome);
   }
 
-  void _goHome() {
+  Future<void> _goHome() async {
+    await AppStartup.ready;
     if (!mounted) return;
     // A returning, signed-in customer lands straight on the member side; guests
     // get the public shell.
@@ -70,7 +72,10 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Animation<double> _stage(double begin, double end, Curve curve) =>
-      CurvedAnimation(parent: _intro, curve: Interval(begin, end, curve: curve));
+      CurvedAnimation(
+        parent: _intro,
+        curve: Interval(begin, end, curve: curve),
+      );
 
   @override
   Widget build(BuildContext context) {

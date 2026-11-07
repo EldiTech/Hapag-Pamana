@@ -5,25 +5,32 @@ import 'package:flutter/material.dart';
 import '../../brand.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/customer_repository.dart';
+import '../../data/catering.dart';
+import '../../data/product.dart';
 import '../../data/member_preferences.dart';
 import '../../data/recommendation_repository.dart';
 import '../../widgets.dart';
 import '../detail_sheets.dart';
 import '../home_sections.dart';
 import 'user_shell.dart';
+import '../../data/booking.dart';
+import '../../data/booking_repository.dart';
+import '../../data/catering_repository.dart';
+import '../../data/gabay_brain.dart';
+import '../../data/gabay_corpus.dart';
+import '../../data/gabay_user_model.dart';
+import '../../data/product_repository.dart';
 
 /// Gabay — the member-side AI catering companion ("gabay" = guide).
 ///
-/// Mostly design for now: the assistant's welcome, a "how I can help" rundown of
-/// its planned capabilities, a set of starter prompts and a chat composer. The
-/// conversation isn't wired — typing a message or tapping a prompt surfaces a
-/// "coming soon" note.
+/// Now partially functional: the assistant can hold a grounded conversation
+/// (FAQ, package matching by budget + headcount, healthier-menu suggestions,
+/// and an honest "why was this recommended?" explanation) from the business's
+/// own cleaned content, on-device. The live "Picks just for you" panel still
+/// runs from the recommendation stream as before.
 ///
-/// One capability IS live: "Picks just for you", the collaborative-filtering
-/// recommendations, which sit in a real panel at the top of the page (see
-/// [_RecommendedPanel]) rather than in the coming-soon rundown below it. The
-/// rest (budget/headcount package matching, healthier-meal swaps, layout
-/// explanations, the FAQ assistant) still await an implementation pass.
+/// Out of scope for this pass: open-ended chit-chat, changing filed orders, and
+/// anything that fabricates a package, price, or inclusion that isn't published.
 class UserGabayPage extends StatefulWidget {
   const UserGabayPage({super.key, this.onNavigate});
 
@@ -38,14 +45,29 @@ class UserGabayPage extends StatefulWidget {
 
 class _UserGabayPageState extends State<UserGabayPage> {
   final TextEditingController _controller = TextEditingController();
+  final _GabayChat _chat = _GabayChat();
 
   StreamSubscription<RecommendationSet>? _recSub;
   RecommendationSet _recs = RecommendationSet.empty;
   bool _recsLoading = true;
 
-  /// The capabilities Gabay will offer once implemented — also the content of
-  /// the "how I can help" rundown. "Picks just for you" is deliberately absent:
-  /// it's live, and lives in [_RecommendedPanel] above this list.
+  /// The member's own orders, watched live so an answer about "my orders"
+  /// reflects the latest status the team has written.
+  StreamSubscription<List<Booking>>? _ordersSub;
+  List<Booking> _orders = const [];
+
+  /// The catalogue Gabay is grounded on, loaded once when the tab opens. Kept
+  /// as plain snapshots rather than re-read per message: the corpus is rebuilt
+  /// from them for every reply, which is cheap, but two Firestore reads per
+  /// keystroke would not be.
+  List<CateringPackage> _packages = const [];
+  List<Product> _menu = const [];
+
+  /// True while a reply is being composed, so the chat can show it is working.
+  bool _thinking = false;
+
+  /// The capabilities Gabay now actually offers. "Picks just for you" is still
+  /// absent from this list because it's live and lives in [_RecommendedPanel].
   static const List<(IconData, String, String)> _capabilities = [
     (
       Icons.savings_outlined,
@@ -74,21 +96,20 @@ class _UserGabayPageState extends State<UserGabayPage> {
     ),
   ];
 
-  /// Starter prompts shown as tappable chips.
+  /// Starter prompts shown as tappable chips — now wired to real replies.
   static const List<String> _starters = [
     'Recommend a package for ₱20,000 · 50 pax',
     'Suggest healthier meal options',
     'Why was this package recommended?',
     'Help me plan my event layout',
     'How do I book catering?',
+    'When is your busiest season?',
+    'Make me a planning checklist',
   ];
 
   @override
   void initState() {
     super.initState();
-    // Same stream the member home's strip reads — one repository, so the two
-    // surfaces can never disagree about what this member is being shown. A
-    // failed read settles into the empty set, which drops the panel.
     _recSub = RecommendationRepository().watchRecommended().listen(
       (set) {
         if (!mounted) return;
@@ -105,30 +126,88 @@ class _UserGabayPageState extends State<UserGabayPage> {
         });
       },
     );
+
+    // The member's own orders and the live catalogue are what Gabay is grounded
+    // on; both are loaded once here, then kept current by the streams.
+    _ordersSub = BookingRepository().watchMine().listen(
+      (orders) {
+        if (!mounted) return;
+        setState(() => _orders = orders);
+      },
+      onError: (_) {},
+    );
+    CateringRepository().watchPackages().first.then(
+      (packages) {
+        if (!mounted) return;
+        setState(() => _packages = packages);
+      },
+      onError: (_) {},
+    );
+    ProductRepository().watchVisible().first.then(
+      (menu) {
+        if (!mounted) return;
+        setState(() => _menu = menu);
+      },
+      onError: (_) {},
+    );
   }
 
   @override
   void dispose() {
     _recSub?.cancel();
+    _ordersSub?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
-  void _comingSoon() {
+  void _send() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
     FocusScope.of(context).unfocus();
     _controller.clear();
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.brown,
-          content: Text(
-            'Gabay is still learning — chat is coming soon!',
-            style: AppTextStyles.sans(size: 13, color: AppColors.cream),
-          ),
-        ),
-      );
+    _chat.addUser(text);
+    _replay(text);
+  }
+
+  void _replay(String text) {
+    // Keep the helper static from the UI's point of view: schedule a rebuild
+    // when the reply lands, and surface errors as a quiet note rather than a
+    // broken screen.
+    setState(() => _thinking = true);
+    _chat
+        .reply(
+          text,
+          prefs: MemberPreferencesScope.value,
+          recs: _recs,
+          orders: _orders,
+          packages: _packages,
+          menu: _menu,
+          displayName: CustomerRepository().displayName,
+        )
+        .then(
+          (reply) {
+            if (!mounted) return;
+            setState(() {
+              _chat.addAssistant(reply);
+              _thinking = false;
+            });
+          },
+          onError: (error) {
+            if (!mounted) return;
+            setState(() {
+              _thinking = false;
+              _chat.addAssistant(
+                'Sorry — I dropped your message. Try again in a moment.',
+              );
+            });
+          },
+        );
+  }
+
+  void _sendStarter(String prompt) {
+    FocusScope.of(context).unfocus();
+    _controller.text = prompt;
+    _send();
   }
 
   @override
@@ -168,14 +247,6 @@ class _UserGabayPageState extends State<UserGabayPage> {
                 const SizedBox(height: AppSpacing.section),
 
                 // ── Picks just for you (live) ────────────────────────────────
-                // The one capability that isn't a promise. Answers to the
-                // member's own suggestions switch, and drops out entirely when
-                // there's nothing to recommend — an empty panel would say Gabay
-                // is broken when it's only new.
-                // Grows in and collapses away rather than popping: the panel
-                // leaves the moment the member turns suggestions off in
-                // Settings, and the conversation above it should close the gap
-                // rather than jump up into it.
                 SmoothReveal(
                   visible:
                       prefs.gabaySuggestions &&
@@ -195,8 +266,19 @@ class _UserGabayPageState extends State<UserGabayPage> {
                   ),
                 ),
 
+                // ── Conversation ─────────────────────────────────────────────
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 140),
+                  child: _ChatHistory(_chat.messages),
+                ),
+                if (_thinking) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  const _AssistantTyping(),
+                ],
+                const SizedBox(height: AppSpacing.section),
+
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 170),
                   child: Text(
                     'HERE\'S HOW I CAN HELP',
                     style: AppTextStyles.eyebrow,
@@ -205,7 +287,7 @@ class _UserGabayPageState extends State<UserGabayPage> {
                 const SizedBox(height: AppSpacing.md),
                 for (var i = 0; i < _capabilities.length; i++) ...[
                   FadeSlideIn(
-                    delay: Duration(milliseconds: 180 + i * 50),
+                    delay: Duration(milliseconds: 200 + i * 50),
                     child: _CapabilityCard(
                       icon: _capabilities[i].$1,
                       title: _capabilities[i].$2,
@@ -217,27 +299,81 @@ class _UserGabayPageState extends State<UserGabayPage> {
                 const SizedBox(height: AppSpacing.lg),
 
                 FadeSlideIn(
-                  delay: const Duration(milliseconds: 220),
+                  delay: const Duration(milliseconds: 280),
                   child: Text('TRY ASKING', style: AppTextStyles.eyebrow),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 FadeSlideIn(
-                  delay: const Duration(milliseconds: 260),
+                  delay: const Duration(milliseconds: 320),
                   child: Wrap(
                     spacing: AppSpacing.sm,
                     runSpacing: AppSpacing.sm,
                     children: [
                       for (final prompt in _starters)
-                        _PromptChip(prompt, onTap: _comingSoon),
+                        _PromptChip(prompt, onTap: () => _sendStarter(prompt)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          _Composer(controller: _controller, onSend: _comingSoon),
+          _Composer(controller: _controller, onSend: _send),
         ],
       ),
+    );
+  }
+}
+
+// ════════════════════════════ Chat history ════════════════════════════
+/// The scrolling conversation so far — user messages and assistant replies, both
+/// rendered as chat bubbles.
+class _ChatHistory extends StatelessWidget {
+  const _ChatHistory(this.messages);
+
+  final List<_GabayMessage> messages;
+
+  @override
+  Widget build(BuildContext context) {
+    if (messages.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 360),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: messages.length,
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+        itemBuilder: (context, i) {
+          final message = messages[i];
+          return message.isFromUser
+              ? _UserBubble(message.text)
+              : _AssistantBubble(message.text);
+        },
+      ),
+    );
+  }
+}
+
+class _UserBubble extends StatelessWidget {
+  const _UserBubble(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Expanded(
+          child: AppCard(
+            radius: AppRadius.lg,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Text(text, style: AppTextStyles.body),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+      ],
     );
   }
 }
@@ -245,13 +381,6 @@ class _UserGabayPageState extends State<UserGabayPage> {
 // ════════════════════════════ Recommended panel ════════════════════════════
 /// "Picks just for you" — the collaborative-filtering recommendations, in the
 /// one place on the member side that can explain itself.
-///
-/// The home strip shows the same items in passing; here they get the assistant's
-/// own voice around them, a badge naming what produced the list, and a way
-/// through to Packages when a pick is a package rather than a dish. Which is the
-/// point of the source badge: Gabay promises to say why something was
-/// recommended, and a panel that can't distinguish "members like you ordered
-/// this" from "the kitchen featured it" can't keep that promise.
 class _RecommendedPanel extends StatelessWidget {
   const _RecommendedPanel({
     required this.loading,
@@ -300,8 +429,6 @@ class _RecommendedPanel extends StatelessWidget {
               ],
             ),
           ),
-          // The badge can only be written once the picks have landed, so it
-          // grows in with them rather than shoving the strip down.
           SmoothReveal(
             visible: !loading,
             child: Padding(
@@ -315,55 +442,46 @@ class _RecommendedPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-
-          // The cards run to the card's own edge rather than the screen
-          // gutter, so the strip reads as belonging to the panel — hence the
-          // ListView here instead of the home page's [ForYouStrip], which pads
-          // itself to the wider screen inset.
           SizedBox(
             height: 196,
-            // The spinner dissolves into the picks it was waiting on.
             child: SmoothSwap(
               alignment: Alignment.center,
               child: loading
-                ? const Center(
-                    key: ValueKey('picks-loading'),
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: AppColors.goldDeep,
+                  ? const Center(
+                      key: ValueKey('picks-loading'),
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: AppColors.goldDeep,
+                        ),
                       ),
+                    )
+                  : ListView.separated(
+                      key: const ValueKey('picks'),
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                      ),
+                      itemCount: set.items.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 12),
+                      itemBuilder: (context, i) {
+                        final item = set.items[i];
+                        return RecommendedCard(
+                          item,
+                          onTap: () {
+                            if (!item.isPackage) {
+                              showProductSheet(context, item.product!);
+                            } else {
+                              onOpenPackages?.call();
+                            }
+                          },
+                        );
+                      },
                     ),
-                  )
-                : ListView.separated(
-                    key: const ValueKey('picks'),
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                    ),
-                    itemCount: set.items.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 12),
-                    itemBuilder: (context, i) {
-                      final item = set.items[i];
-                      return RecommendedCard(
-                        item,
-                        onTap: () {
-                          if (!item.isPackage) {
-                            showProductSheet(context, item.product!);
-                          } else {
-                            onOpenPackages?.call();
-                          }
-                        },
-                      );
-                    },
-                  ),
             ),
           ),
-
-          // Same reasoning as the badge: the link only means something once
-          // there are picks behind it, so it grows in with them.
           SmoothReveal(
             visible: !loading && onOpenPackages != null,
             child: Padding(
@@ -416,7 +534,6 @@ class _GabayHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Gold-ringed sparkle avatar — the assistant's mark.
         Container(
           width: 60,
           height: 60,
@@ -454,7 +571,6 @@ class _GabayHeader extends StatelessWidget {
   }
 }
 
-/// A small "PREVIEW" badge marking Gabay as not-yet-live.
 class _PreviewTag extends StatelessWidget {
   const _PreviewTag();
 
@@ -480,8 +596,6 @@ class _PreviewTag extends StatelessWidget {
 }
 
 // ════════════════════════════ Assistant bubble ════════════════════════════
-/// A left-aligned chat bubble spoken by Gabay, fronted by a small sparkle
-/// avatar, on the parchment ground.
 class _AssistantBubble extends StatelessWidget {
   const _AssistantBubble(this.text);
 
@@ -506,8 +620,6 @@ class _AssistantBubble extends StatelessWidget {
         const SizedBox(width: AppSpacing.sm + 2),
         Expanded(
           child: AppCard(
-            // Square off the top-left corner so the bubble points back at the
-            // avatar, the usual chat-tail cue.
             radius: AppRadius.lg,
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Text(text, style: AppTextStyles.body),
@@ -597,8 +709,6 @@ class _PromptChip extends StatelessWidget {
 }
 
 // ════════════════════════════ Composer ════════════════════════════
-/// The chat input bar pinned above the bottom nav. Visual only for now — the
-/// send button surfaces a "coming soon" note rather than dispatching a message.
 class _Composer extends StatelessWidget {
   const _Composer({required this.controller, required this.onSend});
 
@@ -652,6 +762,102 @@ class _Composer extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ════════════════════════════ Grounded chat controller ════════════════════════════
+/// The conversation's state for one member: the bubbles drawn so far, the slots
+/// Gabay has collected, and the bridge to [GabayBrain].
+///
+/// The UI stays deliberately thin — it draws bubbles and asks for a reply.
+/// Everything that decides *what* Gabay says lives in the brain, which is
+/// grounded on the business's own catalog, written policies and uploaded sales
+/// workbooks, and personalised from this member's own orders and settings.
+class _GabayChat {
+  final List<_GabayMessage> messages = [];
+
+  /// Slots survive across turns, so a follow-up like "budget is 20,000"
+  /// completes the package match the previous message started instead of
+  /// starting over.
+  final GabaySlots _slots = GabaySlots();
+
+  void addUser(String text) {
+    messages.add(_GabayMessage(text, fromUser: true));
+  }
+
+  void addAssistant(String text) {
+    messages.add(_GabayMessage(text, fromUser: false));
+  }
+
+  Future<String> reply(
+    String text, {
+    required MemberPreferences prefs,
+    required RecommendationSet recs,
+    required List<Booking> orders,
+    required List<CateringPackage> packages,
+    required List<Product> menu,
+    required String? displayName,
+  }) async {
+    final user = GabayUserModel.build(
+      displayName: displayName,
+      bookings: orders,
+      menu: menu,
+      prefs: prefs,
+      profile: prefs.tasteProfile,
+    );
+    final brain = GabayBrain(
+      corpus: GabayCorpus.build(packages: packages, menu: menu),
+      packages: packages,
+      menu: menu,
+      user: user,
+      prefs: prefs,
+      recs: recs,
+      slots: _slots,
+    );
+    return brain.respond(text);
+  }
+}
+
+class _GabayMessage {
+  const _GabayMessage(this.text, {required this.fromUser});
+
+  final String text;
+  final bool fromUser;
+
+  bool get isFromUser => fromUser;
+}
+
+/// The "Gabay is working on it" bubble shown while a reply is composed. Short
+/// and quiet — the reply itself is usually one frame away.
+class _AssistantTyping extends StatelessWidget {
+  const _AssistantTyping();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.gold.withValues(alpha: 0.12),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
+          ),
+          child: const GabayMark(size: 15, color: AppColors.goldDeep),
+        ),
+        const SizedBox(width: AppSpacing.sm + 2),
+        Expanded(
+          child: AppCard(
+            radius: AppRadius.lg,
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Text('Gabay is putting that together…', style: AppTextStyles.bodySmall),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -37,7 +37,7 @@ enum BookingStatus {
 }
 
 /// Where an order stands on its downpayment — half the total, collected through
-/// PayMongo before the team will confirm the date.
+/// Xendit before the team will confirm the date.
 ///
 /// The wizards stamp this on every order they file, so [none] only ever appears
 /// on orders filed before the downpayment gate existed; those are read as
@@ -338,22 +338,21 @@ class Booking {
   /// The half of [paymentTotal] the downpayment gate asks for.
   num get paymentDue => _numOf(data['paymentDue']);
 
-  /// What actually cleared — normally [paymentDue], read back from PayMongo's
+  /// What actually cleared — normally [paymentDue], read back from Xendit's
   /// own record of the payment rather than from what we asked for.
   num get paymentPaid => _numOf(data['paymentPaid']);
 
-  /// The PayMongo checkout page this order opened, so a member who backed out
+  /// The Xendit checkout page this order opened, so a member who backed out
   /// is handed the same page again instead of a second charge.
   String get checkoutUrl => value('checkoutUrl');
 
-  /// PayMongo's session id (`cs_…`), which the app re-reads to confirm payment.
+  /// Xendit's session id (`ps-…`), which the app re-reads to confirm payment.
   String get checkoutSessionId => value('checkoutSessionId');
 
-  /// The settled payment's PayMongo id (`pay_…`) — the team's reference when
-  /// reconciling against the PayMongo dashboard.
+  /// The settled payment's Xendit id — the team's reference when reconciling.
   String get paymentRef => value('paymentRef');
 
-  /// How it was paid, as PayMongo reports it ("gcash", "card", …).
+  /// How it was paid, as Xendit reports it ("gcash", "card", …).
   String get paymentMethod => value('paymentMethod');
 
   DateTime? get paidAt => _dateOf(data['paidAt']);
@@ -362,7 +361,7 @@ class Booking {
   /// member can act on.
   ///
   /// An amount is part of the test, not just the status: a checkout for nothing
-  /// is one PayMongo would refuse, so an `awaiting` order that somehow carries no
+  /// is one Xendit would refuse, so an `awaiting` order that somehow carries no
   /// figure is left for the team rather than offered a button that can only fail.
   bool get needsDownpayment =>
       payment == PaymentState.awaiting && paymentDue > 0;

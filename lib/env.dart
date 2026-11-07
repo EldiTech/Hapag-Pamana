@@ -32,47 +32,45 @@ class Env {
     _loaded = true;
   }
 
-  static String get googleMapsApiKey => const String.fromEnvironment(
-        'GOOGLE_MAPS_API_KEY',
-      ).isNotEmpty
+  static String get googleMapsApiKey =>
+      const String.fromEnvironment('GOOGLE_MAPS_API_KEY').isNotEmpty
       ? const String.fromEnvironment('GOOGLE_MAPS_API_KEY')
       : (dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '');
 
-  static String get paymongoSecretKey => const String.fromEnvironment(
-        'PAYMONGO_SECRET_KEY',
-      ).isNotEmpty
+  static String get paymongoSecretKey =>
+      const String.fromEnvironment('PAYMONGO_SECRET_KEY').isNotEmpty
       ? const String.fromEnvironment('PAYMONGO_SECRET_KEY')
       : (dotenv.env['PAYMONGO_SECRET_KEY'] ?? '');
 
-  static String get paymongoPublicKey => const String.fromEnvironment(
-        'PAYMONGO_PUBLIC_KEY',
-      ).isNotEmpty
+  static String get paymongoPublicKey =>
+      const String.fromEnvironment('PAYMONGO_PUBLIC_KEY').isNotEmpty
       ? const String.fromEnvironment('PAYMONGO_PUBLIC_KEY')
       : (dotenv.env['PAYMONGO_PUBLIC_KEY'] ?? '');
 
-  static String get firebaseAndroidApiKey => const String.fromEnvironment(
-        'FIREBASE_ANDROID_API_KEY',
-      ).isNotEmpty
+  static String get firebaseAndroidApiKey =>
+      const String.fromEnvironment('FIREBASE_ANDROID_API_KEY').isNotEmpty
       ? const String.fromEnvironment('FIREBASE_ANDROID_API_KEY')
       : (dotenv.env['FIREBASE_ANDROID_API_KEY'] ?? '');
 
-  static String get firebaseWebApiKey => const String.fromEnvironment(
-        'FIREBASE_WEB_API_KEY',
-      ).isNotEmpty
+  static String get firebaseWebApiKey =>
+      const String.fromEnvironment('FIREBASE_WEB_API_KEY').isNotEmpty
       ? const String.fromEnvironment('FIREBASE_WEB_API_KEY')
       : (dotenv.env['FIREBASE_WEB_API_KEY'] ?? '');
 
-  static String get firebaseIosApiKey => const String.fromEnvironment(
-        'FIREBASE_IOS_API_KEY',
-      ).isNotEmpty
+  static String get firebaseIosApiKey =>
+      const String.fromEnvironment('FIREBASE_IOS_API_KEY').isNotEmpty
       ? const String.fromEnvironment('FIREBASE_IOS_API_KEY')
       : (dotenv.env['FIREBASE_IOS_API_KEY'] ?? '');
 
   /// Full Vercel Function URL, for example
   /// https://example.vercel.app/api/notifications/booking.
-  static String get notificationApiUrl => const String.fromEnvironment(
-        'NOTIFICATION_API_URL',
-      ).isNotEmpty
+  static String get notificationApiUrl =>
+      const String.fromEnvironment('NOTIFICATION_API_URL').isNotEmpty
       ? const String.fromEnvironment('NOTIFICATION_API_URL')
       : (dotenv.env['NOTIFICATION_API_URL'] ?? '');
+
+  static String get xenditApiUrl =>
+      const String.fromEnvironment('XENDIT_API_URL').isNotEmpty
+      ? const String.fromEnvironment('XENDIT_API_URL')
+      : (dotenv.env['XENDIT_API_URL'] ?? '');
 }

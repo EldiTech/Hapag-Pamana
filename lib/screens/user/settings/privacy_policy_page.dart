@@ -6,7 +6,7 @@ import 'legal_document.dart';
 ///
 /// Written against the real data paths rather than from a template: the account
 /// fields the sign-up form writes to `customers/{uid}`, the inline profile photo,
-/// the answers the two booking wizards file into `bookings`, what PayMongo hands
+/// the answers the two booking wizards file into `bookings`, what Xendit hands
 /// back after a downpayment, and the settings on this very screen. Where staff
 /// can read something, it says which staff.
 ///
@@ -53,8 +53,8 @@ const List<LegalClause> _clauses = [
           'the address we deliver to, the times you gave us and any notes you '
           'wrote for the kitchen.',
       'Your payments — how much was paid, when, the method used and the '
-          'reference PayMongo gives us. Card and e-wallet details are entered '
-          'on PayMongo\'s own checkout page and never pass through this app.',
+      'reference Xendit gives us. Card and e-wallet details are entered '
+      'on Xendit\'s own checkout page and never pass through this app.',
       'Your settings — the notification switches, your dietary preference and '
           'the allergens you asked us to avoid, and your chosen language.',
     ],
@@ -104,7 +104,7 @@ const List<LegalClause> _clauses = [
     bullets: [
       'Google Firebase — your account, your profile, your orders and your '
           'settings live in Firebase Authentication and Cloud Firestore.',
-      'PayMongo — takes your downpayment on its own secure page and tells us '
+    'Xendit — takes your downpayment on its own secure page and tells us '
           'only that the payment cleared, for how much, and by what method.',
     ],
   ),

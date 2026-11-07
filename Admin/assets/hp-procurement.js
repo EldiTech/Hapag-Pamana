@@ -98,18 +98,18 @@ window.HPProc = (function () {
   const indexOf = (k) => Math.max(0, FLOW.indexOf(k));
   const isAfter = (a, b) => indexOf(a) > indexOf(b);
   const nextOf = (k) => stage(k).next;
+  const hasFullAccess = (role) => role === "admin" || role === "owner";
 
   /* Which stages a role is allowed to move a document THROUGH. The guard has
      already decided the desk may open the dashboard; this decides whether the
-     button on a given row does anything. admin may drive any stage, which is
-     what makes a single admin able to walk a run end to end while testing. */
+     button on a given row does anything. Admins and owners may drive any stage. */
   const DRIVES = {
     purchasing_staff: ["released", "purchasing", "delivered"],
     stock_clerk: ["checking", "liquidation"],
     production_manager: ["filed"],
   };
   function canDrive(role, stageKey) {
-    if (role === "admin") return true;
+    if (hasFullAccess(role)) return true;
     return (DRIVES[role] || []).indexOf(stageKey) !== -1;
   }
 
@@ -128,7 +128,7 @@ window.HPProc = (function () {
      "filed" is the real close: once the paperwork is with finance the record
      is sealed, and reopening is finance's call. */
   function canAttachReceipts(role, stageKey) {
-    if (role === "admin") return true;
+    if (hasFullAccess(role)) return true;
     if (role !== "purchasing_staff") return false;
     return (stageKey || "released") !== "filed";
   }
@@ -153,7 +153,7 @@ window.HPProc = (function () {
      "filed" closes it: once finance holds the paperwork the spend is a
      finance record, and reopening is their call. */
   function canPriceLines(role, stageKey) {
-    if (role === "admin") return true;
+    if (hasFullAccess(role)) return true;
     if (role !== "purchasing_staff") return false;
     return (stageKey || "released") !== "filed";
   }

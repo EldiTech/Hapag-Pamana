@@ -10,7 +10,7 @@ import '../../data/booking.dart';
 import '../../data/booking_repository.dart';
 import '../../data/catering.dart';
 import '../../data/customer_repository.dart';
-import '../../data/paymongo_config.dart';
+import '../../data/xendit_config.dart';
 import '../../data/places_service.dart';
 import '../../data/product.dart';
 import '../../data/product_repository.dart';
@@ -129,7 +129,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
   /// True once the downpayment has cleared.
   bool _paid = false;
 
-  /// The PayMongo checkout page opened for this order, so a second run at the
+  /// The Xendit checkout page opened for this order, so a second run at the
   /// payment reuses it instead of opening another.
   String? _sessionId;
   String? _checkoutUrl;
@@ -169,16 +169,19 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     }
     // The phone number lives on the Firestore profile, so it arrives async —
     // fill only fields the member hasn't typed into meanwhile.
-    CustomerRepository().fetchCurrentCustomer().then((customer) {
-      if (!mounted || customer == null) return;
-      setState(() {
-        _fillIfEmpty('clientName', customer.name);
-        _fillIfEmpty('email', customer.email);
-        _fillIfEmpty('contactNumber', customer.phone);
-      });
-    }).catchError((_) {
-      // Offline / rules hiccup — the member just types it in themselves.
-    });
+    CustomerRepository()
+        .fetchCurrentCustomer()
+        .then((customer) {
+          if (!mounted || customer == null) return;
+          setState(() {
+            _fillIfEmpty('clientName', customer.name);
+            _fillIfEmpty('email', customer.email);
+            _fillIfEmpty('contactNumber', customer.phone);
+          });
+        })
+        .catchError((_) {
+          // Offline / rules hiccup — the member just types it in themselves.
+        });
     // The live menu feeds the dish picker (shared app-wide listener, so this
     // doesn't re-download anything the Menu tab already has).
     _productSub = ProductRepository().watchVisible().listen(
@@ -225,12 +228,9 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     if (_menu.isNotEmpty) {
       return [for (final l in _menu) '${l.dish.name} (${l.pax} pax)'];
     }
-    return _ctrl('menu')
-        .text
-        .split('\n')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
+    return _ctrl(
+      'menu',
+    ).text.split('\n').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
   }
 
   // ── Pickers ───────────────────────────────────────────────────────────────
@@ -428,7 +428,10 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
   PackageDiscountInfo? get _packageDiscount {
     final pkg = widget.package;
     if (pkg == null || pkg.price <= 0) return null;
-    return PromoDiscountService.instance.getPackageDiscount(pkg.name, pkg.price);
+    return PromoDiscountService.instance.getPackageDiscount(
+      pkg.name,
+      pkg.price,
+    );
   }
 
   /// The order's full amount — the booked package's discounted per-pack price
@@ -457,7 +460,8 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     if (price <= 0 || packs <= 0) return null;
     final disc = _packageDiscount;
     final effectivePrice = disc != null ? disc.discountedPrice : price;
-    var line = '${peso(effectivePrice)} per pack × $packs pack${packs == 1 ? '' : 's'}';
+    var line =
+        '${peso(effectivePrice)} per pack × $packs pack${packs == 1 ? '' : 's'}';
     if (disc != null) {
       line += ' (${disc.badgeLabel}) · Save ${peso(_packageSavingsTotal)}';
     }
@@ -468,8 +472,8 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     setState(() => _submitting = true);
 
     final total = _orderTotal;
-    final num due = total != null && PayMongoConfig.isChargeable(total)
-        ? PayMongoConfig.downpaymentOn(total)
+    final num due = total != null && XenditConfig.isChargeable(total)
+        ? XenditConfig.downpaymentOn(total)
         : 0;
     final gated = due > 0;
 
@@ -486,10 +490,12 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
           'paymentTotal': ?total,
           if (gated) 'paymentDue': due,
           if (_packageSavingsTotal > 0) 'discountTotal': _packageSavingsTotal,
-          if (_packageDiscount != null) 'packageDiscount': _packageDiscount!.badgeLabel,
-          if (_packageDiscount != null) 'appliedPromos': [
-            '${_packageDiscount!.promo.title} (${_packageDiscount!.badgeLabel})',
-          ],
+          if (_packageDiscount != null)
+            'packageDiscount': _packageDiscount!.badgeLabel,
+          if (_packageDiscount != null)
+            'appliedPromos': [
+              '${_packageDiscount!.promo.title} (${_packageDiscount!.badgeLabel})',
+            ],
         },
       );
     } catch (_) {
@@ -562,7 +568,10 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          flexibleSpace: const ParchmentBackground(weave: true, vignette: false),
+          flexibleSpace: const ParchmentBackground(
+            weave: true,
+            vignette: false,
+          ),
           title: Text('Book Food Packs', style: AppTextStyles.heading),
         ),
         body: Stack(
@@ -634,8 +643,10 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('STEP ${_step + 1} OF ${_steps.length} · $eyebrow',
-                  style: AppTextStyles.eyebrow),
+              Text(
+                'STEP ${_step + 1} OF ${_steps.length} · $eyebrow',
+                style: AppTextStyles.eyebrow,
+              ),
               const SizedBox(height: AppSpacing.sm),
               Text(title, style: AppTextStyles.title),
               const SizedBox(height: AppSpacing.xs),
@@ -668,105 +679,105 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
 
   // ── Step forms — at most four questions per page ──────────────────────────
   List<Widget> _stepFields(int step) => switch (step) {
-        0 => [
-            _field(
-              'kindOfFunction',
-              'Occasion',
-              hint: 'Office lunch, fiesta, team outing…',
-              icon: Icons.celebration_outlined,
-              inputFormatters: [LengthLimitingTextInputFormatter(60)],
-            ),
-            _pickerField(
-              'functionDate',
-              'Date of Event',
-              hint: 'Pick a date',
-              icon: Icons.event_outlined,
-              onTap: _pickDate,
-            ),
-            _pickerField(
-              'venue',
-              'Venue / Delivery Address',
-              hint: 'Search or drop a pin on the map',
-              icon: Icons.place_outlined,
-              onTap: _pickVenue,
-            ),
-            _field(
-              'pax',
-              'No. of Pax',
-              hint: 'e.g. 50',
-              icon: Icons.groups_outlined,
-              keyboardType: TextInputType.number,
-              // A headcount is a whole number — the field refuses anything else.
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(4),
-              ],
-            ),
-          ],
-        1 => [
-            _field(
-              'clientName',
-              'Client\'s Name',
-              icon: Icons.person_outline,
-              // Names carry no digits, so the field won't take them.
-              inputFormatters: [
-                FilteringTextInputFormatter.deny(RegExp(r'\d')),
-                LengthLimitingTextInputFormatter(60),
-              ],
-            ),
-            _field(
-              'email',
-              'Email Address',
-              hint: 'Where we send your quotation',
-              icon: Icons.alternate_email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              // An address carries no spaces; the shape is checked on NEXT.
-              inputFormatters: [
-                FilteringTextInputFormatter.deny(RegExp(r'\s')),
-                LengthLimitingTextInputFormatter(120),
-              ],
-            ),
-            _field(
-              'contactNumber',
-              'Contact Number',
-              hint: '09xx xxx xxxx',
-              icon: Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-              // Digits and the punctuation people space numbers with, nothing
-              // else; the format itself is checked on NEXT.
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d +()\-]')),
-                LengthLimitingTextInputFormatter(20),
-              ],
-            ),
-          ],
-        2 => _menuStep(),
-        _ => [
-            _QuotationRecap(
-              rows: [
-                ('For', _ctrl('clientName').text),
-                ('Email Address', _ctrl('email').text),
-                ('Date of Event', _ctrl('functionDate').text),
-                ('Venue', _ctrl('venue').text),
-                ('No. of Pax', _ctrl('pax').text),
-                if (_ctrl('package').text.trim().isNotEmpty)
-                  ('Package', _ctrl('package').text),
-              ],
-              menuLines: _menuLines,
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            _timeField('deliveryTime', 'Time of Delivery'),
-            // The one blank on this wizard that may be left empty.
-            _field(
-              'notes',
-              'Notes for the Kitchen',
-              hint: 'Allergies, gate instructions, anything else… (optional)',
-              icon: Icons.edit_note_outlined,
-              maxLines: 3,
-              inputFormatters: [LengthLimitingTextInputFormatter(400)],
-            ),
-          ],
-      };
+    0 => [
+      _field(
+        'kindOfFunction',
+        'Occasion',
+        hint: 'Office lunch, fiesta, team outing…',
+        icon: Icons.celebration_outlined,
+        inputFormatters: [LengthLimitingTextInputFormatter(60)],
+      ),
+      _pickerField(
+        'functionDate',
+        'Date of Event',
+        hint: 'Pick a date',
+        icon: Icons.event_outlined,
+        onTap: _pickDate,
+      ),
+      _pickerField(
+        'venue',
+        'Venue / Delivery Address',
+        hint: 'Search or drop a pin on the map',
+        icon: Icons.place_outlined,
+        onTap: _pickVenue,
+      ),
+      _field(
+        'pax',
+        'No. of Pax',
+        hint: 'e.g. 50',
+        icon: Icons.groups_outlined,
+        keyboardType: TextInputType.number,
+        // A headcount is a whole number — the field refuses anything else.
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(4),
+        ],
+      ),
+    ],
+    1 => [
+      _field(
+        'clientName',
+        'Client\'s Name',
+        icon: Icons.person_outline,
+        // Names carry no digits, so the field won't take them.
+        inputFormatters: [
+          FilteringTextInputFormatter.deny(RegExp(r'\d')),
+          LengthLimitingTextInputFormatter(60),
+        ],
+      ),
+      _field(
+        'email',
+        'Email Address',
+        hint: 'Where we send your quotation',
+        icon: Icons.alternate_email_outlined,
+        keyboardType: TextInputType.emailAddress,
+        // An address carries no spaces; the shape is checked on NEXT.
+        inputFormatters: [
+          FilteringTextInputFormatter.deny(RegExp(r'\s')),
+          LengthLimitingTextInputFormatter(120),
+        ],
+      ),
+      _field(
+        'contactNumber',
+        'Contact Number',
+        hint: '09xx xxx xxxx',
+        icon: Icons.phone_outlined,
+        keyboardType: TextInputType.phone,
+        // Digits and the punctuation people space numbers with, nothing
+        // else; the format itself is checked on NEXT.
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[\d +()\-]')),
+          LengthLimitingTextInputFormatter(20),
+        ],
+      ),
+    ],
+    2 => _menuStep(),
+    _ => [
+      _QuotationRecap(
+        rows: [
+          ('For', _ctrl('clientName').text),
+          ('Email Address', _ctrl('email').text),
+          ('Date of Event', _ctrl('functionDate').text),
+          ('Venue', _ctrl('venue').text),
+          ('No. of Pax', _ctrl('pax').text),
+          if (_ctrl('package').text.trim().isNotEmpty)
+            ('Package', _ctrl('package').text),
+        ],
+        menuLines: _menuLines,
+      ),
+      const SizedBox(height: AppSpacing.xl),
+      _timeField('deliveryTime', 'Time of Delivery'),
+      // The one blank on this wizard that may be left empty.
+      _field(
+        'notes',
+        'Notes for the Kitchen',
+        hint: 'Allergies, gate instructions, anything else… (optional)',
+        icon: Icons.edit_note_outlined,
+        maxLines: 3,
+        inputFormatters: [LengthLimitingTextInputFormatter(400)],
+      ),
+    ],
+  };
 
   // ── The Menu step — the part no catering page has ─────────────────────────
   /// The menu builder: each chosen dish as a line with its own pax stepper,
@@ -780,7 +791,8 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
         _field(
           'menu',
           'Your Menu',
-          hint: 'One dish per line — e.g.\nFish Fillet with aioli sauce — 5 pax',
+          hint:
+              'One dish per line — e.g.\nFish Fillet with aioli sauce — 5 pax',
           icon: Icons.restaurant_outlined,
           maxLines: 5,
         ),
@@ -791,9 +803,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
         _MenuLineCard(
           line: line,
           onAdd: () => setState(() => line.pax++),
-          onRemove: line.pax > 1
-              ? () => setState(() => line.pax--)
-              : null,
+          onRemove: line.pax > 1 ? () => setState(() => line.pax--) : null,
           onDelete: () => setState(() => _menu.remove(line)),
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -864,7 +874,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
               label: _menu.isEmpty
                   ? 'DONE'
                   : 'DONE · ${_menu.length} '
-                      'DISH${_menu.length == 1 ? '' : 'ES'}',
+                        'DISH${_menu.length == 1 ? '' : 'ES'}',
               fullWidth: true,
               onPressed: () => Navigator.of(dialogContext).pop(),
             ),
@@ -950,12 +960,12 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
 
   /// A tap-to-pick time field.
   Widget _timeField(String key, String label) => _pickerField(
-        key,
-        label,
-        hint: 'Pick time',
-        icon: Icons.schedule_outlined,
-        onTap: () => _pickTime(key),
-      );
+    key,
+    label,
+    hint: 'Pick time',
+    icon: Icons.schedule_outlined,
+    onTap: () => _pickTime(key),
+  );
 
   // ── Thank-you state ───────────────────────────────────────────────────────
   /// The thank-you state, reading back the outcome the order actually reached:
@@ -1006,8 +1016,8 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
               owing
                   ? 'Your order is waiting.'
                   : _paid
-                      ? 'Your slot is held.'
-                      : 'Your food pack order is in.',
+                  ? 'Your slot is held.'
+                  : 'Your food pack order is in.',
               textAlign: TextAlign.center,
               style: AppTextStyles.displaySmall,
             ),
@@ -1015,16 +1025,16 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
             Text(
               owing
                   ? 'Everything you filled in is filed under No. '
-                      '${Booking.referenceFor(_bookingId ?? '')}. We hold the '
-                      'delivery once the downpayment lands — finish it below, '
-                      'or any time from Order Tracking in Settings.'
+                        '${Booking.referenceFor(_bookingId ?? '')}. We hold the '
+                        'delivery once the downpayment lands — finish it below, '
+                        'or any time from Order Tracking in Settings.'
                   : _paid
-                      ? 'Your downpayment is in. We\'ll send the full quotation '
-                          'to your email address and confirm the delivery on '
-                          'your contact number.'
-                      : 'We\'ll prepare your quotation, send it to your email '
-                          'address, and confirm the delivery on your contact '
-                          'number.',
+                  ? 'Your downpayment is in. We\'ll send the full quotation '
+                        'to your email address and confirm the delivery on '
+                        'your contact number.'
+                  : 'We\'ll prepare your quotation, send it to your email '
+                        'address, and confirm the delivery on your contact '
+                        'number.',
               textAlign: TextAlign.center,
               style: AppTextStyles.body,
             ),
@@ -1039,7 +1049,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
                   if (total == null) return;
                   _collect(
                     total: total,
-                    due: PayMongoConfig.downpaymentOn(total),
+                    due: XenditConfig.downpaymentOn(total),
                   );
                 },
               ),
@@ -1103,8 +1113,11 @@ class _MenuLineCard extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: AppRadius.xsAll,
-            child:
-                SizedBox(width: 44, height: 44, child: ProductImage(line.dish)),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: ProductImage(line.dish),
+            ),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -1363,8 +1376,18 @@ class _ProgressRule extends StatelessWidget {
 /// "June 12, 2026" — spelled-out date for the quotation.
 String _formatDate(DateTime d) {
   const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   return '${months[d.month - 1]} ${d.day}, ${d.year}';
 }

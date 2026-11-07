@@ -402,12 +402,9 @@ class _UserShellState extends State<UserShell> {
   }
 }
 
-/// Heritage bottom nav for the member shell. The regular tabs keep the
-/// familiar look (gold pill behind the active icon); Gabay — the AI catering
-/// companion — sits mid-row as a gold-ringed medallion button, the same
-/// seal language as the package emblems, so the special tab reads as special.
-/// Takes the currently visible logical ids, so switched-off tabs simply
-/// drop out of the row.
+/// Member navigation: a quiet parchment shelf with one consistent active tile.
+/// Gabay remains distinctive through its own wayfinding mark, not a separate
+/// oversized control, so the row stays balanced when tabs are switched off.
 class _MemberNavBar extends StatelessWidget {
   const _MemberNavBar({
     required this.ids,
@@ -441,41 +438,58 @@ class _MemberNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gabayIndex = ids.indexOf(UserShell.tabGabay);
+    final showGabay = gabayIndex >= 0;
+    final leftIds = showGabay ? ids.take(gabayIndex) : ids;
+    final rightIds = showGabay ? ids.skip(gabayIndex + 1) : const <int>[];
+
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.hairline)),
+        border: const Border(top: BorderSide(color: AppColors.hairline)),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 14,
+            offset: Offset(0, -4),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 72,
-          child: Row(
-            children: [
-              for (final id in ids)
-                Expanded(
-                  child: id == UserShell.tabGabay
-                      ? _GabayDestination(
-                          selected: activeId == id,
-                          onTap: () => onSelect(id),
-                        )
-                      : _NavDestination(
-                          icon: _items[id]!.$1,
-                          selectedIcon: _items[id]!.$2,
-                          label: _items[id]!.$3,
-                          selected: activeId == id,
-                          onTap: () => onSelect(id),
-                        ),
-                ),
-            ],
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 7, 8, 4),
+          child: SizedBox(
+            height: 62,
+            child: Row(
+              children: [
+                for (final id in leftIds) Expanded(child: _destination(id)),
+                if (showGabay)
+                  Expanded(
+                    child: _GabayDestination(
+                      selected: activeId == UserShell.tabGabay,
+                      onTap: () => onSelect(UserShell.tabGabay),
+                    ),
+                  ),
+                for (final id in rightIds) Expanded(child: _destination(id)),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _destination(int id) => _NavDestination(
+    icon: _items[id]!.$1,
+    selectedIcon: _items[id]!.$2,
+    label: _items[id]!.$3,
+    selected: activeId == id,
+    onTap: () => onSelect(id),
+  );
 }
 
-/// A regular nav tab — icon in an animated gold pill when active, label below.
+/// A regular nav tab — selected state is a filled brown tile with a gold icon.
 class _NavDestination extends StatelessWidget {
   const _NavDestination({
     required this.icon,
@@ -493,46 +507,60 @@ class _NavDestination extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.brown : AppColors.brownSoft;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: Motion.base,
-            curve: Motion.standard,
-            width: 56,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected
-                  ? AppColors.gold.withValues(alpha: 0.22)
-                  : Colors.transparent,
-              borderRadius: AppRadius.pillAll,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: AppRadius.mdAll,
+            splashColor: AppColors.gold.withValues(alpha: 0.14),
+            highlightColor: AppColors.gold.withValues(alpha: 0.08),
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: Motion.base,
+              curve: Motion.standard,
+              height: 60,
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.brown : Colors.transparent,
+                borderRadius: AppRadius.mdAll,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    selected ? selectedIcon : icon,
+                    size: selected ? 23 : 22,
+                    color: selected ? AppColors.gold : AppColors.brownSoft,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.sans(
+                      size: 10.5,
+                      spacing: 0.15,
+                      weight: selected ? FontWeight.w700 : FontWeight.w600,
+                      color: selected ? AppColors.cream : AppColors.brownSoft,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Icon(selected ? selectedIcon : icon, size: 22, color: color),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: AppTextStyles.sans(
-              size: 11,
-              spacing: 0.4,
-              weight: selected ? FontWeight.w600 : FontWeight.w500,
-              color: color,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-/// The centre Gabay tab — a brown-to-espresso medallion with a gold ring and
-/// sparkle. Active: the ring brightens, the sparkle turns gold and the disc
-/// gains a warm gold glow; the label is engraved like the brand's seals.
+/// The center Gabay action borrows the familiar raised-action silhouette while
+/// staying within the app's parchment, coffee and antique-gold palette.
 class _GabayDestination extends StatelessWidget {
   const _GabayDestination({required this.selected, required this.onTap});
 
@@ -541,56 +569,65 @@ class _GabayDestination extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: Motion.base,
-            curve: Motion.standard,
-            width: 46,
-            height: 46,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.brown, AppColors.espresso],
-              ),
-              border: Border.all(
-                color: selected
-                    ? AppColors.gold
-                    : AppColors.gold.withValues(alpha: 0.45),
-                width: 1.6,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: selected
-                      ? AppColors.gold.withValues(alpha: 0.35)
-                      : AppColors.shadow,
-                  blurRadius: selected ? 14 : 10,
-                  offset: const Offset(0, 4),
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Gabay',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            splashColor: AppColors.gold.withValues(alpha: 0.14),
+            highlightColor: AppColors.gold.withValues(alpha: 0.08),
+            onTap: onTap,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: Motion.base,
+                  curve: Motion.standard,
+                  width: selected ? 48 : 44,
+                  height: selected ? 48 : 44,
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.brown : AppColors.cream,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected ? AppColors.gold : AppColors.hairline,
+                      width: selected ? 2 : 1,
+                    ),
+                    boxShadow: selected
+                        ? const [
+                            BoxShadow(
+                              color: AppColors.shadow,
+                              blurRadius: 8,
+                              offset: Offset(0, 3),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: GabayMark(
+                      size: selected ? 23 : 21,
+                      color: selected ? AppColors.gold : AppColors.brownSoft,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Gabay',
+                  style: AppTextStyles.sans(
+                    size: 10.5,
+                    spacing: 0.15,
+                    weight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: selected ? AppColors.brown : AppColors.brownSoft,
+                  ),
                 ),
               ],
             ),
-            child: GabayMark(
-              size: 21,
-              color: selected ? AppColors.gold : AppColors.cream,
-            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Gabay',
-            style: AppTextStyles.engraved(
-              size: 10,
-              spacing: 1.2,
-              color: selected ? AppColors.goldDeep : AppColors.brownSoft,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

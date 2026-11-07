@@ -64,11 +64,50 @@
   border: 1px solid var(--hair-soft);
   border-radius: var(--r);
 }
-.ck-table { width: 100%; }
-.ck-table th, .ck-table td { vertical-align: top; }
+.ck-wrap, .modal-root .modal, .modal-root .modal-body, html, body {
+  scrollbar-color: var(--gold) var(--paper-2);
+  scrollbar-width: thin;
+}
+.ck-wrap::-webkit-scrollbar,
+.modal-root .modal::-webkit-scrollbar,
+.modal-root .modal-body::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar { width: 10px; height: 10px; }
+.ck-wrap::-webkit-scrollbar-track,
+.modal-root .modal::-webkit-scrollbar-track,
+.modal-root .modal-body::-webkit-scrollbar-track,
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track { background: var(--paper-2); }
+.ck-wrap::-webkit-scrollbar-thumb,
+.modal-root .modal::-webkit-scrollbar-thumb,
+.modal-root .modal-body::-webkit-scrollbar-thumb,
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  border: 2px solid var(--paper-2); border-radius: 999px; background: var(--gold-hair);
+}
+.ck-wrap::-webkit-scrollbar-thumb:hover,
+.modal-root .modal::-webkit-scrollbar-thumb:hover,
+.modal-root .modal-body::-webkit-scrollbar-thumb:hover,
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+.ck-wrap::-webkit-scrollbar-corner,
+.modal-root .modal::-webkit-scrollbar-corner,
+.modal-root .modal-body::-webkit-scrollbar-corner,
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner { background: var(--paper-2); }
+.ck-table { width: 100%; min-width: 860px; table-layout: fixed; }
+.ck-table .ck-col-tick { width: 5%; }
+.ck-table .ck-col-ingredient { width: 41%; }
+.ck-table .ck-col-requested { width: 12.5%; }
+.ck-table .ck-col-bought { width: 16%; }
+.ck-table .ck-col-cost { width: 17%; }
+.ck-table .ck-col-line { width: 8.5%; }
+.ck-table th, .ck-table td { vertical-align: middle; }
 .ck-table .ck-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ck-table th.ck-num { text-align: right; }
 .ck-table .ck-line { font-weight: 700; color: var(--ink); }
-.ck-tick { width: 52px; text-align: center; }
+.ck-tick { text-align: center; }
+.ck-table th.ck-tick, .ck-table td.ck-tick { padding-inline: 8px; }
 
 /* Dish headers ride along as the buyer scrolls a long list. */
 .ck-dish th {
@@ -93,12 +132,18 @@
   min-width: 72px;
   padding: 5px 8px;
   border-radius: var(--r);
-  border: 1px solid transparent;
-  background: rgba(255, 251, 240, 0.5);
+  border: 1px solid var(--gold-hair2);
+  background: var(--paper-3);
   color: var(--ink);
   font-family: var(--text);
   font-size: 0.86rem;
 }
+.ck-table .ck-qty-entry { display: flex; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; }
+.ck-table .ck-qty-entry input { flex: 1 1 5rem; width: 0; min-width: 0; }
+.ck-table .ck-qty-entry small { flex: 0 0 auto; color: var(--ink-soft); }
+.ck-table input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+.ck-table input[type="number"]::-webkit-outer-spin-button,
+.ck-table input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .ck-table input:hover { border-color: var(--gold-hair2); background: var(--paper-3); }
 .ck-table input:focus {
   outline: none;
@@ -107,7 +152,8 @@
   box-shadow: 0 0 0 3px var(--gold-hair2);
 }
 .ck-table input:disabled { opacity: 0.5; cursor: not-allowed; background: transparent; }
-.ck-table input.ck-note { margin-top: 5px; font-size: 0.8rem; color: var(--ink-soft); }
+.ck-table input.ck-note { margin-top: 5px; font-size: 0.8rem; color: var(--ink); }
+.ck-table input.ck-note::placeholder { color: var(--ink-faint); }
 .ck-table .ck-num input { text-align: right; }
 
 /* The tick itself — the one control that should be unmissable. */
@@ -270,5 +316,14 @@
 @media (max-width: 720px) {
   .ck-money, .rc-money { width: 100%; justify-content: space-between; gap: 14px; }
   .ck-money strong, .rc-money strong { font-size: 1.1rem; }
-  .ck-wrap { max-height: none; }
+  .ck-wrap { max-height: min(50vh, 420px); }
+  .modal-root table.data.ck-table { display: table; width: 100%; min-width: 860px; }
+  .modal-root table.data.ck-table thead { display: table-header-group; }
+  .modal-root table.data.ck-table tbody { display: table-row-group; }
+  .modal-root table.data.ck-table tr { display: table-row; width: auto; margin: 0; padding: 0; border: 0; }
+  .modal-root table.data.ck-table th,
+  .modal-root table.data.ck-table td { display: table-cell; width: auto; padding: 10px 12px; }
+  .modal-root table.data.ck-table td::before { content: none; }
+  .modal-root table.data.ck-table th.ck-tick,
+  .modal-root table.data.ck-table td.ck-tick { padding-inline: 8px; }
 }
