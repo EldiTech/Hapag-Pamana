@@ -51,7 +51,8 @@
 
   HP.shell.onSearch((q) => { query = q; renderRows(); });
   HP.shell.onExport(exportCSV);
-  HP.ready.then(boot);
+  // Checklist controls depend on roleKey, which resolves after auth.
+  HP.ready.then(() => HP.userReady).then(boot);
 
   /* ── Data ─────────────────────────────────────────────────────────────── */
   function boot() {
@@ -345,7 +346,7 @@
            <button class="btn btn-primary" id="ckSave">Save prices</button>`
         : `<button class="btn btn-ghost" data-close>Cancel</button>
            <button class="btn btn-ghost" id="ckSave">Save</button>
-           <button class="btn btn-primary" id="ckHand">Save &amp; hand to stores</button>`;
+           <button class="btn btn-primary" id="ckHand">Save &amp; send to Stock Clerk</button>`;
 
     HP.openModal(`Checklist · ${r.slip}`, checklistHTML(r, run, items, readOnly, pricingOnly), foot);
 
@@ -396,14 +397,22 @@
 
       <div class="ck-wrap">
         <table class="data ck-table">
+          <colgroup>
+            <col class="ck-col-tick" />
+            <col class="ck-col-ingredient" />
+            <col class="ck-col-requested" />
+            <col class="ck-col-bought" />
+            <col class="ck-col-cost" />
+            <col class="ck-col-line" />
+          </colgroup>
           <thead>
             <tr>
               <th class="ck-tick">Got</th>
               <th>Ingredient</th>
-              <th>Asked for</th>
-              <th>Bought</th>
-              <th>Unit cost</th>
-              <th>Line</th>
+              <th class="ck-num">Asked for</th>
+              <th class="ck-num">Bought</th>
+              <th class="ck-num">Unit cost</th>
+              <th class="ck-num">Line</th>
             </tr>
           </thead>
           ${groups}
@@ -437,10 +446,12 @@
       <td class="ck-num">${HP.esc(P.qty(it.qtyRequested, it.unit))}${
         it.unitCostEstimated ? `<br><small>@ ${HP.esc(P.peso(it.unitCostEstimated))}</small>` : ""}</td>
       <td class="ck-num">
-        <input type="number" class="ck-qty" min="0" step="any" inputmode="decimal"
-               placeholder="${HP.esc(String(it.qtyRequested === null ? "" : it.qtyRequested))}"
-               value="${it.qtyBought === null || it.qtyBought === undefined ? "" : HP.esc(String(it.qtyBought))}"${disMoney} />
-        <small>${HP.esc(it.unit || "")}</small>
+        <div class="ck-qty-entry">
+          <input type="number" class="ck-qty" min="0" step="any" inputmode="decimal"
+                 placeholder="${HP.esc(String(it.qtyRequested === null ? "" : it.qtyRequested))}"
+                 value="${it.qtyBought === null || it.qtyBought === undefined ? "" : HP.esc(String(it.qtyBought))}"${disMoney} />
+          <small>${HP.esc(it.unit || "")}</small>
+        </div>
       </td>
       <td class="ck-num">
         <input type="number" class="ck-cost" min="0" step="any" inputmode="decimal"

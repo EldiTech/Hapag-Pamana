@@ -20,14 +20,17 @@
   let typeFilter = HP.TYPES[0];        // active product-type tab
   let catFilters = new Set();          // selected categories — empty means "All"
   let searchTerm = "";
+  const PAGE_SIZE = 10;
+  let page = 1;
   let lastType = null;                 // last rendered tab — gates the underline grow-in
 
   const tabsEl = document.getElementById("typeTabs");
   const chipsEl = document.getElementById("catChips");
   const mapEl = document.getElementById("allergenMap");
   const gridEl = document.getElementById("rows");
+  const pagerEl = document.getElementById("productPager");
 
-  HP.shell.onSearch((term) => { searchTerm = term; render(); });
+  HP.shell.onSearch((term) => { searchTerm = term; page = 1; render(); });
 
   // The store's currency symbol, for the add-on price field's prefix.
   const currency = () => (HP.store.DB && HP.store.DB.settings && HP.store.DB.settings.currency) || "₱";
@@ -59,6 +62,7 @@
   function renderSkeleton() {
     tabsEl.innerHTML = "";
     chipsEl.innerHTML = "";
+    pagerEl.innerHTML = "";
     if (mapEl) mapEl.innerHTML = "";
     gridEl.innerHTML = HP.skel.cards(8);
   }
@@ -81,6 +85,7 @@
     tabsEl.querySelectorAll("[data-type]").forEach((b) =>
       b.addEventListener("click", () => {
         typeFilter = b.dataset.type; catFilters.clear();
+        page = 1;
         selection.clear(); // a selection never spans product types
         render();
       }));
@@ -101,6 +106,7 @@
         if (!cat) { catFilters.clear(); }
         else if (catFilters.has(cat)) { catFilters.delete(cat); }
         else { catFilters.add(cat); }
+        page = 1;
         render();
       }));
 
@@ -115,7 +121,12 @@
     // ── Allergen heatmap over the dishes currently in view ──
     renderAllergenMap(list);
 
-    HP.shell.paint(gridEl, list.length ? list.map((d) => `
+    const pageCount = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    page = Math.min(Math.max(page, 1), pageCount);
+    const start = (page - 1) * PAGE_SIZE;
+    const pageItems = list.slice(start, start + PAGE_SIZE);
+
+    HP.shell.paint(gridEl, pageItems.length ? pageItems.map((d) => `
       <div class="prod-card">
         <div class="prod-thumb">
           <label class="prod-pick" title="Select for bulk actions">
@@ -151,6 +162,7 @@
         <span class="ic">${HP.icon("dish")}</span>
         <p>${searchTerm || catFilters.size > 0 ? "No products match." : "No products yet."}</p>
       </div>`);
+    renderPager(list.length, pageCount);
 
     gridEl.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => viewDish(b.dataset.view)));
     gridEl.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => productModal(b.dataset.edit)));
@@ -164,6 +176,24 @@
   }
 
   // ── Bulk action bar ─────────────────────────────────────────────────────
+  function renderPager(total, pageCount) {
+    if (pageCount <= 1) { pagerEl.innerHTML = ""; return; }
+    const first = (page - 1) * PAGE_SIZE + 1;
+    const last = Math.min(page * PAGE_SIZE, total);
+    const numbers = Array.from({ length: pageCount }, (_, i) => i + 1)
+      .map((n) => `<button class="page-btn${n === page ? " active" : ""}" data-page="${n}" ${n === page ? 'aria-current="page"' : ""}>${n}</button>`)
+      .join("");
+    pagerEl.innerHTML = `
+      <span class="pager-count">${first}–${last} of ${total}</span>
+      <button class="icon-btn" data-prev ${page === 1 ? "disabled" : ""} aria-label="Previous page">${HP.icon("chevronLeft")}</button>
+      <div class="page-nums">${numbers}</div>
+      <button class="icon-btn" data-next ${page === pageCount ? "disabled" : ""} aria-label="Next page">${HP.icon("chevronRight")}</button>`;
+    pagerEl.querySelector("[data-prev]").addEventListener("click", () => { page--; render(); });
+    pagerEl.querySelector("[data-next]").addEventListener("click", () => { page++; render(); });
+    pagerEl.querySelectorAll("[data-page]").forEach((b) =>
+      b.addEventListener("click", () => { page = Number(b.dataset.page); render(); }));
+  }
+
   function renderBulk() {
     const DB = HP.store.DB;
     // Drop selections that no longer exist (deleted elsewhere / refetched away).

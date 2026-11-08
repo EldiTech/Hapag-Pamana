@@ -9,6 +9,7 @@
 /* ── Order register (table) ─────────────────────────────────────── */
 .order-row { cursor: pointer; }
 .order-fn { display: block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.order-row .row-actions { opacity: 1; }
 
 /* Type badge — the little icon inside the chip. */
 .order-type .ic { display: inline-flex; }

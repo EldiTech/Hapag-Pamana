@@ -438,31 +438,40 @@ class _MemberNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gabayIndex = ids.indexOf(UserShell.tabGabay);
+    final showGabay = gabayIndex >= 0;
+    final leftIds = showGabay ? ids.take(gabayIndex) : ids;
+    final rightIds = showGabay ? ids.skip(gabayIndex + 1) : const <int>[];
+
     return Container(
-      color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: const Border(top: BorderSide(color: AppColors.hairline)),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 14,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+          padding: const EdgeInsets.fromLTRB(8, 7, 8, 4),
           child: SizedBox(
-            height: 60,
+            height: 62,
             child: Row(
               children: [
-                for (final id in ids)
+                for (final id in leftIds) Expanded(child: _destination(id)),
+                if (showGabay)
                   Expanded(
-                    child: id == UserShell.tabGabay
-                        ? _GabayDestination(
-                            selected: activeId == id,
-                            onTap: () => onSelect(id),
-                          )
-                        : _NavDestination(
-                            icon: _items[id]!.$1,
-                            selectedIcon: _items[id]!.$2,
-                            label: _items[id]!.$3,
-                            selected: activeId == id,
-                            onTap: () => onSelect(id),
-                          ),
+                    child: _GabayDestination(
+                      selected: activeId == UserShell.tabGabay,
+                      onTap: () => onSelect(UserShell.tabGabay),
+                    ),
                   ),
+                for (final id in rightIds) Expanded(child: _destination(id)),
               ],
             ),
           ),
@@ -470,6 +479,14 @@ class _MemberNavBar extends StatelessWidget {
       ),
     );
   }
+
+  Widget _destination(int id) => _NavDestination(
+    icon: _items[id]!.$1,
+    selectedIcon: _items[id]!.$2,
+    label: _items[id]!.$3,
+    selected: activeId == id,
+    onTap: () => onSelect(id),
+  );
 }
 
 /// A regular nav tab — selected state is a filled brown tile with a gold icon.
@@ -542,7 +559,8 @@ class _NavDestination extends StatelessWidget {
   }
 }
 
-/// Gabay uses the same active tile as the rest of the row, with its own mark.
+/// The center Gabay action borrows the familiar raised-action silhouette while
+/// staying within the app's parchment, coffee and antique-gold palette.
 class _GabayDestination extends StatelessWidget {
   const _GabayDestination({required this.selected, required this.onTap});
 
@@ -556,42 +574,57 @@ class _GabayDestination extends StatelessWidget {
       selected: selected,
       label: 'Gabay',
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 3),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: AppRadius.mdAll,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             splashColor: AppColors.gold.withValues(alpha: 0.14),
             highlightColor: AppColors.gold.withValues(alpha: 0.08),
             onTap: onTap,
-            child: AnimatedContainer(
-              duration: Motion.base,
-              curve: Motion.standard,
-              height: 60,
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.brown : Colors.transparent,
-                borderRadius: AppRadius.mdAll,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  GabayMark(
-                    size: selected ? 23 : 22,
-                    color: selected ? AppColors.gold : AppColors.brownSoft,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: Motion.base,
+                  curve: Motion.standard,
+                  width: selected ? 48 : 44,
+                  height: selected ? 48 : 44,
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.brown : AppColors.cream,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected ? AppColors.gold : AppColors.hairline,
+                      width: selected ? 2 : 1,
+                    ),
+                    boxShadow: selected
+                        ? const [
+                            BoxShadow(
+                              color: AppColors.shadow,
+                              blurRadius: 8,
+                              offset: Offset(0, 3),
+                            ),
+                          ]
+                        : null,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Gabay',
-                    style: AppTextStyles.sans(
-                      size: 10.5,
-                      spacing: 0.15,
-                      weight: selected ? FontWeight.w700 : FontWeight.w600,
-                      color: selected ? AppColors.cream : AppColors.brownSoft,
+                  child: Center(
+                    child: GabayMark(
+                      size: selected ? 23 : 21,
+                      color: selected ? AppColors.gold : AppColors.brownSoft,
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Gabay',
+                  style: AppTextStyles.sans(
+                    size: 10.5,
+                    spacing: 0.15,
+                    weight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: selected ? AppColors.brown : AppColors.brownSoft,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

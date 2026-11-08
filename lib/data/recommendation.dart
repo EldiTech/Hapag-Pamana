@@ -397,9 +397,9 @@ class GabayPersonalization {
         .take(2)
         .join(' and ');
     if (prefs.avoidAllergens.length > 2) {
-      return ' A couple of these still carry something you asked us to keep away from (${avoided}, among others), so double-check with the kitchen — especially if it\'s a serious allergy.';
+      return ' A couple of these still carry something you asked us to keep away from ($avoided, among others), so double-check with the kitchen — especially if it\'s a serious allergy.';
     }
-    return ' Some of these still carry something you asked us to keep away from (${avoided}), so double-check with the kitchen — especially if it\'s a serious allergy.';
+    return ' Some of these still carry something you asked us to keep away from ($avoided), so double-check with the kitchen — especially if it\'s a serious allergy.';
   }
 
   /// Whether this member's allergen list has any overlap with a dish's.

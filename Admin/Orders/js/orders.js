@@ -852,9 +852,15 @@
         HP.toast(`Couldn't apply that — ${clientName(o)}'s order is now ${STATUS_META[e.current].label.toLowerCase()} (changed in another session).`, "warn");
       } else if (e && e.code === "hp/unpaid") {
         HP.toast(`Couldn't confirm — ${clientName(o)}'s downpayment is outstanding as of right now.`, "warn");
+      } else if (e && e.code === "resource-exhausted") {
+        HP.toast("Couldn't update the order — Firestore quota is exhausted. Try again later.", "danger");
+      } else if (e && e.code === "permission-denied") {
+        HP.toast("Couldn't update the order — your account doesn't have permission for this action.", "danger");
+      } else if (e && ["unavailable", "deadline-exceeded"].includes(e.code)) {
+        HP.toast("Couldn't update the order — Firestore is temporarily unavailable. Try again.", "danger");
       } else {
         console.error(e);
-        HP.toast("Couldn't update the order — check the Firestore rules.", "danger");
+        HP.toast(`Couldn't update the order${e && e.code ? ` (${e.code})` : ""}. See the browser console for details.`, "danger");
       }
     }
   }

@@ -9,14 +9,16 @@ import '../../data/catering.dart';
 import '../../data/product.dart';
 import '../../data/member_preferences.dart';
 import '../../data/recommendation_repository.dart';
-import '../../data/recommendation.dart';
-import '../../data/taste_profile.dart';
 import '../../widgets.dart';
 import '../detail_sheets.dart';
 import '../home_sections.dart';
 import 'user_shell.dart';
-import '../../data/gabay_knowledge.dart';
+import '../../data/booking.dart';
+import '../../data/booking_repository.dart';
 import '../../data/catering_repository.dart';
+import '../../data/gabay_brain.dart';
+import '../../data/gabay_corpus.dart';
+import '../../data/gabay_user_model.dart';
 import '../../data/product_repository.dart';
 
 /// Gabay — the member-side AI catering companion ("gabay" = guide).
@@ -48,6 +50,21 @@ class _UserGabayPageState extends State<UserGabayPage> {
   StreamSubscription<RecommendationSet>? _recSub;
   RecommendationSet _recs = RecommendationSet.empty;
   bool _recsLoading = true;
+
+  /// The member's own orders, watched live so an answer about "my orders"
+  /// reflects the latest status the team has written.
+  StreamSubscription<List<Booking>>? _ordersSub;
+  List<Booking> _orders = const [];
+
+  /// The catalogue Gabay is grounded on, loaded once when the tab opens. Kept
+  /// as plain snapshots rather than re-read per message: the corpus is rebuilt
+  /// from them for every reply, which is cheap, but two Firestore reads per
+  /// keystroke would not be.
+  List<CateringPackage> _packages = const [];
+  List<Product> _menu = const [];
+
+  /// True while a reply is being composed, so the chat can show it is working.
+  bool _thinking = false;
 
   /// The capabilities Gabay now actually offers. "Picks just for you" is still
   /// absent from this list because it's live and lives in [_RecommendedPanel].
@@ -86,6 +103,8 @@ class _UserGabayPageState extends State<UserGabayPage> {
     'Why was this package recommended?',
     'Help me plan my event layout',
     'How do I book catering?',
+    'When is your busiest season?',
+    'Make me a planning checklist',
   ];
 
   @override
@@ -108,20 +127,35 @@ class _UserGabayPageState extends State<UserGabayPage> {
       },
     );
 
-    // Open with one grounded welcome reply after the greeting bubble, so the
-    // screen doesn't start as a blank chat. Keep it short — the capabilities
-    // list and starters below already say what Gabay can do.
-    _chat.addAssistant(
-      'Kumusta, ${CustomerRepository().displayName?.trim().split(' ').first ?? 'Kaibigan'}! '
-      'I\'m Gabay, your catering companion. I can suggest meals and packages, work to '
-      'your budget and guest count, and answer your planning questions. Try one of the '
-      'suggestions below, or ask me anything about catering.',
+    // The member's own orders and the live catalogue are what Gabay is grounded
+    // on; both are loaded once here, then kept current by the streams.
+    _ordersSub = BookingRepository().watchMine().listen(
+      (orders) {
+        if (!mounted) return;
+        setState(() => _orders = orders);
+      },
+      onError: (_) {},
+    );
+    CateringRepository().watchPackages().first.then(
+      (packages) {
+        if (!mounted) return;
+        setState(() => _packages = packages);
+      },
+      onError: (_) {},
+    );
+    ProductRepository().watchVisible().first.then(
+      (menu) {
+        if (!mounted) return;
+        setState(() => _menu = menu);
+      },
+      onError: (_) {},
     );
   }
 
   @override
   void dispose() {
     _recSub?.cancel();
+    _ordersSub?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -139,18 +173,29 @@ class _UserGabayPageState extends State<UserGabayPage> {
     // Keep the helper static from the UI's point of view: schedule a rebuild
     // when the reply lands, and surface errors as a quiet note rather than a
     // broken screen.
+    setState(() => _thinking = true);
     _chat
-        .reply(text, prefs: MemberPreferencesScope.value, recs: _recs)
+        .reply(
+          text,
+          prefs: MemberPreferencesScope.value,
+          recs: _recs,
+          orders: _orders,
+          packages: _packages,
+          menu: _menu,
+          displayName: CustomerRepository().displayName,
+        )
         .then(
           (reply) {
             if (!mounted) return;
             setState(() {
               _chat.addAssistant(reply);
+              _thinking = false;
             });
           },
           onError: (error) {
             if (!mounted) return;
             setState(() {
+              _thinking = false;
               _chat.addAssistant(
                 'Sorry — I dropped your message. Try again in a moment.',
               );
@@ -226,6 +271,10 @@ class _UserGabayPageState extends State<UserGabayPage> {
                   delay: const Duration(milliseconds: 140),
                   child: _ChatHistory(_chat.messages),
                 ),
+                if (_thinking) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  const _AssistantTyping(),
+                ],
                 const SizedBox(height: AppSpacing.section),
 
                 FadeSlideIn(
@@ -718,18 +767,20 @@ class _Composer extends StatelessWidget {
 }
 
 // ════════════════════════════ Grounded chat controller ════════════════════════════
-/// A tiny on-device conversation controller for Gabay.
+/// The conversation's state for one member: the bubbles drawn so far, the slots
+/// Gabay has collected, and the bridge to [GabayBrain].
 ///
-/// Replies are grounded in the business's cleaned content:
-///   - FAQ from the existing written FAQ ([GabayFaq.findAnswer])
-///   - Packages from the published catalog ([GabayPackageKnowledge])
-///   - Menu / healthier options from the published menu ([GabayMenuKnowledge])
-///   - "Why this?" from the recommendation evidence ([GabayExplanationKnowledge])
-///
-/// It stays deliberately bounded: no open-ended chit-chat, no fabricating
-/// packages/prices/inclusions, no pretending to change a filed order.
+/// The UI stays deliberately thin — it draws bubbles and asks for a reply.
+/// Everything that decides *what* Gabay says lives in the brain, which is
+/// grounded on the business's own catalog, written policies and uploaded sales
+/// workbooks, and personalised from this member's own orders and settings.
 class _GabayChat {
   final List<_GabayMessage> messages = [];
+
+  /// Slots survive across turns, so a follow-up like "budget is 20,000"
+  /// completes the package match the previous message started instead of
+  /// starting over.
+  final GabaySlots _slots = GabaySlots();
 
   void addUser(String text) {
     messages.add(_GabayMessage(text, fromUser: true));
@@ -743,342 +794,28 @@ class _GabayChat {
     String text, {
     required MemberPreferences prefs,
     required RecommendationSet recs,
+    required List<Booking> orders,
+    required List<CateringPackage> packages,
+    required List<Product> menu,
+    required String? displayName,
   }) async {
-    final person = GabayPersonalization(
+    final user = GabayUserModel.build(
+      displayName: displayName,
+      bookings: orders,
+      menu: menu,
       prefs: prefs,
-      groupSize: _activeGroup(prefs),
-      occasionTypes: _occasionTypes(prefs),
-      dietDirective: _dietDirective(prefs),
-      healthierFirst: prefs.gabayHealthierFirst,
+      profile: prefs.tasteProfile,
     );
-    // ── FAQ first ──────────────────────────────────────────────────────────
-    final faq = GabayFaq.findAnswer(text);
-    if (faq != null) {
-      return faq.answer;
-    }
-
-    // Explicit FAQ-ish questions the matcher might only partially catch.
-    if (_looksLike(text, 'how do i book')) {
-      return GabayFaq.groups
-          .expand((g) => g.items)
-          .firstWhere(
-            (item) =>
-                item.question.toLowerCase().contains('how do i book catering'),
-            orElse: () => GabayFaq.groups[0].items[0],
-          )
-          .answer;
-    }
-    if (_looksLike(text, 'food pack') && _looksLike(text, 'order')) {
-      return GabayFaq.groups
-          .expand((g) => g.items)
-          .firstWhere(
-            (item) => item.question.toLowerCase().contains(
-              'how do i order food packs',
-            ),
-            orElse: () => GabayFaq.groups[0].items[1],
-          )
-          .answer;
-    }
-    if (_looksLike(text, 'status')) {
-      return GabayFaq.groups
-          .expand((g) => g.items)
-          .firstWhere(
-            (item) => item.question.toLowerCase().contains(
-              'what do the order statuses mean',
-            ),
-            orElse: () => GabayFaq.groups[0].items[2],
-          )
-          .answer;
-    }
-    if (_looksLike(text, 'downpayment') || _looksLike(text, 'pay up front')) {
-      return GabayFaq.groups
-          .expand((g) => g.items)
-          .firstWhere(
-            (item) => item.question.toLowerCase().contains(
-              'how much do i pay up front',
-            ),
-            orElse: () => GabayFaq.groups[1].items[0],
-          )
-          .answer;
-    }
-    if (_looksLike(text, 'allerg') || _looksLike(text, 'allergy')) {
-      return GabayFaq.groups
-          .expand((g) => g.items)
-          .firstWhere(
-            (item) => item.question.toLowerCase().contains(
-              'can you cook around an allergy',
-            ),
-            orElse: () => GabayFaq.groups[2].items[1],
-          )
-          .answer;
-    }
-    if (_looksLike(text, 'what is gabay') || _looksLike(text, 'gabay')) {
-      return GabayFaq.groups
-          .expand((g) => g.items)
-          .firstWhere(
-            (item) => item.question.toLowerCase().contains('what is gabay'),
-            orElse: () => GabayFaq.groups[4].items[0],
-          )
-          .answer;
-    }
-
-    // ── Why was this recommended? ──────────────────────────────────────────
-    if (_looksLike(text, 'why was this') ||
-        _looksLike(text, 'why this') ||
-        _looksLike(text, 'why recommend')) {
-      return GabayExplanationKnowledge.explain(recs);
-    }
-
-    // ── Package matching by budget + headcount ─────────────────────────────
-    final budget = _parseBudget(text);
-    final group = _parseGroup(text);
-    if (budget != null || group != null) {
-      final all = await _packages();
-      final fitting = GabayPackageKnowledge.fitting(
-        all,
-        budget: budget,
-        group: group,
-      );
-      if (fitting.isNotEmpty) {
-        return GabayPackagePersonalization.reason(person, fitting);
-      }
-      // Offer the closest thing when nothing fits exactly.
-      final candidates = GabayPackageKnowledge.recommendable(all);
-      if (candidates.isNotEmpty) {
-        return 'Nothing in our current packages fits ₱${_pesoBand(budget)} a head for '
-            '${_groupLabel(group)} exactly, but here\'s what we do have: '
-            '${candidates.take(3).map((p) => p.name).join(", ")}. Tap a package to see '
-            'the full details and book it.';
-      }
-      return 'We don\'t have any active packages to show just yet — check back after the '
-          'kitchen has published some.';
-    }
-
-    // ── Healthier options ───────────────────────────────────────────────────
-    if (_looksLike(text, 'healthier') ||
-        _looksLike(text, 'lighter') ||
-        _looksLike(text, 'nutritious')) {
-      final all = await _products();
-      final visible = GabayMenuKnowledge.visible(all);
-      if (visible.isEmpty) {
-        return 'The menu is still loading — try again in a moment.';
-      }
-      // Fall back to the most obvious "lighter" categories if the member didn't
-      // name a dish.
-      final suggestions =
-          GabayMenuKnowledge.inCategory(all, 'Vegetables') +
-          GabayMenuKnowledge.inCategory(all, 'Seafood');
-      if (suggestions.isNotEmpty) {
-        final names = suggestions.take(4).map((p) => p.name).toList();
-        return 'Here are some lighter options from our current menu: '
-            '${names.join(", ")}. These are suggestions to ask the kitchen about — '
-            'the final call is always with them, especially if you have an allergy.';
-      }
-      return 'We don\'t have anything that reads as a lighter option on the current menu '
-          'just yet. Try asking about a specific dish and I\'ll suggest alternatives.';
-    }
-
-    // ── Healthier swap for a named dish ─────────────────────────────────────
-    final dish = _findDish(text, all: await _products());
-    if (dish != null) {
-      final alts = GabayMenuKnowledge.healthierAlternatives(
-        await _products(),
-        dish.category,
-      );
-      if (alts.isNotEmpty) {
-        final names = alts.take(4).map((p) => p.name).toList();
-        return 'For a lighter take on "${dish.name}", you might also look at: '
-            '${names.join(", ")}. These are menu suggestions — the kitchen makes '
-            'the final call, and remember we cook on shared equipment.';
-      }
-      return 'I don\'t have a clearer lighter alternative for "${dish.name}" on the '
-          'current menu right now. The kitchen can still suggest something when you book.';
-    }
-
-    // ── Event planning / layout pointers (complementary role) ───────────────
-    if (_looksLike(text, 'plan my event') ||
-        _looksLike(text, 'event layout') ||
-        _looksLike(text, 'layout')) {
-      return 'I can give you a few planning pointers, but the 3D layout planner is the '
-          'best place for the actual room setup — I\'m here to explain the "why" behind it. '
-          'A good place to start: tell me your occasion, headcount, and budget, and I can '
-          'suggest a package and a quick planning checklist for it.';
-    }
-
-    // ── Fallback ────────────────────────────────────────────────────────────
-    if (prefs.gabaySuggestions && recs.isNotEmpty) {
-      return '${GabayExplanationKnowledge.leadIn(recs)} If you\'d rather pick something specific, try asking about a package or the menu.';
-    }
-
-    return 'I\'m still learning the parts of catering that matter here. Try asking how to '
-        'book, how the downpayment works, what our packages include, or for healthier swaps '
-        'on a dish — and if I don\'t know, I\'ll tell you plainly instead of guessing.';
-  }
-
-  // ── Small helpers ────────────────────────────────────────────────────────
-
-  bool _looksLike(String text, String fragment) {
-    return text.toLowerCase().contains(fragment.toLowerCase());
-  }
-
-  GroupSize? _activeGroup(MemberPreferences prefs) {
-    final usual = prefs.person?.groupSize;
-    if (usual != null) return usual;
-    final crowd = prefs.person?.groupSize;
-    return crowd;
-  }
-
-  Set<OccasionType> _occasionTypes(MemberPreferences prefs) {
-    final profile = prefs.person;
-    if (profile == null) return const {};
-    return profile.occasionTypes
-        .map((k) => OccasionType.fromKey(k))
-        .whereType<OccasionType>()
-        .toSet();
-  }
-
-  String? _dietDirective(MemberPreferences prefs) {
-    final profile = prefs.person;
-    final tasty = profile?.budgetRange;
-    if (tasty != null) return tasty.label;
-    final avoid = prefs.avoidAllergens;
-    final cleaned = avoid.where((a) => a.trim().isNotEmpty).toList();
-    if (cleaned.isNotEmpty) {
-      return 'avoid ${cleaned.map((a) => a.toLowerCase().trim()).join(" and ")}';
-    }
-    return null;
-  }
-
-  BudgetRange? _parseBudget(String text) {
-    if (_looksLike(text, 'budget') ||
-        _looksLike(text, 'tipid') ||
-        _looksLike(text, 'under')) {
-      return BudgetRange.budget;
-    }
-    if (_looksLike(text, 'sakto') ||
-        _looksLike(text, 'mid') ||
-        _looksLike(text, '350') ||
-        _looksLike(text, '700')) {
-      return BudgetRange.mid;
-    }
-    if (_looksLike(text, 'all-out') ||
-        _looksLike(text, 'premium') ||
-        _looksLike(text, '700') ||
-        _looksLike(text, 'over')) {
-      return BudgetRange.premium;
-    }
-    return null;
-  }
-
-  GroupSize? _parseGroup(String text) {
-    if (_looksLike(text, 'small') ||
-        _looksLike(text, 'intimate') ||
-        _looksLike(text, '30')) {
-      return GroupSize.small;
-    }
-    if (_looksLike(text, 'medium') ||
-        _looksLike(text, 'crowd') ||
-        _looksLike(text, '50') ||
-        _looksLike(text, '100')) {
-      return GroupSize.medium;
-    }
-    if (_looksLike(text, 'large') ||
-        _looksLike(text, 'barangay') ||
-        _looksLike(text, 'more than 100') ||
-        _looksLike(text, '150') ||
-        _looksLike(text, '200') ||
-        _looksLike(text, '500')) {
-      return GroupSize.large;
-    }
-    return null;
-  }
-
-  String _pesoBand(BudgetRange? budget) {
-    switch (budget) {
-      case BudgetRange.budget:
-        return '350';
-      case BudgetRange.mid:
-        return '350–700';
-      case BudgetRange.premium:
-        return '700';
-      case null:
-        return 'your budget';
-    }
-  }
-
-  String _groupLabel(GroupSize? group) {
-    switch (group) {
-      case GroupSize.small:
-        return 'up to 30 guests';
-      case GroupSize.medium:
-        return '30–100 guests';
-      case GroupSize.large:
-        return 'more than 100 guests';
-      case null:
-        return 'your guest count';
-    }
-  }
-
-  Future<List<CateringPackage>> _packages() async {
-    // The repository streams live data; for a reply we just need one snapshot.
-    return CateringRepository().watchPackages().first;
-  }
-
-  Future<List<Product>> _products() async {
-    return ProductRepository().watchVisible().first;
-  }
-
-  Product? _findDish(String text, {required List<Product> all}) {
-    final lower = text.toLowerCase();
-    Product? best;
-    int bestScore = 0;
-    for (final p in all) {
-      final hay = '${p.name} ${p.category}'.toLowerCase();
-      var score = 0;
-      for (final word in _dishKeywords(lower)) {
-        if (hay.contains(word)) score++;
-      }
-      if (_looksLike(text, p.name.toLowerCase())) score += 2;
-      if (score > bestScore) {
-        bestScore = score;
-        best = p;
-      }
-    }
-    return bestScore > 0 ? best : null;
-  }
-
-  List<String> _dishKeywords(String text) {
-    // Trim the obvious question framing so we match the dish, not the sentence.
-    final stopwords = <String>{
-      'suggest',
-      'healthier',
-      'options',
-      'for',
-      'a',
-      'the',
-      'can',
-      'you',
-      'give',
-      'me',
-      'alternatives',
-      'swap',
-      'swaps',
-      'lighter',
-      'meal',
-      'meals',
-      'dish',
-      'dishes',
-      'from',
-      'menu',
-      'i',
-      'want',
-      'please',
-    };
-    return text
-        .toLowerCase()
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty && !stopwords.contains(w))
-        .toList();
+    final brain = GabayBrain(
+      corpus: GabayCorpus.build(packages: packages, menu: menu),
+      packages: packages,
+      menu: menu,
+      user: user,
+      prefs: prefs,
+      recs: recs,
+      slots: _slots,
+    );
+    return brain.respond(text);
   }
 }
 
@@ -1089,4 +826,38 @@ class _GabayMessage {
   final bool fromUser;
 
   bool get isFromUser => fromUser;
+}
+
+/// The "Gabay is working on it" bubble shown while a reply is composed. Short
+/// and quiet — the reply itself is usually one frame away.
+class _AssistantTyping extends StatelessWidget {
+  const _AssistantTyping();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.gold.withValues(alpha: 0.12),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
+          ),
+          child: const GabayMark(size: 15, color: AppColors.goldDeep),
+        ),
+        const SizedBox(width: AppSpacing.sm + 2),
+        Expanded(
+          child: AppCard(
+            radius: AppRadius.lg,
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Text('Gabay is putting that together…', style: AppTextStyles.bodySmall),
+          ),
+        ),
+      ],
+    );
+  }
 }

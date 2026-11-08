@@ -553,7 +553,8 @@
       <input class="control ing-name" placeholder="Ingredient — e.g. pork belly" value="${HP.esc(it.ingredient || "")}" />
       <input class="control ing-qty" type="number" min="0" step="any" placeholder="Qty" value="${HP.esc(qty)}" />
       <select class="control ing-unit" aria-label="Unit">${unitOptions(it.unit)}</select>
-      <span class="ing-cost" title="Estimated cost">${HP.esc(peso(cost))}</span>`);
+      <span class="ing-cost" title="Estimated cost">${HP.esc(peso(cost))}</span>`,
+      `<small class="ing-stock" aria-live="polite">Loading pantry balance…</small>`);
   }
 
   function sectionHTML(dish, course, pax, items, opts) {
@@ -653,6 +654,7 @@
         </div>
         <p class="plan-hint">Amounts come from the Recipe Book, rescaled to this order —
           fine-tune them per dish, and add anything shared under “${GENERAL}”.</p>
+        <p class="plan-stock-hint" id="planStockHint" role="status">Loading live pantry balances…</p>
         ${dishes.map(dishSection).join("")}
         ${orphans.map((d) => sectionHTML(d, "From an earlier menu", "", byDish.get(d), { checkoff: true, done: doneSet.has(d) })).join("")}
         ${sectionHTML(GENERAL, "Pantry, extras & everything shared", "", byDish.get(GENERAL) || [], { general: true })}
@@ -664,6 +666,73 @@
     hydrateDishPhotos();
 
     const sheet = document.querySelector(".plan-sheet");
+    let pantryItems = null;
+
+    const stockLines = (items) => window.HPPantry.requirementRows(items, pantryItems);
+    const stockText = (line) => {
+      if (line.missing) return "Not in pantry";
+      if (line.after < 0) return `Short ${window.HPPantry.qtyText(-line.after, line.unit)}`;
+      return window.HPPantry.qtyText(line.after, line.unit);
+    };
+    const updatePantryPreview = () => {
+      const hint = document.getElementById("planStockHint");
+      if (!pantryItems) {
+        sheet.querySelectorAll(".ing-stock").forEach((el) => {
+          el.textContent = hint && hint.dataset.error ? "Pantry balance unavailable" : "Loading pantry balance…";
+        });
+        return;
+      }
+      const items = collectItems();
+      const planned = new Map(stockLines(items).map((line) => [window.HPPantry.itemKey(line.name, line.unit), line]));
+      const done = new Set([...sheet.querySelectorAll(".dish-done:checked")].map((box) => box.dataset.dish));
+      const preppedItems = items.filter((item) => done.has(item.dish));
+      const prepped = new Map(stockLines(preppedItems).map((line) => [window.HPPantry.itemKey(line.name, line.unit), line]));
+      const shelfItems = window.HPPantry.indexItems(pantryItems);
+      sheet.querySelectorAll(".ing-row-wrap").forEach((wrap) => {
+        const row = wrap.querySelector(".ing-row");
+        const el = wrap.querySelector(".ing-stock");
+        if (!row || !el) return;
+        const name = row.querySelector(".ing-name").value.trim();
+        const unit = row.querySelector(".ing-unit").value;
+        if (!name) {
+          el.textContent = "Enter an ingredient to check pantry";
+          el.classList.remove("is-short");
+          return;
+        }
+        const key = window.HPPantry.itemKey(name, unit);
+        const shelf = shelfItems.get(key);
+        const planLine = planned.get(key);
+        const preppedLine = prepped.get(key);
+        if (!shelf) {
+          el.textContent = "Not in pantry";
+          el.classList.add("is-short");
+          return;
+        }
+        const before = window.HPPantry.qtyText(shelf.qty, unit);
+        const afterPlan = planLine ? stockText(planLine) : before;
+        const afterPrepped = preppedLine ? stockText(preppedLine) : before;
+        el.textContent = `On shelf ${before} · Plan leaves ${afterPlan} · Prepped leaves ${afterPrepped}`;
+        el.classList.toggle("is-short", !!(planLine && planLine.after < 0));
+      });
+      if (hint) {
+        hint.dataset.error = "";
+        hint.textContent = "Pantry preview · plan and prepped balances are estimates; stock changes when the Stock Clerk issues ingredients.";
+      }
+    };
+
+    db.collection("pantry").get().then((snap) => {
+      if (!document.contains(sheet)) return;
+      pantryItems = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      updatePantryPreview();
+    }).catch((e) => {
+      console.error("HapagPamana: couldn't load pantry balances —", e);
+      const hint = document.getElementById("planStockHint");
+      if (hint) {
+        hint.dataset.error = "true";
+        hint.textContent = "Pantry balances unavailable — check your connection and pantry access.";
+      }
+      updatePantryPreview();
+    });
 
     // Live costing: each row's ₱ cell follows its qty × per-unit price.
     const updateRowCost = (row) => {
@@ -687,6 +756,13 @@
       if (!e.target.classList.contains("ing-qty")) return;
       updateRowCost(e.target.closest(".ing-row"));
       updateTotal();
+      updatePantryPreview();
+    });
+    sheet.addEventListener("input", (e) => {
+      if (e.target.classList.contains("ing-name")) updatePantryPreview();
+    });
+    sheet.addEventListener("change", (e) => {
+      if (e.target.classList.contains("ing-unit")) updatePantryPreview();
     });
 
     // Row add/remove + recipe rescale, delegated on the sheet (fresh per
@@ -697,6 +773,7 @@
         const rows = add.closest(".plan-sec").querySelector(".ing-rows");
         rows.insertAdjacentHTML("beforeend", rowHTML());
         rows.lastElementChild.querySelector(".ing-name").focus();
+        updatePantryPreview();
         return;
       }
       const rel = e.target.closest("[data-reload]");
@@ -708,11 +785,12 @@
           sec.querySelector(".ing-rows").innerHTML =
             scaledItems(recipe, servingsFor(o, d ? d.pax : "")).map(rowHTML).join("");
           updateTotal();
+          updatePantryPreview();
         }
         return;
       }
       const del = e.target.closest(".ing-del");
-      if (del) { del.closest(".ing-row").remove(); updateTotal(); }
+      if (del) { del.closest(".ing-row-wrap").remove(); updateTotal(); updatePantryPreview(); }
     });
 
     const wire = (id, fn) => {
@@ -732,13 +810,14 @@
     sheet.addEventListener("change", (e) => {
       const box = e.target.closest(".dish-done");
       if (!box) return;
-      setDishDone(o, box.dataset.dish, box.checked, box);
+      updatePantryPreview();
+      setDishDone(o, box.dataset.dish, box.checked, box, updatePantryPreview);
     });
   }
 
   /* Persist event-day progress without changing the ingredient-plan version.
      Finance uses updatedAt to detect recipe/quantity changes. */
-  async function setDishDone(o, dish, done, box) {
+  async function setDishDone(o, dish, done, box, onUpdate) {
     const ref = db.collection("prepPlans").doc(o.id);
     try {
       await ref.set({
@@ -752,6 +831,7 @@
     } catch (e) {
       console.error(e);
       if (box) box.checked = !done; // the flip didn't save — put it back
+      if (onUpdate) onUpdate();
       HP.toast("Couldn't save the check-off — check the Firestore rules.", "danger");
     }
   }

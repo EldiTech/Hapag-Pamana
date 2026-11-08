@@ -40,7 +40,8 @@
 
   HP.shell.onSearch((q) => { query = q; renderRows(); });
   HP.shell.onExport(exportCSV);
-  HP.ready.then(boot);
+  // Receipt controls depend on roleKey, which resolves after auth.
+  HP.ready.then(() => HP.userReady).then(boot);
 
   function boot() {
     if (!HP.ONLINE) {

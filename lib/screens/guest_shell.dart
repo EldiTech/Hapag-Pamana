@@ -55,11 +55,11 @@ class _GuestShellState extends State<GuestShell> {
   }
 
   static List<int> _visibleIds(AppSettings s) => [
-        GuestShell.tabHome,
-        if (s.ordering) GuestShell.tabMenu,
-        if (s.catering) GuestShell.tabCatering,
-        GuestShell.tabAbout,
-      ];
+    GuestShell.tabHome,
+    if (s.ordering) GuestShell.tabMenu,
+    if (s.catering) GuestShell.tabCatering,
+    GuestShell.tabAbout,
+  ];
 
   /// If the moderator switches off the tab the guest is looking at, fall back
   /// to Home rather than stranding the stale index.
@@ -91,37 +91,10 @@ class _GuestShellState extends State<GuestShell> {
   };
 
   Widget _pageFor(int id) => switch (id) {
-        GuestShell.tabMenu => const MenuPage(),
-        GuestShell.tabCatering => const CateringPage(),
-        GuestShell.tabAbout => const AboutPage(),
-        _ => HomePage(onNavigate: _go),
-      };
-
-  static const _destinations = {
-    GuestShell.tabHome: NavigationDestination(
-      icon: Icon(Icons.home_outlined),
-      selectedIcon: Icon(Icons.home),
-      label: 'Home',
-    ),
-    GuestShell.tabMenu: NavigationDestination(
-      icon: Icon(Icons.restaurant_menu_outlined),
-      selectedIcon: Icon(Icons.restaurant_menu),
-      label: 'Menu',
-    ),
-    GuestShell.tabCatering: NavigationDestination(
-      icon: Icon(Icons.room_service_outlined),
-      selectedIcon: Icon(Icons.room_service),
-      label: 'Catering',
-    ),
-    GuestShell.tabAbout: NavigationDestination(
-      icon: Icon(Icons.info_outline),
-      selectedIcon: Icon(Icons.info),
-      label: 'About',
-    ),
-    _loginSlot: NavigationDestination(
-      icon: Icon(Icons.person_outline),
-      label: 'Log In',
-    ),
+    GuestShell.tabMenu => const MenuPage(),
+    GuestShell.tabCatering => const CateringPage(),
+    GuestShell.tabAbout => const AboutPage(),
+    _ => HomePage(onNavigate: _go),
   };
 
   /// The visible tabs with the Log In slot dropped into the middle, so with the
@@ -199,20 +172,201 @@ class _GuestShellState extends State<GuestShell> {
               ),
             ],
           ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: slots.indexOf(active),
-            onDestinationSelected: (i) {
-              final slot = slots[i];
+          bottomNavigationBar: _GuestNavBar(
+            slots: slots,
+            activeId: active,
+            onSelect: (slot) {
               if (slot == _loginSlot) {
                 _openLogin();
                 return;
               }
               _go(slot);
             },
-            destinations: [for (final id in slots) _destinations[id]!],
           ),
         );
       },
+    );
+  }
+}
+
+/// Guest counterpart to the member shelf: Log In is the raised center action,
+/// while the surrounding destinations keep their normal selected state.
+class _GuestNavBar extends StatelessWidget {
+  const _GuestNavBar({
+    required this.slots,
+    required this.activeId,
+    required this.onSelect,
+  });
+
+  final List<int> slots;
+  final int activeId;
+  final ValueChanged<int> onSelect;
+
+  static const _items = {
+    GuestShell.tabHome: (Icons.home_outlined, Icons.home, 'Home'),
+    GuestShell.tabMenu: (
+      Icons.restaurant_menu_outlined,
+      Icons.restaurant_menu,
+      'Menu',
+    ),
+    GuestShell.tabCatering: (
+      Icons.room_service_outlined,
+      Icons.room_service,
+      'Catering',
+    ),
+    GuestShell.tabAbout: (Icons.info_outline, Icons.info, 'About'),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final centerIndex = slots.indexOf(-1);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: const Border(top: BorderSide(color: AppColors.hairline)),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 14,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 7, 8, 4),
+          child: SizedBox(
+            height: 62,
+            child: Row(
+              children: [
+                for (var index = 0; index < slots.length; index++)
+                  Expanded(
+                    child: index == centerIndex
+                        ? _GuestLoginDestination(onTap: () => onSelect(-1))
+                        : _GuestDestination(
+                            item: _items[slots[index]]!,
+                            selected: activeId == slots[index],
+                            onTap: () => onSelect(slots[index]),
+                          ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuestDestination extends StatelessWidget {
+  const _GuestDestination({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final (IconData, IconData, String) item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: item.$3,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: AppRadius.mdAll,
+            onTap: onTap,
+            child: SizedBox(
+              height: 60,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    selected ? item.$2 : item.$1,
+                    size: 22,
+                    color: selected ? AppColors.brown : AppColors.brownSoft,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.$3,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.sans(
+                      size: 10.5,
+                      weight: selected ? FontWeight.w700 : FontWeight.w600,
+                      color: selected ? AppColors.brown : AppColors.brownSoft,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuestLoginDestination extends StatelessWidget {
+  const _GuestLoginDestination({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Log In',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          onTap: onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppColors.brown,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.gold, width: 2),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppColors.shadow,
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.person_outline,
+                  color: AppColors.gold,
+                  size: 23,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Log In',
+                style: AppTextStyles.sans(
+                  size: 10.5,
+                  weight: FontWeight.w700,
+                  color: AppColors.brown,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
