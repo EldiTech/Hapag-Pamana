@@ -108,7 +108,7 @@ class _AllergenCell extends StatelessWidget {
     return Tooltip(
       message:
           '${stat.allergen.label} â€” in ${stat.count} of ${stat.total} '
-          'dishes here',
+          'dishes in this menu view',
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         decoration: BoxDecoration(
@@ -132,7 +132,7 @@ class _AllergenCell extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              '${stat.count}/${stat.total}',
+              '${stat.count} of ${stat.total} dishes',
               style: AppTextStyles.sans(
                 size: 10,
                 weight: FontWeight.w600,

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'announcement_session.dart';
+import '../core/auth_validation.dart';
 import 'push_notification_service.dart';
 import 'customer.dart';
 
@@ -16,6 +17,14 @@ class DuplicateAccountException implements Exception {
 
   @override
   String toString() => 'DuplicateAccountException($field): $message';
+}
+
+/// Thrown before Firebase when a customer input violates an app-level rule.
+class AuthInputException implements Exception {
+  const AuthInputException(this.field, this.message);
+
+  final String field;
+  final String message;
 }
 
 /// Thrown by [CustomerRepository.signIn] when the account's profile carries
@@ -73,6 +82,17 @@ class CustomerRepository {
     required String phone,
     required String password,
   }) async {
+    final phoneError = AuthValidation.phoneError(phone);
+    if (phoneError != null) {
+      throw AuthInputException('phone', phoneError);
+    }
+    final passwordError = AuthValidation.passwordError(password);
+    if (passwordError != null) {
+      throw AuthInputException('password', passwordError);
+    }
+
+    await _validateFirebasePasswordPolicy(password);
+
     // Email uniqueness is enforced by Firebase Auth itself (it throws
     // `email-already-in-use`). Phone uniqueness is enforced here: a
     // `customer_phones/{digits}` index doc is written in the *same* transaction
@@ -128,6 +148,44 @@ class CustomerRepository {
     await user.updateDisplayName(name);
     await user.reload();
     return customer;
+  }
+
+  /// Re-authenticates and changes the signed-in customer's password.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final localError = AuthValidation.passwordError(newPassword);
+    if (localError != null) {
+      throw AuthInputException('password', localError);
+    }
+    await _validateFirebasePasswordPolicy(newPassword);
+
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null || email.isEmpty) {
+      throw StateError('Password changes require an email account.');
+    }
+    await user.reauthenticateWithCredential(
+      EmailAuthProvider.credential(email: email, password: currentPassword),
+    );
+    await user.updatePassword(newPassword);
+  }
+
+  Future<void> _validateFirebasePasswordPolicy(String password) async {
+    // Firebase's configured policy is authoritative for complexity rules.
+    // The local minimum above still protects the flow before policy fetch.
+    try {
+      final status = await _auth.validatePassword(_auth, password);
+      if (!status.isValid) {
+        throw const AuthInputException(
+          'password',
+          'That password does not meet the security requirements.',
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code != 'network-request-failed') rethrow;
+    }
   }
 
   /// Normalises a phone number to a canonical key used as the

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../brand.dart';
+import '../core/theme/bottom_navigation_layout.dart';
 import '../core/widgets/app_widgets.dart';
 import '../data/allergens.dart';
 import '../data/product.dart';
@@ -25,6 +26,7 @@ class MenuPage extends StatefulWidget {
 class _MenuPageState extends State<MenuPage> {
   // The two product types, in the same order the moderator uses.
   static const List<String> _types = ['Food Packs', 'Catering Food Trays'];
+  static const int _pageSize = 10;
 
   final ProductRepository _repo = ProductRepository();
   StreamSubscription<List<Product>>? _sub;
@@ -36,6 +38,7 @@ class _MenuPageState extends State<MenuPage> {
   String _type = _types.first;
   String? _category; // null ⇒ "All"
   String _search = '';
+  int _page = 0;
 
   @override
   void initState() {
@@ -74,7 +77,7 @@ class _MenuPageState extends State<MenuPage> {
     final all = _all;
 
     // Products for the active type — drives the category chips.
-    final ofType = all.where((p) => p.type == _type).toList();
+    final ofType = uniqueProductsByIdentity(all.where((p) => p.type == _type));
     final categories = <String>{for (final p in ofType) p.category}.toList()
       ..sort();
 
@@ -82,23 +85,35 @@ class _MenuPageState extends State<MenuPage> {
     // grid so their tag actually earns them a spot up front; each group stays
     // alphabetical underneath.
     final term = _search.trim().toLowerCase();
-    final shown = ofType.where((p) {
-      if (_category != null && p.category != _category) return false;
-      if (term.isNotEmpty && !p.name.toLowerCase().contains(term)) {
-        return false;
-      }
-      return true;
-    }).toList()
-      ..sort((a, b) {
-        if (a.featured != b.featured) return a.featured ? -1 : 1;
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      });
+    final shown =
+        ofType.where((p) {
+          if (_category != null && p.category != _category) return false;
+          if (term.isNotEmpty && !p.name.toLowerCase().contains(term)) {
+            return false;
+          }
+          return true;
+        }).toList()..sort((a, b) {
+          if (a.featured != b.featured) return a.featured ? -1 : 1;
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        });
 
     // Allergen heatmap over the dishes currently in view — hidden until at
     // least one of them carries allergen data.
+    final pageCount = shown.isEmpty
+        ? 1
+        : (shown.length + _pageSize - 1) ~/ _pageSize;
+    final pageIndex = _page >= pageCount ? pageCount - 1 : _page;
+    final pageShown = shown
+        .skip(pageIndex * _pageSize)
+        .take(_pageSize)
+        .toList();
+
     final allergenStats = aggregateAllergens(shown);
     final showAllergens =
-        !loading && !error && shown.isNotEmpty && hasAnyAllergenData(allergenStats);
+        !loading &&
+        !error &&
+        shown.isNotEmpty &&
+        hasAnyAllergenData(allergenStats);
 
     return CustomScrollView(
       slivers: [
@@ -115,7 +130,10 @@ class _MenuPageState extends State<MenuPage> {
                 child: AppTextField(
                   hint: 'Search dishes',
                   prefixIcon: Icons.search,
-                  onChanged: (v) => setState(() => _search = v),
+                  onChanged: (v) => setState(() {
+                    _search = v;
+                    _page = 0;
+                  }),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -128,6 +146,7 @@ class _MenuPageState extends State<MenuPage> {
                   onSelect: (t) => setState(() {
                     _type = t;
                     _category = null;
+                    _page = 0;
                   }),
                 ),
               ),
@@ -144,30 +163,34 @@ class _MenuPageState extends State<MenuPage> {
                         ),
                       )
                     : categories.isEmpty
-                        ? const SizedBox.shrink(key: ValueKey('chips-none'))
-                        : SingleChildScrollView(
-                            key: const ValueKey('filter-row'),
-                            scrollDirection: Axis.horizontal,
-                            clipBehavior: Clip.none,
-                            child: Row(
-                              children: [
-                                _CategoryFilterButton(
-                                  categories: categories,
-                                  active: _category,
-                                  totalCount: ofType.length,
-                                  countFor: (c) => ofType.where((p) => p.category == c).length,
-                                  onSelect: (c) => setState(() => _category = c),
-                                ),
-                                if (showAllergens) ...[
-                                  const SizedBox(width: 8),
-                                  _AllergenButton(
-                                    stats: allergenStats,
-                                    count: shown.length,
-                                  ),
-                                ],
-                              ],
+                    ? const SizedBox.shrink(key: ValueKey('chips-none'))
+                    : SingleChildScrollView(
+                        key: const ValueKey('filter-row'),
+                        scrollDirection: Axis.horizontal,
+                        clipBehavior: Clip.none,
+                        child: Row(
+                          children: [
+                            _CategoryFilterButton(
+                              categories: categories,
+                              active: _category,
+                              totalCount: ofType.length,
+                              countFor: (c) =>
+                                  ofType.where((p) => p.category == c).length,
+                              onSelect: (c) => setState(() {
+                                _category = c;
+                                _page = 0;
+                              }),
                             ),
-                          ),
+                            if (showAllergens) ...[
+                              const SizedBox(width: 8),
+                              _AllergenButton(
+                                stats: allergenStats,
+                                count: shown.length,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],
@@ -207,21 +230,40 @@ class _MenuPageState extends State<MenuPage> {
           )
         else
           _gridSliver(
-            childCount: shown.length,
+            childCount: pageShown.length,
             // Cards settle in with a gentle staggered fade + rise as the grid
             // appears; the delay is capped so a long menu never feels slow.
             // Keyed by dish: changing the search or the category rebuilds the
             // grid with different children, and the key is what makes those
             // fade + rise into place instead of swapping contents in a frame.
             builder: (i) => FadeSlideIn(
-              key: ValueKey(shown[i].id),
+              key: ValueKey(pageShown[i].id),
               delay: Duration(milliseconds: 40 * (i % 8)),
               child: _MenuItemCard(
-                shown[i],
-                onTap: () => showProductSheet(context, shown[i]),
+                pageShown[i],
+                onTap: () => showProductSheet(context, pageShown[i]),
               ),
             ),
           ),
+        if (!loading && !error && shown.isNotEmpty)
+          SliverToBoxAdapter(
+            child: _MenuPagination(
+              page: pageIndex,
+              pageCount: pageCount,
+              total: shown.length,
+              onPrevious: pageIndex == 0
+                  ? null
+                  : () => setState(() => _page = pageIndex - 1),
+              onNext: pageIndex == pageCount - 1
+                  ? null
+                  : () => setState(() => _page = pageIndex + 1),
+            ),
+          ),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: AppBottomNavigationLayout.guestContentClearance(context),
+          ),
+        ),
       ],
     );
   }
@@ -442,10 +484,7 @@ class _CategoryFilterButton extends StatelessWidget {
           onTap: () => _openModal(context),
           child: AnimatedContainer(
             duration: Motion.quick,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 7,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
               color: isFiltered ? AppColors.brown : AppColors.surface,
               borderRadius: AppRadius.pillAll,
@@ -473,7 +512,10 @@ class _CategoryFilterButton extends StatelessWidget {
                 ),
                 const SizedBox(width: 5),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: isFiltered
                         ? AppColors.cream.withValues(alpha: 0.2)
@@ -542,10 +584,7 @@ class _CategoryModalOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       color: selected ? AppColors.brown : AppColors.surface,
       border: !selected,
       radius: AppRadius.md,
@@ -612,10 +651,7 @@ class _CategoryModalOption extends StatelessWidget {
 
 // ─────────────────────────── Allergen modal button ───────────────────────────
 class _AllergenButton extends StatelessWidget {
-  const _AllergenButton({
-    required this.stats,
-    required this.count,
-  });
+  const _AllergenButton({required this.stats, required this.count});
 
   final List<AllergenStat> stats;
   final int count;
@@ -648,10 +684,7 @@ class _AllergenButton extends StatelessWidget {
       onTap: () => _openModal(context),
       child: AnimatedContainer(
         duration: Motion.quick,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 7,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: AppRadius.pillAll,
@@ -725,7 +758,10 @@ class _MenuItemCard extends StatelessWidget {
                       bottom: 8,
                       right: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.gold,
                           borderRadius: AppRadius.pillAll,
@@ -816,6 +852,89 @@ class _MenuCardSkeleton extends StatelessWidget {
   }
 }
 
+class _MenuPagination extends StatelessWidget {
+  const _MenuPagination({
+    required this.page,
+    required this.pageCount,
+    required this.total,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final int page;
+  final int pageCount;
+  final int total;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = page * _MenuPageState._pageSize + 1;
+    final last = ((page + 1) * _MenuPageState._pageSize).clamp(0, total);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.section,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _MenuPageButton(
+            icon: Icons.chevron_left_rounded,
+            label: 'Previous page',
+            onTap: onPrevious,
+          ),
+          Text(
+            'Page ${page + 1} of $pageCount',
+            style: AppTextStyles.sans(
+              size: 11,
+              weight: FontWeight.w700,
+              color: AppColors.brown,
+            ),
+          ),
+          Text('$first–$last of $total', style: AppTextStyles.bodySmall),
+          _MenuPageButton(
+            icon: Icons.chevron_right_rounded,
+            label: 'Next page',
+            onTap: onNext,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MenuPageButton extends StatelessWidget {
+  const _MenuPageButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      tooltip: label,
+      icon: Icon(icon),
+      style: IconButton.styleFrom(
+        foregroundColor: AppColors.brown,
+        disabledForegroundColor: AppColors.brownSoft.withValues(alpha: 0.3),
+        backgroundColor: AppColors.surface,
+        disabledBackgroundColor: AppColors.placeholderFill,
+        shape: const CircleBorder(),
+      ),
+    );
+  }
+}
+
 class _MenuMessage extends StatelessWidget {
   const _MenuMessage({
     required this.icon,
@@ -837,7 +956,11 @@ class _MenuMessage extends StatelessWidget {
           children: [
             Icon(icon, size: 40, color: AppColors.brown.withValues(alpha: 0.3)),
             const SizedBox(height: AppSpacing.lg),
-            Text(title, textAlign: TextAlign.center, style: AppTextStyles.title),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.title,
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               body,

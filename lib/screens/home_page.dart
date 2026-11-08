@@ -90,13 +90,13 @@ class _HomePageState extends State<HomePage> {
       _kMinStatusClearance,
     );
 
-    final featured = _all.where((p) => p.featured).toList();
+    final featured = uniqueProductsByName(_all.where((p) => p.featured));
     // A short editorial run for "From the Kitchen": prefer featured, then fill
     // out with the rest, capped so the home page stays a teaser for the Menu.
-    final picks = <Product>[
+    final picks = uniqueProductsByName(<Product>[
       ...featured,
       ..._all.where((p) => !p.featured),
-    ].take(6).toList();
+    ]).take(6).toList();
 
     // Explore tiles: one per category, each surfacing that category's "best
     // seller". The product schema carries no sales/quantity field, so the pick
@@ -130,12 +130,14 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: AppSpacing.sm),
 
             // ── Featured highlight ─────────────────────────────────────────
-            if (settings.featuredOnHome && (_loading || featured.isNotEmpty)) ...[
+            if (settings.featuredOnHome &&
+                (_loading || featured.isNotEmpty)) ...[
               FadeSlideIn(
                 delay: _d(120),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screen,
+                  ),
                   child: SectionHeading(
                     'Featured',
                     onSeeAll: settings.ordering
@@ -182,8 +184,9 @@ class _HomePageState extends State<HomePage> {
               FadeSlideIn(
                 delay: _d(320),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screen,
+                  ),
                   child: SectionHeading(
                     'From the Kitchen',
                     onSeeAll: () => widget.onNavigate(GuestShell.tabMenu),
@@ -205,8 +208,9 @@ class _HomePageState extends State<HomePage> {
               FadeSlideIn(
                 delay: _d(380),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screen,
+                  ),
                   child: CateringInvite(
                     onTap: () => widget.onNavigate(GuestShell.tabCatering),
                   ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../brand.dart';
+import '../core/theme/bottom_navigation_layout.dart';
 import '../data/app_settings.dart';
 import '../widgets.dart';
 import 'about_page.dart';
@@ -119,6 +120,7 @@ class _GuestShellState extends State<GuestShell> {
         final showAppBar = active != GuestShell.tabHome;
 
         return Scaffold(
+          extendBody: true,
           // The app bar fades/slides in for inner tabs and out for Home,
           // instead of snapping the whole layout up and down.
           appBar: PreferredSize(
@@ -221,38 +223,42 @@ class _GuestNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final centerIndex = slots.indexOf(-1);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: const Border(top: BorderSide(color: AppColors.hairline)),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 14,
-            offset: Offset(0, -4),
-          ),
-        ],
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(
+        12,
+        0,
+        12,
+        AppBottomNavigationLayout.guestBottomMinimum,
       ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 7, 8, 4),
-          child: SizedBox(
-            height: 62,
-            child: Row(
-              children: [
-                for (var index = 0; index < slots.length; index++)
-                  Expanded(
-                    child: index == centerIndex
-                        ? _GuestLoginDestination(onTap: () => onSelect(-1))
-                        : _GuestDestination(
-                            item: _items[slots[index]]!,
-                            selected: activeId == slots[index],
-                            onTap: () => onSelect(slots[index]),
-                          ),
-                  ),
-              ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.pillAll,
+          border: Border.all(color: AppColors.hairline),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 22,
+              offset: Offset(0, 8),
             ),
+          ],
+        ),
+        child: SizedBox(
+          height: AppBottomNavigationLayout.guestBarHeight,
+          child: Row(
+            children: [
+              for (var index = 0; index < slots.length; index++)
+                Expanded(
+                  child: index == centerIndex
+                      ? _GuestLoginDestination(onTap: () => onSelect(-1))
+                      : _GuestDestination(
+                          item: _items[slots[index]]!,
+                          selected: activeId == slots[index],
+                          onTap: () => onSelect(slots[index]),
+                        ),
+                ),
+            ],
           ),
         ),
       ),
@@ -278,34 +284,34 @@ class _GuestDestination extends StatelessWidget {
       selected: selected,
       label: item.$3,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
         child: Material(
           color: Colors.transparent,
+          borderRadius: AppRadius.pillAll,
           child: InkWell(
-            borderRadius: AppRadius.mdAll,
+            borderRadius: AppRadius.pillAll,
+            splashColor: AppColors.gold.withValues(alpha: 0.14),
+            highlightColor: AppColors.gold.withValues(alpha: 0.08),
             onTap: onTap,
-            child: SizedBox(
-              height: 60,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
+            child: AnimatedContainer(
+              duration: Motion.base,
+              curve: Motion.standard,
+              height: 58,
+              decoration: const BoxDecoration(shape: BoxShape.circle),
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: Motion.base,
+                  switchInCurve: Motion.standard,
+                  switchOutCurve: Motion.exit,
+                  child: Icon(
                     selected ? item.$2 : item.$1,
-                    size: 22,
-                    color: selected ? AppColors.brown : AppColors.brownSoft,
+                    key: ValueKey<bool>(selected),
+                    size: selected ? 25 : 23,
+                    color: selected
+                        ? AppColors.brown
+                        : AppColors.brownSoft.withValues(alpha: 0.72),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.$3,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.sans(
-                      size: 10.5,
-                      weight: selected ? FontWeight.w700 : FontWeight.w600,
-                      color: selected ? AppColors.brown : AppColors.brownSoft,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -327,43 +333,21 @@ class _GuestLoginDestination extends StatelessWidget {
       label: 'Log In',
       child: Material(
         color: Colors.transparent,
+        borderRadius: AppRadius.pillAll,
         child: InkWell(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: AppRadius.pillAll,
+          splashColor: AppColors.gold.withValues(alpha: 0.14),
+          highlightColor: AppColors.gold.withValues(alpha: 0.08),
           onTap: onTap,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppColors.brown,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.gold, width: 2),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppColors.shadow,
-                      blurRadius: 8,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.person_outline,
-                  color: AppColors.gold,
-                  size: 23,
-                ),
+          child: const SizedBox(
+            height: 58,
+            child: Center(
+              child: Icon(
+                Icons.person_outline,
+                color: AppColors.brownSoft,
+                size: 24,
               ),
-              const SizedBox(height: 2),
-              Text(
-                'Log In',
-                style: AppTextStyles.sans(
-                  size: 10.5,
-                  weight: FontWeight.w700,
-                  color: AppColors.brown,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

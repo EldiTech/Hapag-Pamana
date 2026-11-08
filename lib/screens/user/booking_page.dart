@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../brand.dart';
+import '../../core/auth_validation.dart';
 import '../../core/format.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/booking.dart';
@@ -196,10 +197,6 @@ class _BookingPageState extends State<BookingPage> {
   /// Personal names: letters (incl. Ñ), spaces, and the punctuation real names
   /// carry — no digits, no symbols.
   static final RegExp _nameChars = RegExp(r"^[A-Za-zÑñ .'-]+$");
-
-  /// Philippine mobile numbers, once spacing and punctuation are stripped:
-  /// 09171234567 or 639171234567 (the +63 form loses its plus first).
-  static final RegExp _mobile = RegExp(r'^(09\d{9}|639\d{9})$');
 
   int _step = 0;
 
@@ -1082,15 +1079,8 @@ class _BookingPageState extends State<BookingPage> {
     return null;
   }
 
-  /// Accepts a PH mobile however the member spaces it — 0917 123 4567,
-  /// +63 917 123 4567, (0917) 123-4567 — and nothing else.
   String? _checkMobile(String value) {
-    final compact = value.replaceAll(RegExp(r'[\s()\-.]'), '');
-    final digits = compact.startsWith('+') ? compact.substring(1) : compact;
-    if (!_mobile.hasMatch(digits)) {
-      return 'Enter an 11-digit mobile number, e.g. 0917 123 4567';
-    }
-    return null;
+    return AuthValidation.phoneError(value);
   }
 
   /// Minutes after ingress — the run of hours the booking actually occupies.
@@ -1729,15 +1719,10 @@ class _BookingPageState extends State<BookingPage> {
       ),
       _field(
         'contactNumber',
-        hint: '09xx xxx xxxx',
+        hint: '09XXXXXXXXX',
         icon: Icons.phone_outlined,
         keyboardType: TextInputType.phone,
-        // Digits and the punctuation people space numbers with, nothing
-        // else; the format itself is checked on NEXT.
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[\d +()\-]')),
-          LengthLimitingTextInputFormatter(20),
-        ],
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       ),
       _pickerField(
         'address',

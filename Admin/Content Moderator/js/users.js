@@ -337,7 +337,7 @@
           <input class="control" name="name" maxlength="60" value="${HP.esc(m.name || "")}" placeholder="Member's name">
           <div class="field-error" data-err="name" hidden></div></div>
         <div class="field"><label>Phone <span class="req">*</span></label>
-          <input class="control" name="phone" maxlength="20" value="${HP.esc(m.phone || "")}" placeholder="0917 123 4567">
+          <input class="control" name="phone" maxlength="20" inputmode="numeric" value="${HP.esc(m.phone || "")}" placeholder="09XXXXXXXXX">
           <div class="field-error" data-err="phone" hidden></div></div>
         <div class="field"><label>Login email</label>
           <input class="control" value="${HP.esc(m.email || "")}" disabled>
@@ -353,10 +353,11 @@
       const name = f.name.value.trim();
       const phone = f.phone.value.trim();
       const okName = HP.setErr(f, "name", name ? "" : "Give the member a name.");
-      const digits = phone.replace(/\D/g, "");
       const okPhone = HP.setErr(f, "phone",
         !phone ? "Enter the member's phone number."
-        : digits.length < 7 ? "That phone number looks too short." : "");
+        : !/^09\d{9}$/.test(phone)
+          ? "Please enter a valid 11-digit Philippine mobile number (09XXXXXXXXX)."
+          : "");
       if (!okName || !okPhone) return;
 
       const saveBtn = document.getElementById("userSave");

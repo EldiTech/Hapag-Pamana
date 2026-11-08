@@ -1,10 +1,12 @@
 // HapagPamana Admin Portal - Local Static Server
+"use strict";
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-const PUBLIC_DIR = path.join(__dirname, 'Admin');
+const PUBLIC_DIR = path.resolve(__dirname, '..', 'Admin');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -74,11 +76,15 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log('----------------------------------------------------');
-  console.log(' HapagPamana Admin Portal is running locally!');
-  console.log(` > Local:    http://localhost:${PORT}/`);
-  console.log(` > Network:  http://127.0.0.1:${PORT}/`);
-  console.log('----------------------------------------------------');
-  console.log(' Press Ctrl+C in terminal to stop.');
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log('----------------------------------------------------');
+    console.log(' HapagPamana Admin Portal is running locally!');
+    console.log(` > Local:    http://localhost:${PORT}/`);
+    console.log(` > Network:  http://127.0.0.1:${PORT}/`);
+    console.log('----------------------------------------------------');
+    console.log(' Press Ctrl+C in terminal to stop.');
+  });
+}
+
+module.exports = server;

@@ -1,8 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../../brand.dart';
 import '../../../core/app_info.dart';
+import '../../../core/auth_validation.dart';
 import '../../../core/widgets/app_widgets.dart';
+import '../../../data/customer_repository.dart';
 import '../../../data/member_preferences.dart';
 import '../../../data/push_notification_service.dart';
 import '../../../widgets.dart';
@@ -74,6 +77,18 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
 
   void _push(Widget page) {
     Navigator.of(context).push(BrandPageRoute(builder: (_) => page));
+  }
+
+  Future<void> _openChangePassword() async {
+    final changed = await showCenterDialog<bool>(
+      context: context,
+      builder: (_) => const _ChangePasswordDialog(),
+    );
+    if (mounted && changed == true) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Password updated.')));
+    }
   }
 
   @override
@@ -173,7 +188,23 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           const SizedBox(height: AppSpacing.xl),
 
           FadeSlideIn(
-            delay: _d(200),
+            delay: _d(170),
+            child: SettingsSection(
+              title: 'SECURITY',
+              rows: [
+                SettingsNavRow(
+                  icon: Icons.lock_outline,
+                  title: 'Change password',
+                  subtitle: 'Update your sign-in password.',
+                  onTap: _openChangePassword,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+
+          FadeSlideIn(
+            delay: _d(230),
             child: SettingsSection(
               title: 'SUPPORT',
               rows: [
@@ -233,6 +264,154 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  final _current = TextEditingController();
+  final _next = TextEditingController();
+  final _confirm = TextEditingController();
+
+  String? _currentErr;
+  String? _nextErr;
+  String? _confirmErr;
+  bool _busy = false;
+  bool _obscureCurrent = true;
+  bool _obscureNext = true;
+  bool _obscureConfirm = true;
+
+  @override
+  void dispose() {
+    _current.dispose();
+    _next.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final current = _current.text;
+    final next = _next.text;
+    final confirm = _confirm.text;
+    setState(() {
+      _currentErr = current.isEmpty ? 'Enter your current password.' : null;
+      _nextErr = AuthValidation.passwordError(next);
+      _confirmErr = confirm != next ? "Passwords don't match." : null;
+    });
+    if (_currentErr != null || _nextErr != null || _confirmErr != null) {
+      return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      await CustomerRepository().changePassword(
+        currentPassword: current,
+        newPassword: next,
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } on AuthInputException catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _nextErr = e.message;
+        });
+      }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _currentErr = switch (e.code) {
+          'wrong-password' || 'invalid-credential' || 'requires-recent-login' =>
+            'Current password is incorrect. Please try again.',
+          _ => null,
+        };
+        _nextErr = switch (e.code) {
+          'weak-password' || 'password-does-not-meet-requirements' =>
+            'That password does not meet the security requirements.',
+          _ => null,
+        };
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _currentErr = 'Couldn\'t update your password. Please try again.';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppDialogShell(
+      footer: AppButton.primary(
+        label: 'UPDATE PASSWORD',
+        busy: _busy,
+        fullWidth: true,
+        onPressed: _busy ? null : _submit,
+      ),
+      children: [
+        Text('SECURITY', style: AppTextStyles.eyebrow),
+        const SizedBox(height: AppSpacing.sm),
+        Text('Change your password', style: AppTextStyles.title),
+        const SizedBox(height: AppSpacing.xs),
+        Text(AuthValidation.passwordMessage, style: AppTextStyles.bodySmall),
+        const SizedBox(height: AppSpacing.lg),
+        AppTextField(
+          label: 'Current password',
+          controller: _current,
+          errorText: _currentErr,
+          obscureText: _obscureCurrent,
+          onChanged: (_) => setState(() => _currentErr = null),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscureCurrent
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+            ),
+            onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AppTextField(
+          label: 'New password',
+          controller: _next,
+          errorText: _nextErr,
+          obscureText: _obscureNext,
+          onChanged: (_) => setState(() => _nextErr = null),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscureNext
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+            ),
+            onPressed: () => setState(() => _obscureNext = !_obscureNext),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AppTextField(
+          label: 'Confirm new password',
+          controller: _confirm,
+          errorText: _confirmErr,
+          obscureText: _obscureConfirm,
+          onChanged: (_) => setState(() => _confirmErr = null),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscureConfirm
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+            ),
+            onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 
+import '../core/auth_validation.dart';
 import 'booking.dart';
 import 'notification_delivery_service.dart';
 
@@ -44,6 +45,7 @@ class BookingRepository {
     Map<String, String> fields, {
     Map<String, Object?> payment = const {},
   }) async {
+    _validateContactNumber(fields);
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
       throw StateError('Booking requires a signed-in customer.');
@@ -95,6 +97,7 @@ class BookingRepository {
     String? packageId,
     required int step,
   }) async {
+    _validateContactNumber(fields);
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
       throw StateError('Saving a draft requires a signed-in customer.');
@@ -129,6 +132,15 @@ class BookingRepository {
       'statusUpdatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
     return draftId;
+  }
+
+  void _validateContactNumber(Map<String, String> fields) {
+    final phone = fields['contactNumber']?.trim();
+    if (phone == null || phone.isEmpty) return;
+    final error = AuthValidation.phoneError(phone);
+    if (error != null) {
+      throw ArgumentError.value(phone, 'contactNumber', error);
+    }
   }
 
   /// Deletes a "Continue later" draft — from the resume card's own delete

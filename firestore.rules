@@ -40,6 +40,13 @@ service cloud.firestore {
     // neither role can touch its own role/active flag either way.
     function isAdmin()        { return hasRole(['admin', 'owner']); }
 
+    function validPhilippinePhone(phone) {
+      return phone is string && phone.matches('^09[0-9]{9}$');
+    }
+    function validStoredPhone(phone) {
+      return phone is string && (phone == '' || validPhilippinePhone(phone));
+    }
+
     // Staff role records (the dashboards' access gates). Each staff member
     // may read their own record; content moderators / admins may read them all.
     //
@@ -90,13 +97,17 @@ service cloud.firestore {
         || (request.auth != null && request.auth.uid == uid);
       allow create: if request.auth != null && request.auth.uid == uid
         && request.resource.data.createdAt == request.time
+        && request.resource.data.keys().hasAll(['phone'])
+        && validStoredPhone(request.resource.data.phone)
         && !request.resource.data.keys().hasAny(
              ['banned', 'bannedAt', 'recommendations']);
-      allow update: if isModerator()
-        || (request.auth != null && request.auth.uid == uid
-            && !request.resource.data.diff(resource.data)
-                 .affectedKeys().hasAny(['banned', 'bannedAt',
-                                         'recommendations']));
+      allow update: if (request.resource.data.phone == resource.data.phone
+          || validStoredPhone(request.resource.data.phone))
+        && (isModerator()
+            || (request.auth != null && request.auth.uid == uid
+                && !request.resource.data.diff(resource.data)
+                     .affectedKeys().hasAny(['banned', 'bannedAt',
+                                             'recommendations'])));
       allow delete: if false;
     }
 
@@ -188,9 +199,10 @@ service cloud.firestore {
     // edit a member's phone from the dashboard.
     match /customer_phones/{phone} {
       allow get:    if request.auth != null;
-      allow create: if isModerator()
+      allow create: if phone.matches('^9[0-9]{9}$')
+        && (isModerator()
         || (request.auth != null
-            && request.resource.data.uid == request.auth.uid);
+            && request.resource.data.uid == request.auth.uid));
       allow delete: if isModerator();
       allow update: if false;
     }
@@ -241,6 +253,8 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status in ['pending', 'draft']
         && request.resource.data.createdAt == request.time
+        && (!('contactNumber' in request.resource.data)
+            || validPhilippinePhone(request.resource.data.contactNumber))
         // `paymentStatus` may only ever arrive as 'awaiting' here (see
         // BookingRepository.submit) — 'paid' is markPaid()'s word alone,
         // set only after Xendit confirms, via the update clause below.
@@ -296,7 +310,9 @@ service cloud.firestore {
                            'checkoutSessionId', 'checkoutUrl']))
         || (isOwnDraft()
             && request.resource.data.uid == request.auth.uid
-            && request.resource.data.status == 'draft');
+            && request.resource.data.status == 'draft'
+            && (!('contactNumber' in request.resource.data)
+                || validPhilippinePhone(request.resource.data.contactNumber)));
       allow delete: if isOrderManager() || isOwnDraft();
     }
 

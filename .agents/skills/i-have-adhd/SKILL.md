@@ -1,9 +1,9 @@
 ---
 name: i-have-adhd
-description: "Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible. Invoke with /i-have-adhd; stays on until ""stop adhd mode""."
+description: 'Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible. Invoke with /i-have-adhd; stays on until "stop adhd mode".'
 source: https://github.com/ayghri/i-have-adhd.git
 upstream_name: i-have-adhd
-note: Installed as "i-have-adhd" (your .md filename); upstream skill is i-have-adhd/skills/i-have-adhd/SKILL.md.
+note: 'Installed as "i-have-adhd" (your .md filename); upstream skill is i-have-adhd/skills/i-have-adhd/SKILL.md.'
 disable-model-invocation: true
 license: MIT
 metadata:

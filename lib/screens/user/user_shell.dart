@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../brand.dart';
+import '../../core/theme/bottom_navigation_layout.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/app_modal_queue.dart';
 import '../../data/app_settings.dart';
@@ -338,6 +339,7 @@ class _UserShellState extends State<UserShell> {
         final showAppBar = active != UserShell.tabHome;
 
         return Scaffold(
+          extendBody: true,
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(showAppBar ? 72 : 0),
             child: AnimatedSwitcher(
@@ -458,9 +460,14 @@ class _MemberNavBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 7, 8, 4),
+          padding: const EdgeInsets.fromLTRB(
+            8,
+            AppBottomNavigationLayout.memberTopPadding,
+            8,
+            AppBottomNavigationLayout.memberBottomPadding,
+          ),
           child: SizedBox(
-            height: 62,
+            height: AppBottomNavigationLayout.memberBarHeight,
             child: Row(
               children: [
                 for (final id in leftIds) Expanded(child: _destination(id)),

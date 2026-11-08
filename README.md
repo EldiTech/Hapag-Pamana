@@ -39,11 +39,11 @@ flutter analyze                   # static checks
 flutter build apk --debug         # local Android build check
 
 # Admin portal (Staff / Owner / Chef / Finance / Moderator)
-node serve-admin.js               # serves Admin/ at http://localhost:3000
+npm run serve:admin               # or: node scripts/serve-admin.js (serves Admin/ at http://localhost:3000)
 ```
 
 Android is the primary target (`com.HapagPamana`). iOS requires a Mac to build.
-The Admin portal is served from `Admin/index.html` via `node serve-admin.js` on `http://localhost:3000` (sign-in is Firebase Auth–gated).
+The Admin portal is served from `Admin/index.html` via `npm run serve:admin` (`node scripts/serve-admin.js`) on `http://localhost:3000` (sign-in is Firebase Auth–gated).
 
 ## Repository sync note
 

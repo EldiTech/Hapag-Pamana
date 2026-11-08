@@ -124,13 +124,10 @@ class _UserHomePageState extends State<UserHomePage> {
       },
     );
     // Live unread badge for the home header's bell.
-    _unreadSub = NotificationRepository().watchHasUnread().listen(
-      (has) {
-        if (!mounted) return;
-        setState(() => _hasUnread = has);
-      },
-      onError: (_) {},
-    );
+    _unreadSub = NotificationRepository().watchHasUnread().listen((has) {
+      if (!mounted) return;
+      setState(() => _hasUnread = has);
+    }, onError: (_) {});
   }
 
   void _maybeShowAnnouncementPopup(List<Announcement> items) {
@@ -140,10 +137,7 @@ class _UserHomePageState extends State<UserHomePage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      AnnouncementPopupModal.show(
-        context,
-        announcements: items,
-      );
+      AnnouncementPopupModal.show(context, announcements: items);
     });
   }
 
@@ -167,13 +161,13 @@ class _UserHomePageState extends State<UserHomePage> {
       _kMinStatusClearance,
     );
 
-    final featured = _all.where((p) => p.featured).toList();
+    final featured = uniqueProductsByName(_all.where((p) => p.featured));
     // A short editorial run for "From the Kitchen": prefer featured, then fill
     // out with the rest, capped so the home stays a teaser for the Menu.
-    final picks = <Product>[
+    final picks = uniqueProductsByName(<Product>[
       ...featured,
       ..._all.where((p) => !p.featured),
-    ].take(6).toList();
+    ]).take(6).toList();
 
     // One tile per category, each fronted by that category's representative
     // ("best seller") dish.
@@ -287,7 +281,8 @@ class _UserHomePageState extends State<UserHomePage> {
               ],
 
               // ── Featured highlight ─────────────────────────────────────────
-              if (settings.featuredOnHome && (_loading || featured.isNotEmpty)) ...[
+              if (settings.featuredOnHome &&
+                  (_loading || featured.isNotEmpty)) ...[
                 FadeSlideIn(
                   delay: _d(200),
                   child: Padding(
@@ -672,25 +667,32 @@ class _AnnouncementCard extends StatelessWidget {
                   alignment: Alignment.center,
                   child: announcement.hasImage
                       ? (imageBytes != null
-                          ? Image.memory(
-                              imageBytes,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => _fallbackThumb(isPromo),
-                            )
-                          : Image.network(
-                              announcement.imageUrl,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => _fallbackThumb(isPromo),
-                            ))
+                            ? Image.memory(
+                                imageBytes,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) =>
+                                    _fallbackThumb(isPromo),
+                              )
+                            : Image.network(
+                                announcement.imageUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) =>
+                                    _fallbackThumb(isPromo),
+                              ))
                       : _fallbackThumb(isPromo),
                 ),
                 Positioned(
                   top: 8,
                   left: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: isPromo ? AppColors.brown : AppColors.surface.withValues(alpha: 0.9),
+                      color: isPromo
+                          ? AppColors.brown
+                          : AppColors.surface.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
                         color: isPromo ? AppColors.gold : AppColors.hairline,
@@ -731,7 +733,9 @@ class _AnnouncementCard extends StatelessWidget {
                       Row(
                         children: [
                           Icon(
-                            isPromo ? Icons.local_offer_outlined : Icons.calendar_today_outlined,
+                            isPromo
+                                ? Icons.local_offer_outlined
+                                : Icons.calendar_today_outlined,
                             size: 12,
                             color: AppColors.goldDeep,
                           ),
@@ -866,15 +870,9 @@ class _AnnouncementSkeleton extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                shimmerBox(
-                  height: 16,
-                  width: width * 0.75,
-                ),
+                shimmerBox(height: 16, width: width * 0.75),
                 const SizedBox(height: 8),
-                shimmerBox(
-                  height: 12,
-                  width: width * 0.5,
-                ),
+                shimmerBox(height: 12, width: width * 0.5),
               ],
             ),
           ),
@@ -883,5 +881,3 @@ class _AnnouncementSkeleton extends StatelessWidget {
     );
   }
 }
-
-

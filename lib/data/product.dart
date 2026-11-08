@@ -95,3 +95,35 @@ class Product {
     }
   }
 }
+
+String normalizeProductName(String value) =>
+    value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+String productDisplayKey(Product product) {
+  final name = normalizeProductName(product.name);
+  return name.isEmpty
+      ? product.id
+      : '${product.type.trim().toLowerCase()}|'
+            '${product.category.trim().toLowerCase()}|$name';
+}
+
+List<Product> uniqueProductsByIdentity(Iterable<Product> products) {
+  final seen = <String>{};
+  return [
+    for (final product in products)
+      if (seen.add(productDisplayKey(product))) product,
+  ];
+}
+
+List<Product> uniqueProductsByName(Iterable<Product> products) {
+  final seen = <String>{};
+  return [
+    for (final product in products)
+      if (seen.add(
+        normalizeProductName(product.name).isEmpty
+            ? product.id
+            : normalizeProductName(product.name),
+      ))
+        product,
+  ];
+}

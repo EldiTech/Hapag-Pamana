@@ -4,6 +4,10 @@
   "engines": {
     "node": "22.x"
   },
+  "scripts": {
+    "serve:admin": "node scripts/serve-admin.js",
+    "check:db": "node scripts/check-db.js"
+  },
   "dependencies": {
     "firebase-admin": "^13.4.0"
   }

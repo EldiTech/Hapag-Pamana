@@ -51,6 +51,7 @@ void main() {
         'MY ORDERS',
         'NOTIFICATIONS',
         'PREFERENCES',
+        'SECURITY',
         'SUPPORT',
         'ABOUT',
       ]) {
@@ -64,6 +65,7 @@ void main() {
         'Healthier suggestions first',
         'Dietary preference',
         'Language',
+        'Change password',
         'Help & FAQ',
         'Contact us',
         'About Hapag Pamana',
@@ -94,18 +96,12 @@ void main() {
       );
       await _open(tester, UserSettingsPage(onLogout: () {}));
 
-      expect(
-        find.text('Vegetarian · avoiding 2 allergens'),
-        findsOneWidget,
-      );
+      expect(find.text('Vegetarian · avoiding 2 allergens'), findsOneWidget);
     });
 
     testWidgets('log out is wired to the shell', (tester) async {
       var loggedOut = false;
-      await _open(
-        tester,
-        UserSettingsPage(onLogout: () => loggedOut = true),
-      );
+      await _open(tester, UserSettingsPage(onLogout: () => loggedOut = true));
 
       await tester.tap(find.text('LOG OUT'));
       expect(loggedOut, isTrue);
@@ -141,7 +137,8 @@ void main() {
       await _open(tester, const HelpFaqPage());
 
       const question = 'How much do I pay up front?';
-      const answer = 'Half the order total holds your date. The balance is '
+      const answer =
+          'Half the order total holds your date. The balance is '
           'settled with the team on the day of the event.';
 
       expect(find.text(question), findsOneWidget);
@@ -164,8 +161,9 @@ void main() {
       await _scrollTo(tester, find.text('CHANGES AND CANCELLATIONS'));
     });
 
-    testWidgets('Contact us lists live ways to reach the kitchen',
-        (tester) async {
+    testWidgets('Contact us lists live ways to reach the kitchen', (
+      tester,
+    ) async {
       await _open(tester, const ContactUsPage());
 
       expect(find.text('CALL OR TEXT'), findsOneWidget);
@@ -226,15 +224,15 @@ void main() {
     test('only reports avoided allergens the dish actually carries', () {
       const prefs = MemberPreferences(avoidAllergens: {'peanut', 'soy'});
 
-      expect(
-        prefs.avoidedIn(['peanut', 'milk']).map((a) => a.key).toList(),
-        ['peanut'],
-      );
+      expect(prefs.avoidedIn(['peanut', 'milk']).map((a) => a.key).toList(), [
+        'peanut',
+      ]);
       expect(prefs.avoidedIn(['milk']), isEmpty);
       // A key that isn't in the taxonomy can't flag anything.
       expect(
-        const MemberPreferences(avoidAllergens: {'unicorn'})
-            .avoidedIn(['unicorn']),
+        const MemberPreferences(
+          avoidAllergens: {'unicorn'},
+        ).avoidedIn(['unicorn']),
         isEmpty,
       );
     });
@@ -242,12 +240,9 @@ void main() {
 
   group('Dietary flags', () {
     test('name the offending allergens as a sentence', () {
-      List<Allergen> of(List<String> keys) =>
-          const MemberPreferences(avoidAllergens: {
-            'peanut',
-            'shellfish',
-            'soy',
-          }).avoidedIn(keys);
+      List<Allergen> of(List<String> keys) => const MemberPreferences(
+        avoidAllergens: {'peanut', 'shellfish', 'soy'},
+      ).avoidedIn(keys);
 
       expect(allergenSentence(of(const [])), '');
       expect(allergenSentence(of(const ['peanut'])), 'peanut');

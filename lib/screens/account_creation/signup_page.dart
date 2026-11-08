@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../brand.dart';
+import '../../core/auth_validation.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/customer_repository.dart';
 import '../../widgets.dart';
@@ -70,25 +72,20 @@ class _SignUpPageState extends State<SignUpPage> {
       case 1:
         final email = _email.text.trim();
         final phone = _phone.text.trim();
-        final phoneDigits = phone.replaceAll(RegExp(r'\D'), '');
         setState(() {
           _emailErr = email.isEmpty
               ? 'Please enter your email'
               : (!_emailRe.hasMatch(email)
                     ? 'Enter a valid email address'
                     : null);
-          _phoneErr = phone.isEmpty
-              ? 'Please enter your phone number'
-              : (phoneDigits.length < 7 ? 'Enter a valid phone number' : null);
+          _phoneErr = AuthValidation.phoneError(phone);
         });
         return _emailErr == null && _phoneErr == null;
       case 2:
         final pw = _password.text;
         final confirm = _confirm.text;
         setState(() {
-          _passwordErr = pw.isEmpty
-              ? 'Please choose a password'
-              : (pw.length < 6 ? 'Use at least 6 characters' : null);
+          _passwordErr = AuthValidation.passwordError(pw);
           _confirmErr = confirm != pw ? "Passwords don't match" : null;
         });
         return _passwordErr == null && _confirmErr == null;
@@ -149,6 +146,19 @@ class _SignUpPageState extends State<SignUpPage> {
         BrandPageRoute(builder: (_) => TasteProfilePage(name: name)),
         (route) => route.isFirst,
       );
+    } on AuthInputException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        if (e.field == 'phone') {
+          _phoneErr = e.message;
+        } else {
+          _passwordErr = e.message;
+        }
+      });
+      if (e.field == 'phone') {
+        _pager.animateToPage(1, duration: Motion.base, curve: Motion.standard);
+      }
     } on DuplicateAccountException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -172,7 +182,9 @@ class _SignUpPageState extends State<SignUpPage> {
           case 'invalid-email':
             _emailErr = 'Enter a valid email address';
           case 'weak-password':
-            _passwordErr = 'Choose a stronger password';
+          case 'password-does-not-meet-requirements':
+            _passwordErr =
+                'That password does not meet the security requirements.';
         }
       });
       // An email problem surfaces on the Contact step — jump back to it so the
@@ -184,6 +196,7 @@ class _SignUpPageState extends State<SignUpPage> {
         'email-already-in-use',
         'invalid-email',
         'weak-password',
+        'password-does-not-meet-requirements',
       };
       if (!fieldCodes.contains(e.code)) {
         messenger.showSnackBar(
@@ -424,11 +437,12 @@ class _SignUpPageState extends State<SignUpPage> {
         const SizedBox(height: AppSpacing.lg),
         AppTextField(
           label: 'Phone',
-          hint: '0917 123 4567',
+          hint: '09XXXXXXXXX',
           controller: _phone,
           errorText: _phoneErr,
           prefixIcon: Icons.phone_outlined,
           keyboardType: TextInputType.phone,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           textInputAction: TextInputAction.done,
           autofillHints: const [AutofillHints.telephoneNumber],
           onChanged: (_) {
@@ -443,7 +457,7 @@ class _SignUpPageState extends State<SignUpPage> {
     return _WizardStep(
       eyebrow: 'ALMOST THERE',
       title: 'Secure your\naccount.',
-      subtitle: 'Choose a password of at least 6 characters.',
+      subtitle: AuthValidation.passwordMessage,
       children: [
         AppTextField(
           label: 'Password',
