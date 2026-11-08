@@ -37,4 +37,4 @@ After deployment, set this in the ignored root `.env`:
 XENDIT_API_URL=https://YOUR-PROJECT.vercel.app/api/payments/xendit
 ```
 
-Then rebuild the APK. The old PayMongo checkout is not reused.
+Then rebuild the APK.

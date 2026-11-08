@@ -1,14 +1,11 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter/widgets.dart';
 
-import 'app_navigation.dart';
-import 'brand.dart';
-import 'app_startup.dart';
-import 'data/member_preferences.dart';
-import 'screens/splash_screen.dart';
-import 'widgets.dart';
+import 'app/app.dart';
+import 'app/app_startup.dart';
+
+export 'app/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,40 +17,4 @@ Future<void> main() async {
   // featured / maintenance) live for the whole session.
   runApp(const HapagPamanaApp());
   unawaited(AppStartup.initialize());
-}
-
-class HapagPamanaApp extends StatelessWidget {
-  const HapagPamanaApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    // The app runs in the language the signed-in member chose (Settings →
-    // Language), so everything Flutter itself supplies — the booking wizards'
-    // date and time pickers, dialog buttons, the text-selection menu, date
-    // formatting — follows it. A guest, and a member who hasn't chosen, gets
-    // the English default; log-out resets it.
-    return ValueListenableBuilder<MemberPreferences>(
-      valueListenable: MemberPreferencesScope.notifier,
-      builder: (context, prefs, _) => MaterialApp(
-        navigatorKey: AppNavigation.navigatorKey,
-        scaffoldMessengerKey: AppNavigation.messengerKey,
-        title: 'HapagPamana',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        locale: prefs.language.locale,
-        supportedLocales: [
-          for (final language in AppLanguage.values) language.locale,
-        ],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        // Provide a single shared shimmer clock to every skeleton in the app.
-        builder: (context, child) =>
-            ShimmerScope(child: child ?? const SizedBox.shrink()),
-        home: const SplashScreen(),
-      ),
-    );
-  }
 }

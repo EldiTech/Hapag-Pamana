@@ -12,7 +12,7 @@ import 'places_config.dart';
 /// address and coordinates; and Geocoding, so a pin dropped or dragged on the
 /// map resolves back to a formatted address the same way a typed one would.
 ///
-/// A process-wide singleton, mirroring [PayMongoService].
+/// A process-wide singleton shared by the address picker.
 class PlacesService {
   PlacesService._();
   static final PlacesService instance = PlacesService._();

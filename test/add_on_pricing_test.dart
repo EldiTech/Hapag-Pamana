@@ -4,7 +4,7 @@
 // These are pure-model tests — no Firebase, no widgets. What's covered is the
 // resolution rule itself, because it decides real money: it feeds the booking
 // wizard's running total, the order's `paymentTotal`, and therefore the 50%
-// PayMongo downpayment. The case that matters most is the negative one — an
+// Xendit downpayment. The case that matters most is the negative one — an
 // unpriced extra must resolve to null (quoted by the team) and never to ₱0.
 
 import 'package:flutter_test/flutter_test.dart';

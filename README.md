@@ -16,14 +16,17 @@ member's `users/{uid}.role` decides which one opens.
 | Path | What it is |
 | --- | --- |
 | `lib/core/theme/` | Design tokens — `AppColors`, `AppTextStyles`, `AppSpacing`, `AppRadius`, `AppMotion`, `AppTheme` (re-exported by `lib/brand.dart`) |
-| `lib/core/widgets/` | Reusable UI — `AppCard`, `AppButton`, `AppTextField` (barrel: `app_widgets.dart`) |
-| `lib/widgets.dart` | Shared app-level widgets (shimmer, pressable scale, etc.) |
+| `lib/app/` | App shell, startup lifecycle, and global navigation |
+| `lib/core/widgets/` | Reusable UI and shared app widgets (barrel: `app_widgets.dart`) |
+| `lib/widgets.dart` | Compatibility barrel for shared widgets |
 | `lib/data/` | Models + Firestore repositories (products, catering, customers, bookings, allergens) |
 | `lib/screens/` | Guest side: splash → `GuestShell` (Home / Menu / Catering / About / Login) |
 | `lib/screens/user/` | Member side: `UserShell` (Home / Menu / Gabay / Catering / Account) + booking wizard |
 | `Admin/` | Staff portal — `index.html` is the sign-in gate; `Admin/assets/` holds the shared shell (`hp-guard.js`, `hp-core.js`, `hp-shell.js`) each dashboard is built from |
 | `Admin/Content Moderator/` · `Admin/Orders/` · `Admin/Master Chef/` · `Admin/Finance/` | The four dashboards, one folder each (`html/`, `js/`, `css/`); all share `Content Moderator/css/global.css` |
 | `firestore.rules` | Security rules — **publish manually** in the Firebase console after changes |
+
+The detailed boundary map and migration rules live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Running
 
@@ -32,6 +35,8 @@ flutter pub get
 flutter run                       # debug on a connected device
 flutter build apk --release      # release APK (the usual install path)
 flutter test                      # smoke test
+flutter analyze                   # static checks
+flutter build apk --debug         # local Android build check
 
 # Admin portal (Staff / Owner / Chef / Finance / Moderator)
 node serve-admin.js               # serves Admin/ at http://localhost:3000

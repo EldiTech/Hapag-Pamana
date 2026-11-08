@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 
-import 'data/about_content.dart';
-import 'data/allergens.dart';
-import 'data/app_settings.dart';
-import 'data/push_notification_service.dart';
-import 'env.dart';
-import 'firebase_options.dart';
+import '../data/about_content.dart';
+import '../data/allergens.dart';
+import '../data/app_settings.dart';
+import '../data/push_notification_service.dart';
+import '../env.dart';
+import '../firebase_options.dart';
 
 /// Starts the app immediately, then finishes service setup in the background.
 class AppStartup {

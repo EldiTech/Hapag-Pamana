@@ -210,11 +210,11 @@ service cloud.firestore {
     // could file a booking born trashed (`deleted`) or carrying a forged
     // status history.
     // A customer may also record their own downpayment — and nothing else. The
-    // app collects 50% of the order through PayMongo, then writes the result
+    // app collects 50% of the order through Xendit, then writes the result
     // back here, so the owner needs an update path; `hasOnly` keeps it to the
     // payment keys, which is what stops it becoming a way to move `status`,
     // rewrite the menu or edit an order the kitchen is already cooking for.
-    // Without this clause the app confirms a payment with PayMongo and is then
+    // Without this clause the app confirms a payment with Xendit and is then
     // refused when it writes the result down: the client is charged and the
     // order still reads unpaid.
     //
@@ -222,11 +222,8 @@ service cloud.firestore {
     // `paymentTakenBy`, `paymentTakenByName`) are deliberately NOT in the list —
     // a payment taken by hand is the order manager's word, never the client's.
     //
-    // This trusts the app's word that PayMongo said "paid". It has to, while the
-    // checkout call lives in the client (see lib/data/paymongo_config.dart) —
-    // there's no server here to verify a webhook. Moving that call to a Cloud
-    // Function is what would let this rule drop the customer clause entirely and
-    // leave payment writes to the backend.
+    // This trusts the app's word that Xendit said "paid". The checkout session
+    // is server-backed, but this client write still records the result here.
     //
     // "Continue later" drafts (see lib/data/booking_repository.dart saveDraft)
     // are the one status a customer may file AND go on editing themselves: a
@@ -246,7 +243,7 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         // `paymentStatus` may only ever arrive as 'awaiting' here (see
         // BookingRepository.submit) — 'paid' is markPaid()'s word alone,
-        // set only after PayMongo confirms, via the update clause below.
+        // set only after Xendit confirms, via the update clause below.
         // Without this a forged create could self-mark a booking paid and
         // skip payment entirely.
         && (!('paymentStatus' in request.resource.data)

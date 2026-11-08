@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'screens/user/order_tracking_page.dart';
-import 'widgets.dart';
+import '../core/widgets/app_shared.dart';
+import '../screens/user/order_tracking_page.dart';
 
 /// App-wide navigation used by notification taps.
 class AppNavigation {

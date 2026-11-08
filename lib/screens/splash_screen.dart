@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../app_startup.dart';
+import '../app/app_startup.dart';
 import '../brand.dart';
 import '../data/customer_repository.dart';
 import '../widgets.dart';

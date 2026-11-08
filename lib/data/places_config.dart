@@ -4,8 +4,8 @@
 /// on one key and one quota.
 ///
 /// Read from `.env` (`GOOGLE_MAPS_API_KEY` — see [Env]); a `--dart-define`
-/// still overrides it the same way [PayMongoConfig]'s keys do, should the
-/// key ever need to change without touching the bundled file:
+/// still overrides it, should the key ever need to change without touching
+/// the bundled file:
 /// ```
 /// flutter build apk --dart-define=GOOGLE_MAPS_API_KEY=AIza…
 /// ```

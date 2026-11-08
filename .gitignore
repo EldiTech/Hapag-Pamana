@@ -33,6 +33,12 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Generated launch-video output. Keep source composition elsewhere.
+/brag-output-*/
+
+# Imported native binaries; not used by the Flutter, Admin, or API builds.
+/bin/
+
 # Symbolication related
 app.*.symbols
 

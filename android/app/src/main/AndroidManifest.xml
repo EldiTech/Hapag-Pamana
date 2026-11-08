@@ -25,7 +25,7 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Lets the PayMongo success/cancelled pages (hosting/payment/)
+            <!-- Lets the Xendit success/cancelled pages (hosting/payment/)
                  hand control back to the app with a plain link, rather than
                  leaving the member to switch back manually. The app re-checks
                  payment on resume regardless (see PaymentPage), so this link
