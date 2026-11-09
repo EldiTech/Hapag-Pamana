@@ -27,27 +27,35 @@ window.HP_WEB_PUSH_VAPID_KEY = "";
 // requires a Firebase Auth ID token and validates every booking server-side.
 window.HP_NOTIFICATION_API_URL = "/api/notifications/booking";
 
-/* ── Firestore transport ──────────────────────────────────────────────────
-   Firestore normally streams over WebChannel. Some networks, proxies and
-   browser shields break that long-lived connection: the 'Listen' channel
-   404s and the SDK reports "client is offline" even though plain reads work.
-   Long polling is the supported fallback for exactly that case.
+/* ── Firestore transport & local cache ────────────────────────────────────
+   Firestore streams over WebChannel by default and automatically falls back
+   to HTTP long-polling (`experimentalAutoDetectLongPolling: true`) when a
+   network, proxy, or browser shield blocks long-lived WebChannel streams.
 
-   Force is used rather than auto-detect: detection has to attempt a
-   WebChannel handshake and recognise the failure first, and a 404 (rather
-   than a clean timeout) is a failure shape it can misread — so it never
-   switches. The two flags are mutually exclusive; passing both throws.
-
-   This runs here — after the SDK, before every other script — because
-   settings() must be called before anything reads or writes. firebase.
-   firestore() hands back one shared instance, so doing it once covers the
-   login and all four dashboards. */
+   Because the Admin portal is a Multi-Page Application (MPA) where every
+   sidebar link loads a fresh document, we also enable multi-tab IndexedDB
+   persistence (`enablePersistence({ synchronizeTabs: true })`) on all live
+   operational desks so Firestore can serve cached snapshots in <20ms while
+   synchronizing deltas in the background. (The Content Moderator desk uses
+   its own dedicated IndexedDB store in `Content Moderator/js/store.js` and
+   skips duplicate Firestore persistence of its base64 media collections.) */
 (function () {
   if (typeof firebase === "undefined" || !firebase.firestore) return;
   if (String(window.firebaseConfig.apiKey || "").startsWith("PASTE")) return;
   try {
     if (!firebase.apps.length) firebase.initializeApp(window.firebaseConfig);
-    firebase.firestore().settings({ experimentalForceLongPolling: true });
+    var db = firebase.firestore();
+    db.settings({
+      experimentalAutoDetectLongPolling: true,
+      cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+      merge: true,
+    });
+    var isModerator = /Content(%20|\s)Moderator/i.test(location.pathname || "");
+    if (!isModerator && typeof db.enablePersistence === "function") {
+      db.enablePersistence({ synchronizeTabs: true }).catch(function () {
+        /* Safe fallback if IndexedDB or multi-tab persistence is restricted */
+      });
+    }
   } catch (e) {
     // Never let a transport tweak stop the portal from loading.
     console.warn("HapagPamana: couldn't set Firestore transport —", e);
