@@ -219,10 +219,9 @@ class _TasteProfilePageState extends State<TasteProfilePage> {
                     const SizedBox(height: 10),
                     Text(
                       'QUESTION ${_step + 1} OF $_stepCount',
-                      style: AppTextStyles.engraved(
-                        size: 9.5,
+                      style: AppTextStyles.caption.copyWith(
                         color: AppColors.goldDeep,
-                        spacing: 2,
+                        letterSpacing: 2,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
@@ -296,28 +295,20 @@ class _TasteProfilePageState extends State<TasteProfilePage> {
       subtitle:
           'Kumusta, $first! Tell us what you cater for and Gabay will have '
           'something ready for you. Pick as many as you like.',
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final chipWidth = (constraints.maxWidth - AppSpacing.sm) / 2;
-          return Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              for (final o in OccasionType.values)
-                SizedBox(
-                  width: chipWidth,
-                  child: _ChoiceChip(
-                    label: o.label,
-                    emoji: o.emoji,
-                    selected: _occasions.contains(o.key),
-                    onTap: () => setState(() {
-                      if (!_occasions.remove(o.key)) _occasions.add(o.key);
-                    }),
-                  ),
-                ),
-            ],
-          );
-        },
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm + 2,
+        children: [
+          for (final o in OccasionType.values)
+            _ChoiceChip(
+              label: o.label,
+              icon: o.icon,
+              selected: _occasions.contains(o.key),
+              onTap: () => setState(() {
+                if (!_occasions.remove(o.key)) _occasions.add(o.key);
+              }),
+            ),
+        ],
       ),
     );
   }
@@ -369,27 +360,20 @@ class _TasteProfilePageState extends State<TasteProfilePage> {
       eyebrow: 'THE FOOD',
       title: 'How do you\nlike to eat?',
       subtitle: 'Pick the flavours your table goes back for.',
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final chipWidth = (constraints.maxWidth - AppSpacing.sm) / 2;
-          return Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              for (final f in FlavorNote.values)
-                SizedBox(
-                  width: chipWidth,
-                  child: _ChoiceChip(
-                    label: f.label,
-                    selected: _flavors.contains(f.key),
-                    onTap: () => setState(() {
-                      if (!_flavors.remove(f.key)) _flavors.add(f.key);
-                    }),
-                  ),
-                ),
-            ],
-          );
-        },
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm + 2,
+        children: [
+          for (final f in FlavorNote.values)
+            _ChoiceChip(
+              label: f.label,
+              icon: f.icon,
+              selected: _flavors.contains(f.key),
+              onTap: () => setState(() {
+                if (!_flavors.remove(f.key)) _flavors.add(f.key);
+              }),
+            ),
+        ],
       ),
     );
   }
@@ -413,23 +397,26 @@ class _QuizStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       child: FadeSlideIn(
         key: ValueKey(title),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              eyebrow,
-              style: AppTextStyles.engraved(
-                size: 11,
-                color: AppColors.goldDeep,
-                spacing: 2.5,
-              ),
+              eyebrow.toUpperCase(),
+              style: AppTextStyles.eyebrow,
             ),
-            const SizedBox(height: AppSpacing.sm + 2),
-            Text(title, style: AppTextStyles.serif(size: 27, height: 1.12)),
+            const SizedBox(height: AppSpacing.xs + 2),
+            Text(
+              title,
+              style: AppTextStyles.displaySmall.copyWith(height: 1.15),
+            ),
             const SizedBox(height: AppSpacing.sm),
-            Text(subtitle, style: AppTextStyles.body),
+            Text(
+              subtitle,
+              style: AppTextStyles.body.copyWith(height: 1.45),
+            ),
             const SizedBox(height: AppSpacing.xl),
             child,
             const SizedBox(height: AppSpacing.lg),
@@ -446,11 +433,11 @@ class _ChoiceChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
-    this.emoji,
+    this.icon,
   });
 
   final String label;
-  final String? emoji;
+  final IconData? icon;
   final bool selected;
   final VoidCallback onTap;
 
@@ -471,23 +458,43 @@ class _ChoiceChip extends StatelessWidget {
             color: selected ? AppColors.gold : AppColors.hairline,
             width: selected ? 1.4 : 1,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.gold.withValues(alpha: 0.16),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (emoji != null) ...[
-              Text(emoji!, style: const TextStyle(fontSize: 18)),
-              const SizedBox(width: 7),
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? AppColors.brown : AppColors.goldDeep,
+              ),
+              const SizedBox(width: 8),
             ],
             Text(
               label,
               style: AppTextStyles.sans(
-                size: 12.5,
-                weight: FontWeight.w600,
+                size: 13,
+                weight: selected ? FontWeight.w600 : FontWeight.w500,
                 color: selected ? AppColors.brown : AppColors.brownSoft,
-                spacing: 0.2,
               ),
             ),
+            if (selected) ...[
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.check_rounded,
+                size: 15,
+                color: AppColors.goldDeep,
+              ),
+            ],
           ],
         ),
       ),
@@ -511,44 +518,88 @@ class _ChoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    return PressableScale(
       onTap: onTap,
-      width: double.infinity,
-      color: selected ? AppColors.gold.withValues(alpha: 0.12) : null,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(title, style: AppTextStyles.serif(size: 17, height: 1.15)),
-                const SizedBox(height: 3),
-                Text(blurb, style: AppTextStyles.bodySmall),
-              ],
-            ),
+      child: AnimatedContainer(
+        duration: Motion.quick,
+        curve: Motion.standard,
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md + 2,
+        ),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.gold.withValues(alpha: 0.14)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(
+            color: selected ? AppColors.gold : AppColors.hairline,
+            width: selected ? 1.5 : 1,
           ),
-          const SizedBox(width: AppSpacing.md),
-          AnimatedContainer(
-            duration: Motion.quick,
-            curve: Motion.standard,
-            width: 22,
-            height: 22,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: selected ? AppColors.gold : Colors.transparent,
-              border: Border.all(
-                color: selected ? AppColors.gold : AppColors.hairline,
-                width: 1.4,
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.gold.withValues(alpha: 0.14),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: AppTextStyles.serif(
+                      size: 17,
+                      height: 1.15,
+                      color: AppColors.brown,
+                      weight: selected ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    blurb,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: selected
+                          ? AppColors.brown
+                          : AppColors.brownSoft,
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: selected
-                ? const Icon(Icons.check, size: 14, color: AppColors.brown)
-                : null,
-          ),
-        ],
+            const SizedBox(width: AppSpacing.md),
+            AnimatedContainer(
+              duration: Motion.quick,
+              curve: Motion.standard,
+              width: 24,
+              height: 24,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected ? AppColors.gold : Colors.transparent,
+                border: Border.all(
+                  color: selected ? AppColors.gold : AppColors.hairline,
+                  width: 1.4,
+                ),
+              ),
+              child: selected
+                  ? const Icon(
+                      Icons.check_rounded,
+                      size: 15,
+                      color: AppColors.surface,
+                    )
+                  : null,
+            ),
+          ],
+        ),
       ),
     );
   }

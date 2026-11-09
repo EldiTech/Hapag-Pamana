@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 /// What a new member tells us about the handaan they throw, before they have
 /// thrown one with us.
@@ -141,19 +142,20 @@ class TasteProfile {
 ///
 /// [key] is what's stored; never localise or renumber it.
 enum OccasionType {
-  birthday('birthday', 'Birthday', '🎂'),
-  wedding('wedding', 'Wedding', '💍'),
-  fiesta('fiesta', 'Fiesta', '🎊'),
-  corporate('corporate', 'Corporate', '💼'),
-  reunion('reunion', 'Family reunion', '🏡'),
-  funeral('funeral', 'Lamay / burol', '🕯️'),
-  religious('religious', 'Binyag · Kumpil', '⛪'),
-  everyday('everyday', 'Just because', '🍚');
+  birthday('birthday', 'Birthday', Icons.cake_outlined, '🎂'),
+  wedding('wedding', 'Wedding', Icons.favorite_border_rounded, '💍'),
+  fiesta('fiesta', 'Fiesta', Icons.celebration_outlined, '🎊'),
+  corporate('corporate', 'Corporate', Icons.business_center_outlined, '💼'),
+  reunion('reunion', 'Family reunion', Icons.groups_outlined, '🏡'),
+  funeral('funeral', 'Lamay / burol', Icons.spa_outlined, '🕯️'),
+  religious('religious', 'Binyag · Kumpil', Icons.church_outlined, '⛪'),
+  everyday('everyday', 'Just because', Icons.restaurant_outlined, '🍚');
 
-  const OccasionType(this.key, this.label, this.emoji);
+  const OccasionType(this.key, this.label, this.icon, [this.emoji = '']);
 
   final String key;
   final String label;
+  final IconData icon;
   final String emoji;
 
   static OccasionType? fromKey(Object? raw) {
@@ -211,20 +213,21 @@ enum GroupSize {
 /// recommendations may follow. `no_pork` appears in both vocabularies because a
 /// member may express it either way, and the CF seed reads this one.
 enum FlavorNote {
-  savory('savory', 'Malinamnam', 'Rich and savoury'),
-  sweet('sweet', 'Matamis', 'On the sweeter side'),
-  sour('sour', 'Maasim', 'Sinigang, adobo, paksiw'),
-  spicy('spicy', 'Maanghang', 'Bring the heat'),
-  grilled('grilled', 'Inihaw', 'Off the grill'),
-  seafood('seafood', 'Lamang-dagat', 'Fish and shellfish'),
-  vegetables('vegetables', 'Gulay', 'Plenty of vegetables'),
-  noPork('no_pork', 'Walang baboy', 'Keep the pork off the table');
+  savory('savory', 'Malinamnam', 'Rich and savoury', Icons.soup_kitchen_outlined),
+  sweet('sweet', 'Matamis', 'On the sweeter side', Icons.cookie_outlined),
+  sour('sour', 'Maasim', 'Sinigang, adobo, paksiw', Icons.set_meal_outlined),
+  spicy('spicy', 'Maanghang', 'Bring the heat', Icons.local_fire_department_outlined),
+  grilled('grilled', 'Inihaw', 'Off the grill', Icons.outdoor_grill_outlined),
+  seafood('seafood', 'Lamang-dagat', 'Fish and shellfish', Icons.water_drop_outlined),
+  vegetables('vegetables', 'Gulay', 'Plenty of vegetables', Icons.eco_outlined),
+  noPork('no_pork', 'Walang baboy', 'Keep the pork off the table', Icons.do_not_disturb_on_outlined);
 
-  const FlavorNote(this.key, this.label, this.blurb);
+  const FlavorNote(this.key, this.label, this.blurb, this.icon);
 
   final String key;
   final String label;
   final String blurb;
+  final IconData icon;
 
   static FlavorNote? fromKey(Object? raw) {
     for (final v in values) {

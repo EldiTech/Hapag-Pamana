@@ -140,8 +140,29 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
   List<Product> _products = const [];
 
   /// The menu being built — each line a dish plus the pax it should serve,
-  /// in the order the member added them (exactly the quotation's MENU list).
+  /// in the order the member added them (used only when no package inclusions
+  /// are defined).
   final List<_MenuLine> _menu = [];
+
+  /// The courses this food pack package includes — one per inclusion line on
+  /// the selected package, in the moderator's order.
+  late final List<PackageCourse> _courses = widget.package?.courses ?? const [];
+
+  /// Course by field key, for label and category lookups.
+  late final Map<String, PackageCourse> _courseByKey = {
+    for (final c in _courses) c.key: c,
+  };
+
+  /// Whether the customer has toggled multi-day scheduling on Step 1.
+  bool _multiDaySchedule = false;
+
+  /// Parsed start/end selection for the scheduled event/delivery date(s).
+  BookingScheduleSelection? _scheduleSelection;
+
+  /// Number of scheduled days (at least 1).
+  int get _days =>
+      _scheduleSelection?.days ??
+      (int.tryParse(_ctrl('functionDays').text.trim()) ?? 1).clamp(1, 365);
 
   TextEditingController _ctrl(String key) =>
       _fields.putIfAbsent(key, () => TextEditingController());
@@ -216,12 +237,43 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     return packs.isNotEmpty ? packs : _products;
   }
 
+  /// A category name reduced for comparison: trimmed, lowercased and stripped
+  /// of a trailing "s" so "Seafoods" and "Seafood" are the same course.
+  static String _singular(String value) {
+    final v = value.trim().toLowerCase();
+    return v.endsWith('s') ? v.substring(0, v.length - 1) : v;
+  }
+
+  /// Available dishes for a specific [course] in the selected package.
+  List<Product> _dishesFor(PackageCourse course) {
+    bool inCourse(Product p) {
+      final cat = _singular(p.category);
+      return course.categories.any((c) => _singular(c) == cat);
+    }
+
+    final wantType = widget.package?.productType ?? 'Food Packs';
+    final inFamily = _products
+        .where((p) => p.type == wantType && inCourse(p))
+        .toList();
+    if (inFamily.isNotEmpty) return inFamily;
+    return _products.where(inCourse).toList();
+  }
+
   /// Total pax across every menu line — the quotation's implied headcount.
   int get _menuPax => _menu.fold(0, (sum, l) => sum + l.pax);
 
-  /// The quotation's MENU lines: the structured menu when one was built, or
-  /// the free-text fallback split into lines.
+  /// The quotation's MENU lines: the dishes chosen for each package inclusion
+  /// when a package is selected, or the fallback menu list.
   List<String> get _menuLines {
+    if (_courses.isNotEmpty) {
+      final pax = _ctrl('pax').text.trim();
+      final paxSuffix = pax.isNotEmpty ? ' ($pax pax)' : '';
+      return [
+        for (final c in _courses)
+          if (_ctrl(c.key).text.trim().isNotEmpty)
+            '${_ctrl(c.key).text.trim()}$paxSuffix',
+      ];
+    }
     if (_menu.isNotEmpty) {
       return [for (final l in _menu) '${l.dish.name} (${l.pax} pax)'];
     }
@@ -231,19 +283,51 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
   }
 
   // ── Pickers ───────────────────────────────────────────────────────────────
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
+  void _applyScheduleSelection(BookingScheduleSelection selection) {
+    _scheduleSelection = selection;
+    _multiDaySchedule = selection.isMultiDay;
+    _ctrl('functionDate').text = selection.displayLabel;
+    _ctrl('functionStartDate').text = selection.formattedStart;
+    _ctrl('functionEndDate').text = selection.formattedEnd;
+    _ctrl('functionDays').text = '${selection.days}';
+    _errors.remove('functionDate');
+  }
+
+  void _onScheduleModeChanged(bool multiDay) {
+    if (_multiDaySchedule == multiDay) return;
+    setState(() {
+      _multiDaySchedule = multiDay;
+      if (!multiDay && _scheduleSelection != null) {
+        _applyScheduleSelection(
+          BookingScheduleSelection(
+            start: _scheduleSelection!.startDay,
+            end: _scheduleSelection!.startDay,
+          ),
+        );
+      }
+    });
+    if (multiDay || _scheduleSelection == null) {
+      _pickDate(forceMultiDay: multiDay);
+    }
+  }
+
+  Future<void> _pickDate({bool? forceMultiDay}) async {
+    final current =
+        _scheduleSelection ??
+        parseBookingSchedule(
+          _ctrl('functionDate').text,
+          startRaw: _ctrl('functionStartDate').text,
+          endRaw: _ctrl('functionEndDate').text,
+        );
+    final picked = await showBookingSchedulePicker(
       context: context,
-      initialDate: now.add(const Duration(days: 7)),
-      firstDate: now,
-      lastDate: DateTime(now.year + 2, now.month, now.day),
+      initialSelection: current,
+      initialMultiDay: forceMultiDay ?? _multiDaySchedule,
+      defaultLeadDays: 7,
+      eyebrow: 'THE OCCASION · DATE OF EVENT',
     );
     if (picked == null || !mounted) return;
-    setState(() {
-      _ctrl('functionDate').text = _formatDate(picked);
-      _errors.remove('functionDate');
-    });
+    setState(() => _applyScheduleSelection(picked));
   }
 
   Future<void> _pickTime(String key) async {
@@ -285,13 +369,20 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
   /// field. Empty means the step is clean.
   Map<String, String> _stepErrors(int step) {
     final found = <String, String>{};
-    for (final key in _validatedByStep[step] ?? const <String>[]) {
+    final keys = [
+      ...?_validatedByStep[step],
+      if (step == 2 && _courses.isNotEmpty)
+        for (final c in _courses) c.key,
+    ];
+    for (final key in keys) {
       final error = _checkField(key);
       if (error != null) found[key] = error;
     }
-    // The Menu step is a list, not a blank: it needs at least one dish (or,
-    // where nothing is published and it fell back to free text, a line of it).
-    if (step == 2 && _menu.isEmpty && _ctrl('menu').text.trim().isEmpty) {
+    // Fallback when no package inclusions exist: needs at least one dish.
+    if (step == 2 &&
+        _courses.isEmpty &&
+        _menu.isEmpty &&
+        _ctrl('menu').text.trim().isEmpty) {
       found['menu'] = 'Add at least one dish to your menu';
     }
     return found;
@@ -303,7 +394,12 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
       for (final key in _validatedByStep[step] ?? const <String>[]) {
         _errors.remove(key);
       }
-      if (step == 2) _errors.remove('menu');
+      if (step == 2) {
+        _errors.remove('menu');
+        for (final c in _courses) {
+          _errors.remove(c.key);
+        }
+      }
       _errors.addAll(found);
     });
   }
@@ -317,11 +413,20 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
       if (key == 'functionDate') return 'Please pick a date.';
       if (key == 'deliveryTime') return 'Please pick a time.';
       if (key == 'venue') return 'Please choose your venue on the map.';
+      if (_courseByKey.containsKey(key)) {
+        return _dishesFor(_courseByKey[key]!).isNotEmpty
+            ? 'Please choose a dish.'
+            : 'Please name a dish.';
+      }
       return 'Please fill this in';
     }
     // Anything a picker wrote is already well-formed, and its shape isn't ours
     // to second-guess.
     if (key == 'functionDate' || key == 'deliveryTime' || key == 'venue') {
+      return null;
+    }
+    if (_courseByKey.containsKey(key) &&
+        _dishesFor(_courseByKey[key]!).isNotEmpty) {
       return null;
     }
     switch (key) {
@@ -425,14 +530,14 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
   }
 
   /// The order's full amount — the booked package's discounted per-pack price
-  /// times the number of packs ordered.
+  /// times the number of packs ordered, across every scheduled day.
   num? get _orderTotal {
     final price = widget.package?.price ?? 0;
     final packs = int.tryParse(_ctrl('pax').text.trim()) ?? 0;
     if (price <= 0 || packs <= 0) return null;
     final disc = _packageDiscount;
     final effectivePrice = disc != null ? disc.discountedPrice : price;
-    return effectivePrice * packs;
+    return effectivePrice * packs * _days;
   }
 
   /// Total money saved on the package.
@@ -440,7 +545,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     final disc = _packageDiscount;
     final packs = int.tryParse(_ctrl('pax').text.trim()) ?? 0;
     if (disc == null || packs <= 0) return 0;
-    return disc.discountSavings * packs;
+    return disc.discountSavings * packs * _days;
   }
 
   /// The total's arithmetic, spelled out for the payment screen.
@@ -450,8 +555,9 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     if (price <= 0 || packs <= 0) return null;
     final disc = _packageDiscount;
     final effectivePrice = disc != null ? disc.discountedPrice : price;
+    final daysSuffix = _days > 1 ? ' × $_days days' : '';
     var line =
-        '${peso(effectivePrice)} per pack × $packs pack${packs == 1 ? '' : 's'}';
+        '${peso(effectivePrice)} per pack × $packs pack${packs == 1 ? '' : 's'}$daysSuffix';
     if (disc != null) {
       line += ' (${disc.badgeLabel}) · Save ${peso(_packageSavingsTotal)}';
     }
@@ -471,8 +577,9 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     try {
       id = await BookingRepository().submit(
         {
-          for (final e in _fields.entries) e.key: e.value.text,
-          if (_menu.isNotEmpty) 'menu': _menuLines.join('\n'),
+          for (final e in _fields.entries)
+            if (!_courseByKey.containsKey(e.key)) e.key: e.value.text,
+          if (_menuLines.isNotEmpty) 'menu': _menuLines.join('\n'),
           'bookingType': 'Food Pack',
         },
         payment: {
@@ -618,7 +725,10 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
   }
 
   Widget _buildWizard() {
-    final (eyebrow, title, helper) = _steps[_step];
+    final (eyebrow, title, defaultHelper) = _steps[_step];
+    final helper = (_step == 2 && _courses.isNotEmpty)
+        ? 'Choose one dish for each inclusion in your selected package.'
+        : defaultHelper;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -677,13 +787,58 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
         icon: Icons.celebration_outlined,
         inputFormatters: [LengthLimitingTextInputFormatter(60)],
       ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: BookingScheduleModeToggle(
+          isMultiDay: _multiDaySchedule,
+          daysCount: _days,
+          onChanged: _onScheduleModeChanged,
+        ),
+      ),
       _pickerField(
         'functionDate',
-        'Date of Event',
-        hint: 'Pick a date',
-        icon: Icons.event_outlined,
+        _multiDaySchedule ? 'Event Date Range' : 'Date of Event',
+        hint: _multiDaySchedule ? 'Pick start & end dates' : 'Pick a date',
+        icon: _multiDaySchedule
+            ? Icons.date_range_rounded
+            : Icons.event_outlined,
         onTap: _pickDate,
       ),
+      if (_days > 1)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: AppColors.gold.withValues(alpha: 0.10),
+              borderRadius: AppRadius.smAll,
+              border: Border.all(
+                color: AppColors.gold.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.date_range_rounded,
+                  size: 16,
+                  color: AppColors.goldDeep,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Multi-day schedule ($_days days): food packs will be prepared for each day in your range.',
+                    style: AppTextStyles.sans(
+                      size: 11.5,
+                      weight: FontWeight.w600,
+                      color: AppColors.goldDeep,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       _pickerField(
         'venue',
         'Venue / Delivery Address',
@@ -743,6 +898,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
           ('For', _ctrl('clientName').text),
           ('Email Address', _ctrl('email').text),
           ('Date of Event', _ctrl('functionDate').text),
+          if (_days > 1) ('Duration', '$_days days'),
           ('Venue', _ctrl('venue').text),
           ('No. of Pax', _ctrl('pax').text),
           if (_ctrl('package').text.trim().isNotEmpty)
@@ -764,12 +920,23 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     ],
   };
 
-  // ── The Menu step — the part no catering page has ─────────────────────────
-  /// The menu builder: each chosen dish as a line with its own pax stepper,
-  /// then the button into the dish picker. When the moderator has published
-  /// nothing (or the menu is still loading), it falls back to a free-text
-  /// blank like the paper form.
+  // ── The Menu step — follows the selected package's inclusions ─────────────
+  /// When a package with inclusions is selected, builds one single-dish picker
+  /// per course in the package (matching the Catering wizard). Falls back to
+  /// the general dish picker only when no package inclusions are defined.
   List<Widget> _menuStep() {
+    if (_courses.isNotEmpty) {
+      return [
+        if (widget.package != null)
+          _field(
+            'package',
+            'Selected Package',
+            icon: Icons.local_dining_outlined,
+            readOnly: true,
+          ),
+        for (final course in _courses) _courseField(course),
+      ];
+    }
     final dishes = _dishes;
     if (dishes.isEmpty) {
       return [
@@ -820,6 +987,71 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
         ),
       ],
     ];
+  }
+
+  /// One course field for an inclusion on the selected Food Pack package.
+  Widget _courseField(PackageCourse course) {
+    final dishes = _dishesFor(course);
+    if (dishes.isEmpty) {
+      return _field(
+        course.key,
+        course.label,
+        hint: 'Name the dish',
+        icon: Icons.restaurant_outlined,
+        inputFormatters: [LengthLimitingTextInputFormatter(120)],
+      );
+    }
+    return _pickerField(
+      course.key,
+      course.label,
+      hint:
+          'Choose from ${dishes.length} dish${dishes.length == 1 ? '' : 'es'}',
+      icon: Icons.restaurant_outlined,
+      onTap: () => _pickCourseDish(course, dishes),
+    );
+  }
+
+  /// Single-dish picker for one course inclusion in the selected package.
+  Future<void> _pickCourseDish(PackageCourse course, List<Product> dishes) {
+    final ctrl = _ctrl(course.key);
+    final current = ctrl.text.trim();
+    return showCenterDialog<void>(
+      context: context,
+      builder: (dialogContext) => AppDialogShell(
+        children: [
+          Text(
+            'THE MENU · ${course.label.toUpperCase()}',
+            style: AppTextStyles.eyebrow,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Choose your ${course.label.toLowerCase()}',
+            style: AppTextStyles.title,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Select one dish for this inclusion in your selected package.',
+            style: AppTextStyles.bodySmall,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          for (final dish in dishes) ...[
+            _DishToggleRow(
+              dish: dish,
+              selected: current == dish.name,
+              singleChoice: true,
+              onTap: () {
+                Navigator.of(dialogContext).pop();
+                setState(() {
+                  ctrl.text = dish.name;
+                  _errors.remove(course.key);
+                });
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ],
+      ),
+    );
   }
 
   /// Every published food pack dish, grouped by category, in the app's
@@ -898,6 +1130,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
     String label, {
     String? hint,
     IconData? icon,
+    bool readOnly = false,
     TextInputType? keyboardType,
     int maxLines = 1,
     List<TextInputFormatter>? inputFormatters,
@@ -909,6 +1142,7 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
         hint: hint,
         controller: _ctrl(key),
         prefixIcon: icon,
+        readOnly: readOnly,
         keyboardType: keyboardType,
         maxLines: maxLines,
         inputFormatters: inputFormatters,
@@ -1196,11 +1430,13 @@ class _DishToggleRow extends StatelessWidget {
     required this.dish,
     required this.selected,
     required this.onTap,
+    this.singleChoice = false,
   });
 
   final Product dish;
   final bool selected;
   final VoidCallback onTap;
+  final bool singleChoice;
 
   @override
   Widget build(BuildContext context) {
@@ -1236,7 +1472,9 @@ class _DishToggleRow extends StatelessWidget {
             Icon(
               selected
                   ? Icons.check_circle_rounded
-                  : Icons.add_circle_outline_rounded,
+                  : (singleChoice
+                        ? Icons.radio_button_unchecked
+                        : Icons.add_circle_outline_rounded),
               size: 20,
               color: selected
                   ? AppColors.goldDeep
@@ -1356,23 +1594,4 @@ class _ProgressRule extends StatelessWidget {
       ),
     );
   }
-}
-
-/// "June 12, 2026" — spelled-out date for the quotation.
-String _formatDate(DateTime d) {
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  return '${months[d.month - 1]} ${d.day}, ${d.year}';
 }

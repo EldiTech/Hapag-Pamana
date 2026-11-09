@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart' show Locale;
 
 import 'allergens.dart';
 import 'customer_repository.dart';
+import 'product.dart';
 import 'taste_profile.dart';
 
 /// The member's own settings, as edited on the Settings screens and stored in
@@ -25,6 +26,7 @@ class MemberPreferences {
     this.gabaySuggestions = true,
     this.healthierFirst = false,
     this.diet = DietStyle.none,
+    this.diets = const <DietStyle>{},
     this.avoidAllergens = const <String>{},
     this.language = AppLanguage.english,
     this.tasteProfile,
@@ -36,17 +38,31 @@ class MemberPreferences {
       return v is bool ? v : fallback;
     }
 
-    final raw = data?['avoidAllergens'];
+    final rawAllergens = data?['avoidAllergens'];
+    final rawDiets = data?['diets'];
+    Set<DietStyle> parsedDiets = const <DietStyle>{};
+    if (rawDiets is List) {
+      parsedDiets = {
+        for (final e in rawDiets)
+          if (DietStyle.fromKey(e) != DietStyle.none) DietStyle.fromKey(e),
+      };
+    }
+    final singleDiet = DietStyle.fromKey(data?['diet']);
+    if (parsedDiets.isEmpty && singleDiet != DietStyle.none) {
+      parsedDiets = {singleDiet};
+    }
+
     return MemberPreferences(
       orderUpdates: flag('orderUpdates', true),
       promotions: flag('promotions', true),
       gabaySuggestions: flag('gabaySuggestions', true),
       healthierFirst: flag('healthierFirst', false),
-      diet: DietStyle.fromKey(data?['diet']),
-      avoidAllergens: raw is! List
+      diet: parsedDiets.isEmpty ? singleDiet : parsedDiets.first,
+      diets: parsedDiets,
+      avoidAllergens: rawAllergens is! List
           ? const <String>{}
           : {
-              for (final e in raw)
+              for (final e in rawAllergens)
                 if (e.toString().trim().isNotEmpty) e.toString().trim(),
             },
       language: AppLanguage.fromCode(data?['language']),
@@ -68,10 +84,20 @@ class MemberPreferences {
   /// Ask Gabay to lead with the lighter, more nutritious dishes.
   final bool healthierFirst;
 
-  /// How this member eats — recorded on the profile so the kitchen and Gabay
-  /// can work to it. The menu carries no per-dish diet tags, so nothing is
-  /// filtered on this alone (see [avoidAllergens], which the menu *does* act on).
+  /// How this member eats — multiple styles can be chosen at once (e.g. Vegetarian
+  /// and Pescatarian, or Vegetarian and No Pork).
+  final Set<DietStyle> diets;
+
+  /// Single diet, kept for backwards compatibility with single-diet callers.
   final DietStyle diet;
+
+  /// All selected diets. If [diets] is populated, returns [diets]; otherwise
+  /// wraps [diet] if it is not [DietStyle.none].
+  Set<DietStyle> get allDiets {
+    if (diets.isNotEmpty) return diets;
+    if (diet != DietStyle.none) return {diet};
+    return const <DietStyle>{};
+  }
 
   /// Allergen keys ([Allergen.key]) the member has asked us to keep away from.
   /// The Menu and the dish quick-look flag anything carrying one of these.
@@ -88,22 +114,23 @@ class MemberPreferences {
 
   /// True when the member has told us anything at all about how they eat.
   bool get hasDietaryNeeds =>
-      diet != DietStyle.none || avoidAllergens.isNotEmpty;
+      allDiets.isNotEmpty || avoidAllergens.isNotEmpty;
 
   /// The dietary choice read back in a line, for the Settings row's subtitle —
-  /// "Not set yet", "Vegetarian", "Avoiding 3 allergens",
+  /// "Not set yet", "Vegetarian", "Vegetarian, Pescatarian",
   /// "Vegetarian · avoiding 3 allergens".
   String get dietarySummary {
     final count = avoidAllergens.length;
     final avoiding = count == 0
         ? ''
         : 'avoiding $count allergen${count == 1 ? '' : 's'}';
-    if (diet == DietStyle.none) {
+    final dietLabels = [for (final d in allDiets) d.label].join(', ');
+    if (dietLabels.isEmpty) {
       if (avoiding.isEmpty) return 'Not set yet';
       // Sentence-leading, since it stands alone here.
       return 'A${avoiding.substring(1)}';
     }
-    return avoiding.isEmpty ? diet.label : '${diet.label} · $avoiding';
+    return avoiding.isEmpty ? dietLabels : '$dietLabels · $avoiding';
   }
 
   /// The allergens out of [keys] (a dish's tags) this member avoids, resolved
@@ -115,13 +142,148 @@ class MemberPreferences {
         kAllergenByKey[k]!,
   ];
 
+  /// Evaluates whether a dish violates any of this member's selected diets.
+  /// Returns a list of concise reason phrases (e.g. `["Contains pork"]`), or empty.
+  List<String> dietaryConflictsFor({
+    required String name,
+    required String category,
+    List<String> allergens = const [],
+  }) {
+    if (allDiets.isEmpty) return const [];
+    final lowerName = name.toLowerCase();
+    final lowerCat = category.toLowerCase();
+    final combined = '$lowerCat $lowerName';
+
+    final isPork = lowerCat.contains('pork') ||
+        combined.contains('pork') ||
+        combined.contains('lechon') ||
+        combined.contains('bagnet') ||
+        combined.contains('bacon') ||
+        combined.contains('ribs') ||
+        combined.contains('embutido') ||
+        combined.contains('longganisa') ||
+        combined.contains('tocino') ||
+        combined.contains('siomai') ||
+        combined.contains('baboy') ||
+        combined.contains('liempo') ||
+        combined.contains('chicharon');
+
+    final isBeef = lowerCat.contains('beef') ||
+        combined.contains('beef') ||
+        combined.contains('baka') ||
+        combined.contains('bulalo') ||
+        combined.contains('kaldereta') ||
+        combined.contains('bistek') ||
+        combined.contains('salpicao') ||
+        combined.contains('brisket') ||
+        combined.contains('mechado');
+
+    final isChicken = lowerCat.contains('chicken') ||
+        combined.contains('chicken') ||
+        combined.contains('manok') ||
+        combined.contains('tinola') ||
+        combined.contains('inasal') ||
+        combined.contains('afritada') ||
+        combined.contains('wings');
+
+    final isFish = lowerCat.contains('fish') ||
+        allergens.contains('fish') ||
+        combined.contains('fish') ||
+        combined.contains('bangus') ||
+        combined.contains('tilapia') ||
+        combined.contains('salmon') ||
+        combined.contains('tuna') ||
+        combined.contains('isda') ||
+        combined.contains('lapu-lapu') ||
+        combined.contains('daing');
+
+    final isSeafood = lowerCat.contains('seafood') ||
+        allergens.contains('crustacean') ||
+        allergens.contains('shellfish') ||
+        combined.contains('seafood') ||
+        combined.contains('shrimp') ||
+        combined.contains('crab') ||
+        combined.contains('squid') ||
+        combined.contains('pusit') ||
+        combined.contains('hipon') ||
+        combined.contains('tahong') ||
+        combined.contains('talaba') ||
+        combined.contains('aligue') ||
+        combined.contains('prawn');
+
+    final isGeneralMeat = isPork ||
+        isBeef ||
+        isChicken ||
+        combined.contains('meat') ||
+        combined.contains('carne') ||
+        combined.contains('karne') ||
+        combined.contains('sausage') ||
+        combined.contains('hotdog');
+
+    final hasAlcohol = combined.contains('wine') ||
+        combined.contains('beer') ||
+        combined.contains('rum') ||
+        combined.contains('bourbon') ||
+        combined.contains('alcohol');
+
+    final isDairyOrEgg = allergens.contains('milk') ||
+        allergens.contains('dairy') ||
+        allergens.contains('egg');
+
+    final conflicts = <String>{};
+
+    for (final d in allDiets) {
+      switch (d) {
+        case DietStyle.none:
+          break;
+        case DietStyle.noPork:
+          if (isPork) conflicts.add('Contains pork');
+          break;
+        case DietStyle.halal:
+          if (isPork) conflicts.add('Not Halal (pork)');
+          if (hasAlcohol) conflicts.add('Not Halal (alcohol)');
+          break;
+        case DietStyle.pescatarian:
+          if (isGeneralMeat) conflicts.add('Contains meat (not pescatarian)');
+          break;
+        case DietStyle.vegetarian:
+          if (isGeneralMeat) conflicts.add('Contains meat');
+          // If the user also selected Pescatarian, seafood is intentionally allowed.
+          if (!allDiets.contains(DietStyle.pescatarian) && (isFish || isSeafood)) {
+            conflicts.add('Contains seafood');
+          }
+          break;
+        case DietStyle.vegan:
+          if (isGeneralMeat) conflicts.add('Contains meat');
+          if (isFish || isSeafood) conflicts.add('Contains seafood');
+          if (isDairyOrEgg) conflicts.add('Contains dairy/egg');
+          break;
+      }
+    }
+    return conflicts.toList();
+  }
+
+  /// Evaluates whether [product] conflicts with this member's active diets.
+  List<String> dietaryConflicts(Product product) => dietaryConflictsFor(
+    name: product.name,
+    category: product.category,
+    allergens: product.allergens,
+  );
+
+  /// True if this dish carries an allergen the member avoids or conflicts with
+  /// one of their chosen diets.
+  bool dishConflicts(Product product) =>
+      avoidedIn(product.allergens).isNotEmpty ||
+      dietaryConflicts(product).isNotEmpty;
+
   /// The payload written to `customers/{uid}.preferences`.
   Map<String, Object?> toMap() => {
     'orderUpdates': orderUpdates,
     'promotions': promotions,
     'gabaySuggestions': gabaySuggestions,
     'healthierFirst': healthierFirst,
-    'diet': diet.key,
+    'diet': (allDiets.isEmpty ? DietStyle.none : allDiets.first).key,
+    'diets': [for (final d in allDiets) d.key]..sort(),
     // Sorted so an unchanged set always writes the same array and the
     // document doesn't churn on rewrite.
     'avoidAllergens': avoidAllergens.toList()..sort(),
@@ -135,16 +297,22 @@ class MemberPreferences {
     bool? gabaySuggestions,
     bool? healthierFirst,
     DietStyle? diet,
+    Set<DietStyle>? diets,
     Set<String>? avoidAllergens,
     AppLanguage? language,
     TasteProfile? tasteProfile,
   }) {
+    final nextDiets = diets ??
+        (diet != null
+            ? (diet == DietStyle.none ? const <DietStyle>{} : {diet})
+            : allDiets);
     return MemberPreferences(
       orderUpdates: orderUpdates ?? this.orderUpdates,
       promotions: promotions ?? this.promotions,
       gabaySuggestions: gabaySuggestions ?? this.gabaySuggestions,
       healthierFirst: healthierFirst ?? this.healthierFirst,
-      diet: diet ?? this.diet,
+      diet: nextDiets.isEmpty ? DietStyle.none : nextDiets.first,
+      diets: nextDiets,
       avoidAllergens: avoidAllergens ?? this.avoidAllergens,
       language: language ?? this.language,
       tasteProfile: tasteProfile ?? this.tasteProfile,
@@ -158,7 +326,7 @@ class MemberPreferences {
       other.promotions == promotions &&
       other.gabaySuggestions == gabaySuggestions &&
       other.healthierFirst == healthierFirst &&
-      other.diet == diet &&
+      setEquals(other.allDiets, allDiets) &&
       other.language == language &&
       setEquals(other.avoidAllergens, avoidAllergens) &&
       other.tasteProfile == tasteProfile;
@@ -169,7 +337,7 @@ class MemberPreferences {
     promotions,
     gabaySuggestions,
     healthierFirst,
-    diet,
+    Object.hashAllUnordered(allDiets),
     language,
     Object.hashAllUnordered(avoidAllergens),
     tasteProfile,

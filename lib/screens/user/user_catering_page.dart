@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../brand.dart';
 import '../../core/format.dart';
+import '../../core/theme/bottom_navigation_layout.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/catering.dart';
 import '../../data/catering_repository.dart';
@@ -164,6 +165,9 @@ class _UserCateringPageState extends State<UserCateringPage> {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
             child: _BookCta(onBook: () => _openBooking(context)),
           ),
+        ),
+        SizedBox(
+          height: AppBottomNavigationLayout.memberContentClearance(context),
         ),
       ],
     );

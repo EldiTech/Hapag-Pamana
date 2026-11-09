@@ -18,10 +18,10 @@ const String _bookingPhone = '';
 const String _bookingEmail = '';
 const String _bookingFacebook = '';
 
-/// Setups carousel cadence. 2s lets each setup rest long enough to read its
+/// Setups carousel cadence. 4s lets each setup rest long enough to read its
 /// title while still feeling lively; the shared [AutoCarousel] handles the
 /// slide and the seamless loop.
-const Duration _kSetupAutoAdvance = Duration(seconds: 2);
+const Duration _kSetupAutoAdvance = Duration(seconds: 4);
 
 /// Catering screen — a gallery of event setups up top, then the live `packages`
 /// collection, closing on a "Book us now" call to action. Both lists stream

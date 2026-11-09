@@ -917,6 +917,9 @@ class _OrderSheet extends StatelessWidget {
   static const Set<String> _nonCourseKeys = {
     'kindOfFunction',
     'functionDate',
+    'functionStartDate',
+    'functionEndDate',
+    'functionDays',
     'venue',
     'pax',
     'clientName',
@@ -1033,6 +1036,7 @@ class _OrderSheet extends StatelessWidget {
           title: 'THE EVENT',
           rows: [
             if (order.eventDate.isNotEmpty) ('Date', order.eventDate),
+            if (order.isMultiDay) ('Duration', '${order.eventDays} days'),
             if (order.value('venue').isNotEmpty)
               ('Venue', order.value('venue')),
             if (order.value('pax').isNotEmpty) ('Pax', order.value('pax')),
@@ -1072,7 +1076,7 @@ class _OrderSheet extends StatelessWidget {
               ('Address', order.value('address')),
           ],
         ),
-        _SheetSection(title: 'THE MENU', rows: courses),
+        if (menu.isEmpty) _SheetSection(title: 'THE MENU', rows: courses),
         if (menu.isNotEmpty) _SheetList(title: 'THE MENU', lines: menu),
         if (addOns.isNotEmpty) _SheetList(title: 'ADD-ONS', lines: addOns),
         if (order.value('notes').isNotEmpty)
@@ -1133,6 +1137,11 @@ class _MoneySection extends StatelessWidget {
           if (order.paymentTotal > 0) ...[
             const SizedBox(height: AppSpacing.sm),
             _MoneyRow(label: 'Order total', value: peso(order.paymentTotal)),
+            if (order.isMultiDay)
+              _MoneyRow(
+                label: '  · Schedule',
+                value: '${order.eventDays} days',
+              ),
             if (order.packageTotal > 0) ...[
               _MoneyRow(label: '  · Package', value: peso(order.packageTotal)),
             ],

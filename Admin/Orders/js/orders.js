@@ -253,7 +253,8 @@
   // Every key the sheet already presents somewhere; anything else the app
   // adds later still shows up under "More details".
   const SHEET_KEYS = new Set([
-    "kindOfFunction", "functionDate", "venue", "address", "pax",
+    "kindOfFunction", "functionDate", "functionStartDate", "functionEndDate",
+    "functionDays", "venue", "address", "pax",
     "clientName", "contactNumber", "email", "package", "menu", "menuAddOns",
     // The look the client picked off the moderator's Setups gallery — a room,
     // not a dish, so it's shown by roomHTML and must be named here or
@@ -339,10 +340,13 @@
       { year: "numeric", month: "short", day: "numeric" });
   }
 
-  // The wizard writes functionDate spelled out ("June 12, 2026") — parseable
-  // directly. Free-typed dates that don't parse just aren't "upcoming".
+  // The wizard writes functionDate spelled out ("June 12, 2026" or
+  // "June 12, 2026 – June 14, 2026") — parseable directly. Free-typed dates
+  // that don't parse just aren't "upcoming".
   function eventMs(o) {
-    const t = Date.parse(String(o.functionDate || ""));
+    const raw = String(o.functionStartDate || "").trim() ||
+      String(o.functionDate || "").split(/\s*[–—-]\s*/)[0];
+    const t = Date.parse(raw);
     return Number.isFinite(t) ? t : 0;
   }
 
@@ -1036,8 +1040,12 @@
         <div class="hero-txt"><small>${HP.esc(label)}</small><strong>${HP.esc(value)}</strong></div>
       </div>` : "");
     const pax = val(o, "pax");
+    const days = parseInt(val(o, "functionDays"), 10);
+    const dateLabel = Number.isFinite(days) && days > 1
+      ? `Date of function (${days} days)`
+      : "Date of function";
     const html =
-      tile("calendar", "Date of function", val(o, "functionDate")) +
+      tile("calendar", dateLabel, val(o, "functionDate")) +
       tile("users", "Guests", pax && (/^\d+$/.test(pax) ? `${pax} pax` : pax)) +
       tile("party", "Kind of function", val(o, "kindOfFunction")) +
       tile("pin", "Venue", val(o, "venue"), true) +

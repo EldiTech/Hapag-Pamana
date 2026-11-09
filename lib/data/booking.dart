@@ -396,8 +396,24 @@ class Booking {
     return isFoodPack ? 'Food pack order' : 'Catering booking';
   }
 
-  /// The event's date exactly as the wizard wrote it ("June 12, 2026").
+  /// The event's date (or date range) as the wizard wrote it
+  /// ("June 12, 2026" or "June 12, 2026 – June 14, 2026").
   String get eventDate => value('functionDate');
+
+  /// The start date of a scheduled event ("June 12, 2026"), when stored.
+  String get eventStartDate => value('functionStartDate');
+
+  /// The end date of a multi-day event ("June 14, 2026"), or empty for a
+  /// single-day event.
+  String get eventEndDate => value('functionEndDate');
+
+  /// Number of scheduled days (`1` for a single-day booking).
+  int get eventDays => (int.tryParse(value('functionDays')) ?? 1).clamp(1, 365);
+
+  /// True when this booking spans multiple calendar days.
+  bool get isMultiDay =>
+      eventDays > 1 ||
+      (eventEndDate.isNotEmpty && eventEndDate != eventStartDate);
 
   /// A short, stable reference the member can quote to the team — the tail of
   /// the Firestore id, which is what the dashboard's row is keyed by.

@@ -26,3 +26,27 @@ plugins {
 }
 
 include(":app")
+
+// Flutter scans plugin build.gradle files with a static regex that flags
+// `apply plugin: 'kotlin-android'` even when guarded or on AGP 9+.
+// Normalize imperative plugin applications to `pluginManager.apply(...)` before project evaluation.
+gradle.projectsLoaded {
+    rootProject.subprojects.forEach { sub ->
+        val buildFile = sub.buildFile
+        if (buildFile.exists() && buildFile.name == "build.gradle") {
+            var content = buildFile.readText()
+            var modified = false
+            if (content.contains("apply plugin: 'kotlin-android'")) {
+                content = content.replace("apply plugin: 'kotlin-android'", "pluginManager.apply('kotlin-android')")
+                modified = true
+            }
+            if (content.contains("apply plugin: \"kotlin-android\"")) {
+                content = content.replace("apply plugin: \"kotlin-android\"", "pluginManager.apply(\"kotlin-android\")")
+                modified = true
+            }
+            if (modified) {
+                buildFile.writeText(content)
+            }
+        }
+    }
+}

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../brand.dart';
+import '../core/theme/bottom_navigation_layout.dart';
 import '../core/widgets/app_widgets.dart';
 import '../data/app_settings.dart';
 import '../data/product.dart';
@@ -216,6 +217,9 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
+            SizedBox(
+              height: AppBottomNavigationLayout.guestContentClearance(context),
+            ),
           ],
         ),
       ),

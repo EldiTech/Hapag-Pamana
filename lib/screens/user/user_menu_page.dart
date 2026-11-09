@@ -37,6 +37,7 @@ class _UserMenuPageState extends State<UserMenuPage> {
   static const int _pageSize = 10;
 
   final ProductRepository _repo = ProductRepository();
+  final ScrollController _scrollController = ScrollController();
   StreamSubscription<List<Product>>? _sub;
 
   List<Product> _all = const [];
@@ -44,7 +45,7 @@ class _UserMenuPageState extends State<UserMenuPage> {
   bool _error = false;
 
   String _type = _types.first;
-  String? _category; // null ⇒ "All"
+  Set<String> _categories = const {}; // empty ⇒ "All"
   String _search = '';
   int _page = 0;
 
@@ -80,11 +81,38 @@ class _UserMenuPageState extends State<UserMenuPage> {
   void dispose() {
     MemberPreferencesScope.notifier.removeListener(_onPreferences);
     _sub?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
   void _onPreferences() {
     if (mounted) setState(() {});
+  }
+
+  void _setPage(int newPage) {
+    if (_page == newPage) return;
+    setState(() => _page = newPage);
+    _scrollToTop();
+  }
+
+  void _resetFilter({VoidCallback? update}) {
+    setState(() {
+      update?.call();
+      _page = 0;
+    });
+    _scrollToTop();
+  }
+
+  void _scrollToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: Motion.base,
+          curve: Motion.standard,
+        );
+      }
+    });
   }
 
   @override
@@ -105,7 +133,9 @@ class _UserMenuPageState extends State<UserMenuPage> {
     final term = _search.trim().toLowerCase();
     final shown =
         ofType.where((p) {
-          if (_category != null && p.category != _category) return false;
+          if (_categories.isNotEmpty && !_categories.contains(p.category)) {
+            return false;
+          }
           if (term.isNotEmpty && !p.name.toLowerCase().contains(term)) {
             return false;
           }
@@ -134,6 +164,7 @@ class _UserMenuPageState extends State<UserMenuPage> {
         hasAnyAllergenData(allergenStats);
 
     return CustomScrollView(
+      controller: _scrollController,
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
@@ -161,11 +192,12 @@ class _UserMenuPageState extends State<UserMenuPage> {
                   types: _types,
                   active: _type,
                   countFor: (t) => all.where((p) => p.type == t).length,
-                  onSelect: (t) => setState(() {
-                    _type = t;
-                    _category = null;
-                    _page = 0;
-                  }),
+                  onSelect: (t) => _resetFilter(
+                    update: () {
+                      _type = t;
+                      _categories = const {};
+                    },
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
@@ -190,14 +222,15 @@ class _UserMenuPageState extends State<UserMenuPage> {
                           children: [
                             _CategoryFilterButton(
                               categories: categories,
-                              active: _category,
+                              active: _categories,
                               totalCount: ofType.length,
                               countFor: (c) =>
                                   ofType.where((p) => p.category == c).length,
-                              onSelect: (c) => setState(() {
-                                _category = c;
-                                _page = 0;
-                              }),
+                              onSelect: (cats) => _resetFilter(
+                                update: () {
+                                  _categories = cats;
+                                },
+                              ),
                             ),
                             if (showAllergens) ...[
                               const SizedBox(width: 8),
@@ -216,11 +249,11 @@ class _UserMenuPageState extends State<UserMenuPage> {
               // as the member edits their preference, so turning the setting on
               // or off never snaps the grid up the screen.
               SmoothReveal(
-                visible: prefs.avoidAllergens.isNotEmpty,
+                visible: prefs.hasDietaryNeeds,
                 child: Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.lg),
                   child: _DietNote(
-                    avoided: knownAllergens(prefs.avoidAllergens),
+                    prefs: prefs,
                     onTap: () => Navigator.of(context).push(
                       BrandPageRoute(
                         builder: (_) => const DietaryPreferencePage(),
@@ -257,15 +290,35 @@ class _UserMenuPageState extends State<UserMenuPage> {
             hasScrollBody: false,
             child: _MenuMessage(
               icon: Icons.restaurant_outlined,
-              title: term.isNotEmpty || _category != null
+              title: term.isNotEmpty || _categories.isNotEmpty
                   ? 'No dishes match'
                   : 'No dishes yet',
-              body: term.isNotEmpty || _category != null
+              body: term.isNotEmpty || _categories.isNotEmpty
                   ? 'Try a different search or category.'
                   : 'New dishes will appear here once published.',
             ),
           )
-        else
+        else ...[
+          if (pageCount > 1)
+            SliverToBoxAdapter(
+              child: _MenuPagination(
+                page: pageIndex,
+                pageCount: pageCount,
+                total: shown.length,
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  0,
+                  AppSpacing.screen,
+                  AppSpacing.md,
+                ),
+                onPrevious: pageIndex == 0
+                    ? null
+                    : () => _setPage(pageIndex - 1),
+                onNext: pageIndex == pageCount - 1
+                    ? null
+                    : () => _setPage(pageIndex + 1),
+              ),
+            ),
           _gridSliver(
             childCount: pageShown.length,
             // Cards settle in with a gentle staggered fade + rise as the grid
@@ -279,10 +332,12 @@ class _UserMenuPageState extends State<UserMenuPage> {
               child: _MenuItemCard(
                 pageShown[i],
                 avoided: prefs.avoidedIn(pageShown[i].allergens),
+                dietaryConflicts: prefs.dietaryConflicts(pageShown[i]),
                 onTap: () => showProductSheet(context, pageShown[i]),
               ),
             ),
           ),
+        ],
         if (!loading && !error && shown.isNotEmpty)
           SliverToBoxAdapter(
             child: _MenuPagination(
@@ -291,10 +346,10 @@ class _UserMenuPageState extends State<UserMenuPage> {
               total: shown.length,
               onPrevious: pageIndex == 0
                   ? null
-                  : () => setState(() => _page = pageIndex - 1),
+                  : () => _setPage(pageIndex - 1),
               onNext: pageIndex == pageCount - 1
                   ? null
-                  : () => setState(() => _page = pageIndex + 1),
+                  : () => _setPage(pageIndex + 1),
             ),
           ),
         SliverToBoxAdapter(
@@ -449,62 +504,86 @@ class _CategoryFilterButton extends StatelessWidget {
   });
 
   final List<String> categories;
-  final String? active; // null ⇒ All
+  final Set<String> active; // empty ⇒ All
   final int Function(String) countFor;
   final int totalCount;
-  final ValueChanged<String?> onSelect;
+  final ValueChanged<Set<String>> onSelect;
 
   void _openModal(BuildContext context) {
+    final chosen = Set<String>.of(active);
     showCenterDialog<void>(
       context: context,
       builder: (dialogContext) {
-        final allOptions = <Widget>[
-          _CategoryModalOption(
-            label: 'All Categories',
-            count: totalCount,
-            selected: active == null,
-            onTap: () {
-              Navigator.of(dialogContext).pop();
-              onSelect(null);
-            },
-          ),
-          for (final cat in categories)
-            _CategoryModalOption(
-              label: cat,
-              count: countFor(cat),
-              selected: active == cat,
-              onTap: () {
-                Navigator.of(dialogContext).pop();
-                onSelect(cat);
-              },
-            ),
-        ];
+        return StatefulBuilder(
+          builder: (dialogContext, setModalState) {
+            final catOptions = <Widget>[
+              for (final cat in categories)
+                _CategoryModalOption(
+                  label: cat,
+                  count: countFor(cat),
+                  selected: chosen.contains(cat),
+                  onTap: () {
+                    setModalState(() {
+                      if (!chosen.remove(cat)) {
+                        chosen.add(cat);
+                      }
+                    });
+                  },
+                ),
+            ];
 
-        return AppDialogShell(
-          children: [
-            Text('MENU FILTER', style: AppTextStyles.eyebrow),
-            const SizedBox(height: AppSpacing.xs),
-            Text('Select Category', style: AppTextStyles.title),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Filter dishes by their category.',
-              style: AppTextStyles.bodySmall,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            for (var i = 0; i < allOptions.length; i += 2) ...[
-              Row(
-                children: [
-                  Expanded(child: allOptions[i]),
-                  const SizedBox(width: 8),
-                  if (i + 1 < allOptions.length)
-                    Expanded(child: allOptions[i + 1])
-                  else
-                    const Expanded(child: SizedBox.shrink()),
+            return AppDialogShell(
+              children: [
+                Text('MENU FILTER', style: AppTextStyles.eyebrow),
+                const SizedBox(height: AppSpacing.xs),
+                Text('Select Categories', style: AppTextStyles.title),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Select one or more categories to filter dishes.',
+                  style: AppTextStyles.bodySmall,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _AllCategoriesModalOption(
+                  count: totalCount,
+                  selected: chosen.isEmpty,
+                  onTap: () {
+                    setModalState(() {
+                      chosen.clear();
+                    });
+                  },
+                ),
+                if (catOptions.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  for (var i = 0; i < catOptions.length; i += 2) ...[
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: catOptions[i]),
+                          const SizedBox(width: 8),
+                          if (i + 1 < catOptions.length)
+                            Expanded(child: catOptions[i + 1])
+                          else
+                            const Expanded(child: SizedBox.shrink()),
+                        ],
+                      ),
+                    ),
+                    if (i + 2 < catOptions.length) const SizedBox(height: 8),
+                  ],
                 ],
-              ),
-              if (i + 2 < allOptions.length) const SizedBox(height: 8),
-            ],
-          ],
+                const SizedBox(height: AppSpacing.md),
+                AppButton(
+                  label: chosen.isEmpty
+                      ? 'SHOW ALL CATEGORIES'
+                      : 'KEEP ${chosen.length} CATEGOR${chosen.length == 1 ? 'Y' : 'IES'}',
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    onSelect(chosen);
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -512,8 +591,19 @@ class _CategoryFilterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isFiltered = active != null;
-    final activeCount = isFiltered ? countFor(active!) : totalCount;
+    final isFiltered = active.isNotEmpty;
+    final int activeCount;
+    final String label;
+    if (active.isEmpty) {
+      activeCount = totalCount;
+      label = 'All Categories';
+    } else if (active.length == 1) {
+      activeCount = countFor(active.first);
+      label = active.first;
+    } else {
+      activeCount = active.fold<int>(0, (sum, cat) => sum + countFor(cat));
+      label = '${active.length} Categories';
+    }
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -540,7 +630,7 @@ class _CategoryFilterButton extends StatelessWidget {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  isFiltered ? active! : 'All Categories',
+                  label,
                   style: AppTextStyles.sans(
                     size: 12,
                     weight: FontWeight.w600,
@@ -584,7 +674,7 @@ class _CategoryFilterButton extends StatelessWidget {
         if (isFiltered) ...[
           const SizedBox(width: 6),
           GestureDetector(
-            onTap: () => onSelect(null),
+            onTap: () => onSelect(const {}),
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
@@ -601,6 +691,110 @@ class _CategoryFilterButton extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _SelectionIndicator extends StatelessWidget {
+  const _SelectionIndicator({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 18,
+      height: 18,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: selected
+            ? AppColors.cream.withValues(alpha: 0.22)
+            : AppColors.placeholderFill,
+        border: Border.all(
+          color: selected ? AppColors.cream : AppColors.hairline,
+          width: 1.5,
+        ),
+      ),
+      child: selected
+          ? const Icon(
+              Icons.check_rounded,
+              size: 12,
+              color: AppColors.cream,
+            )
+          : null,
+    );
+  }
+}
+
+class _AllCategoriesModalOption extends StatelessWidget {
+  const _AllCategoriesModalOption({
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      color: selected ? AppColors.brown : AppColors.surface,
+      border: !selected,
+      radius: AppRadius.md,
+      child: Row(
+        children: [
+          _SelectionIndicator(selected: selected),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'All Categories',
+                  style: AppTextStyles.sans(
+                    size: 13.5,
+                    weight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: selected ? AppColors.cream : AppColors.brown,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'View complete menu catalog',
+                  style: AppTextStyles.sans(
+                    size: 11,
+                    weight: FontWeight.w500,
+                    color: selected
+                        ? AppColors.cream.withValues(alpha: 0.82)
+                        : AppColors.brownSoft,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppColors.cream.withValues(alpha: 0.2)
+                  : AppColors.placeholderFill,
+              borderRadius: AppRadius.pillAll,
+            ),
+            child: Text(
+              '$count dishes',
+              style: AppTextStyles.sans(
+                size: 10.5,
+                weight: FontWeight.w700,
+                color: selected ? AppColors.cream : AppColors.brownSoft,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -624,99 +818,69 @@ class _CategoryModalOption extends StatelessWidget {
 
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 11),
       color: selected ? AppColors.brown : AppColors.surface,
       border: !selected,
       radius: AppRadius.md,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 18,
-            height: 18,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: selected
-                  ? AppColors.cream.withValues(alpha: 0.2)
-                  : AppColors.placeholderFill,
-              border: Border.all(
-                color: selected ? AppColors.cream : AppColors.hairline,
-                width: 1.5,
-              ),
-            ),
-            child: selected
-                ? const Icon(
-                    Icons.check_rounded,
-                    size: 12,
-                    color: AppColors.cream,
-                  )
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.sans(
-                          size: 13,
-                          weight: selected ? FontWeight.w700 : FontWeight.w600,
-                          color: selected ? AppColors.cream : AppColors.brown,
-                        ),
-                      ),
-                    ),
-                    if (disc != null) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 1.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.cream.withValues(alpha: 0.25)
-                              : AppColors.gold.withValues(alpha: 0.2),
-                          borderRadius: AppRadius.pillAll,
-                          border: Border.all(
-                            color: selected
-                                ? AppColors.cream.withValues(alpha: 0.5)
-                                : AppColors.goldDeep.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        child: Text(
-                          disc.badgeLabel,
-                          style: AppTextStyles.sans(
-                            size: 8.5,
-                            weight: FontWeight.w700,
-                            color: selected
-                                ? AppColors.cream
-                                : AppColors.goldDeep,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$count ${count == 1 ? 'dish' : 'dishes'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.sans(
-                    size: 11,
-                    weight: FontWeight.w500,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _SelectionIndicator(selected: selected),
+              if (disc != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
                     color: selected
-                        ? AppColors.cream.withValues(alpha: 0.82)
-                        : AppColors.brownSoft,
+                        ? AppColors.cream.withValues(alpha: 0.22)
+                        : AppColors.gold.withValues(alpha: 0.18),
+                    borderRadius: AppRadius.pillAll,
+                    border: Border.all(
+                      color: selected
+                          ? AppColors.cream.withValues(alpha: 0.5)
+                          : AppColors.goldDeep.withValues(alpha: 0.4),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    disc.badgeLabel,
+                    style: AppTextStyles.sans(
+                      size: 9,
+                      weight: FontWeight.w700,
+                      color: selected ? AppColors.cream : AppColors.goldDeep,
+                    ),
                   ),
                 ),
-              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.sans(
+              size: 13,
+              weight: selected ? FontWeight.w700 : FontWeight.w600,
+              color: selected ? AppColors.cream : AppColors.brown,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '$count ${count == 1 ? 'dish' : 'dishes'}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.sans(
+              size: 11,
+              weight: FontWeight.w500,
+              color: selected
+                  ? AppColors.cream.withValues(alpha: 0.82)
+                  : AppColors.brownSoft,
             ),
           ),
         ],
@@ -809,6 +973,7 @@ class _MenuItemCard extends StatelessWidget {
     this.product, {
     required this.onTap,
     this.avoided = const [],
+    this.dietaryConflicts = const [],
   });
 
   final Product product;
@@ -817,11 +982,15 @@ class _MenuItemCard extends StatelessWidget {
   /// member who's set no preference — and the card then looks exactly as before.
   final List<Allergen> avoided;
 
+  /// Any dietary conflicts (e.g. Vegetarian, Pescatarian, No pork) for this dish.
+  final List<String> dietaryConflicts;
+
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final disc = PromoDiscountService.instance.getDishDiscount(product, 100);
+    final hasAvoid = avoided.isNotEmpty || dietaryConflicts.isNotEmpty;
 
     return AppCard(
       onTap: onTap,
@@ -870,8 +1039,15 @@ class _MenuItemCard extends StatelessWidget {
                     ),
                   // Opposite corner from the Featured tag, so a dish can carry
                   // both without them colliding.
-                  if (avoided.isNotEmpty)
-                    Positioned(top: 8, right: 8, child: _AvoidTag(avoided)),
+                  if (hasAvoid)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: _AvoidTag(
+                        avoided: avoided,
+                        dietaryConflicts: dietaryConflicts,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -930,19 +1106,30 @@ class _MenuItemCard extends StatelessWidget {
 }
 
 // ─────────────────────────── Dietary flags ───────────────────────────
-/// Why the flags are here, and how to change them: names the allergens the
-/// member is avoiding and opens the setting. Shown only once they've set one, so
-/// a member with no preference never sees a word about it.
+/// Why the flags are here, and how to change them: names the dietary choices and
+/// allergens the member is avoiding and opens the setting. Shown only once they've
+/// set one, so a member with no preference never sees a word about it.
 class _DietNote extends StatelessWidget {
-  const _DietNote({required this.avoided, required this.onTap});
+  const _DietNote({required this.prefs, required this.onTap});
 
-  /// The avoided allergens, already resolved against the live taxonomy.
-  final List<Allergen> avoided;
-
+  final MemberPreferences prefs;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final avoided = prefs.avoidedIn(prefs.avoidAllergens);
+    final dietLabels = [for (final d in prefs.diets) d.label].join(', ');
+    final String message;
+    if (dietLabels.isNotEmpty && avoided.isNotEmpty) {
+      message =
+          'Flagging $dietLabels dishes and dishes carrying ${allergenSentence(avoided)}.';
+    } else if (dietLabels.isNotEmpty) {
+      message =
+          'Flagging dishes conflicting with your $dietLabels preference.';
+    } else {
+      message = 'Flagging dishes with ${allergenSentence(avoided)}.';
+    }
+
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -961,7 +1148,7 @@ class _DietNote extends StatelessWidget {
                 Text('YOUR DIETARY PREFERENCE', style: AppTextStyles.eyebrow),
                 const SizedBox(height: 3),
                 Text(
-                  'Flagging dishes with ${allergenSentence(avoided)}.',
+                  message,
                   style: AppTextStyles.bodySmall,
                 ),
               ],
@@ -983,23 +1170,48 @@ class _DietNote extends StatelessWidget {
 /// same risk language as the heatmap and the "contains" chips rather than
 /// inventing a warning colour of its own.
 class _AvoidTag extends StatelessWidget {
-  const _AvoidTag(this.avoided);
+  const _AvoidTag({
+    this.avoided = const [],
+    this.dietaryConflicts = const [],
+  });
 
   final List<Allergen> avoided;
+  final List<String> dietaryConflicts;
 
   @override
   Widget build(BuildContext context) {
     final severity = avoided.fold<double>(
-      0,
+      dietaryConflicts.isNotEmpty ? 1.0 : 0.0,
       (worst, a) => a.severity > worst ? a.severity : worst,
     );
     final fill = allergenHeatColor(severity);
     final ink = onAllergenHeat(severity);
-    // One offender is worth naming; several would crowd the corner, so they're
-    // counted instead and the sheet spells them out.
-    final label = avoided.length == 1
-        ? avoided.first.short.toUpperCase()
-        : '${avoided.length} TO AVOID';
+
+    final String label;
+    if (avoided.isNotEmpty && dietaryConflicts.isEmpty) {
+      label = avoided.length == 1
+          ? avoided.first.short.toUpperCase()
+          : '${avoided.length} TO AVOID';
+    } else if (dietaryConflicts.isNotEmpty && avoided.isEmpty) {
+      if (dietaryConflicts.length == 1) {
+        final c = dietaryConflicts.first.toUpperCase();
+        if (c.contains('PORK')) {
+          label = 'PORK';
+        } else if (c.contains('SEAFOOD')) {
+          label = 'SEAFOOD';
+        } else if (c.contains('MEAT')) {
+          label = 'MEAT';
+        } else if (c.contains('HALAL')) {
+          label = 'NOT HALAL';
+        } else {
+          label = 'DIET';
+        }
+      } else {
+        label = 'TO AVOID';
+      }
+    } else {
+      label = 'TO AVOID';
+    }
 
     return Container(
       padding: const EdgeInsets.fromLTRB(7, 4, 9, 4),
@@ -1072,6 +1284,7 @@ class _MenuPagination extends StatelessWidget {
     required this.total,
     required this.onPrevious,
     required this.onNext,
+    this.padding,
   });
 
   final int page;
@@ -1079,6 +1292,7 @@ class _MenuPagination extends StatelessWidget {
   final int total;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
@@ -1086,12 +1300,13 @@ class _MenuPagination extends StatelessWidget {
     final last = ((page + 1) * _UserMenuPageState._pageSize).clamp(0, total);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        0,
-        AppSpacing.screen,
-        AppSpacing.section,
-      ),
+      padding: padding ??
+          const EdgeInsets.fromLTRB(
+            AppSpacing.screen,
+            0,
+            AppSpacing.screen,
+            AppSpacing.section,
+          ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

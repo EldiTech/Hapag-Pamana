@@ -119,34 +119,35 @@
         return;
       }
       const chunks = [];
-      for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+      for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
       const byChunk = new Map(); // chunk index → [id, plan] pairs
       planUnsubs = chunks.map((chunk, ci) =>
         db.collection("prepPlans")
           .where(firebase.firestore.FieldPath.documentId(), "in", chunk)
           .onSnapshot((snap) => {
             byChunk.set(ci, snap.docs.map((d) => [d.id, d.data()]));
-            if (byChunk.size < chunks.length) return; // first paint waits for all
             const merged = new Map();
             byChunk.forEach((rows) => rows.forEach(([k, v]) => merged.set(k, v)));
             plans = merged;
-            loadedPlans = true;
+            if (byChunk.size >= chunks.length) loadedPlans = true;
             renderAll();
           }, (e) => fail(e, "the ingredient plans")));
     }
 
-    // Live stream #3 — the Recipe Book, so plans open pre-scaled. A hiccup
-    // here never blocks the board: the planner just falls back to
-    // hand-typed amounts.
-    unsubRecipes = db.collection("recipes")
-      .onSnapshot((snap) => {
-        recipes = new Map();
-        snap.docs.forEach((d) => {
-          const r = { id: d.id, ...d.data() };
-          const k = dishKey(r.name);
-          if (k) recipes.set(k, r);
-        });
-      }, (e) => console.warn("HapagPamana: couldn't load the recipes —", e));
+    // Live stream #3 — the Recipe Book, so plans open pre-scaled. Deferred
+    // slightly so bookings + prepPlans take network priority on first paint.
+    setTimeout(() => {
+      if (!db) return;
+      unsubRecipes = db.collection("recipes")
+        .onSnapshot((snap) => {
+          recipes = new Map();
+          snap.docs.forEach((d) => {
+            const r = { id: d.id, ...d.data() };
+            const k = dishKey(r.name);
+            if (k) recipes.set(k, r);
+          });
+        }, (e) => console.warn("HapagPamana: couldn't load the recipes —", e));
+    }, 120);
   }
   window.addEventListener("beforeunload", () => {
     if (unsubOrders) unsubOrders();
@@ -184,7 +185,8 @@
     "uid", "status", "createdAt", "statusUpdatedAt", "bookingType",
     "history", "updatedAt", "updatedBy", "deleted", "deletedAt", "deletedBy",
     "fulfilment",
-    "kindOfFunction", "functionDate", "venue", "address", "pax",
+    "kindOfFunction", "functionDate", "functionStartDate", "functionEndDate",
+    "functionDays", "venue", "address", "pax",
     "clientName", "contactNumber", "email", "package", "menu", "menuAddOns",
     "paymentStatus", "paymentTotal", "paymentDue", "paymentPaid", "paidAt",
     "packageTotal", "addOnsTotal",
@@ -271,8 +273,10 @@
   // The wizard writes functionDate spelled out ("June 12, 2026") — parseable
   // directly. Free-typed dates that don't parse just aren't schedulable.
   function eventMs(o) {
-    const t = Date.parse(String(o.functionDate || ""));
-    return Number.isFinite(t) ? t : 0;
+    const raw = String(o.functionStartDate || "").trim() ||
+      String(o.functionDate || "").split(/\s*[–—-]\s*/)[0];
+    const parsedMs = Date.parse(raw);
+    return Number.isFinite(parsedMs) ? parsedMs : 0;
   }
   function daysUntil(o) {
     const ms = eventMs(o);
@@ -327,9 +331,9 @@
     )].filter((n) => n && !dishCache.has(dishKey(n)));
     if (!names.length) { paintDishPhotos(); return; }
 
-    // Firestore `in` takes at most 10 values per query — chunk the lookups.
+    // Firestore `in` takes at most 30 values per query — chunk the lookups.
     const chunks = [];
-    for (let i = 0; i < names.length; i += 10) chunks.push(names.slice(i, i + 10));
+    for (let i = 0; i < names.length; i += 30) chunks.push(names.slice(i, i + 30));
     await Promise.all(chunks.map(async (chunk) => {
       try {
         const snap = await db.collection("products").where("name", "in", chunk).get();
@@ -362,7 +366,7 @@
 
   /* ── Rendering ────────────────────────────────────────────────────────── */
   function renderAll() {
-    if (!loadedOrders || !loadedPlans) return;
+    if (!loadedOrders) return;
     renderStats(); renderSeg(); renderChips(); renderRows();
   }
 

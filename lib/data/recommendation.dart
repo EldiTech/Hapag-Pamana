@@ -474,6 +474,9 @@ class GabayPersonalization {
   };
 
   static String? _dietDirective(MemberPreferences prefs) {
+    if (prefs.diets.isNotEmpty) {
+      return prefs.diets.map((d) => d.label).join(' and ');
+    }
     if (prefs.diet != DietStyle.none) return prefs.diet.label;
     final avoid = prefs.avoidAllergens.toList()..sort();
     if (avoid.isEmpty) return null;

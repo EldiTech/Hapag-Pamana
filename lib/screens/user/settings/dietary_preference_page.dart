@@ -72,15 +72,28 @@ class _DietaryPreferencePageState extends State<DietaryPreferencePage> {
               child: SettingsSection(
                 title: 'HOW YOU EAT',
                 footnote: 'Shared with the kitchen when you book, so the team '
-                    'can plan around it.',
+                    'can plan around it. You can select multiple preferences.',
                 rows: [
+                  SettingsChoiceRow(
+                    title: DietStyle.none.label,
+                    subtitle: DietStyle.none.blurb,
+                    multiple: true,
+                    selected: prefs.allDiets.isEmpty,
+                    onTap: () => _apply(prefs.copyWith(diets: const {}, diet: DietStyle.none)),
+                  ),
                   for (final style in DietStyle.values)
-                    SettingsChoiceRow(
-                      title: style.label,
-                      subtitle: style.blurb,
-                      selected: prefs.diet == style,
-                      onTap: () => _apply(prefs.copyWith(diet: style)),
-                    ),
+                    if (style != DietStyle.none)
+                      SettingsChoiceRow(
+                        title: style.label,
+                        subtitle: style.blurb,
+                        multiple: true,
+                        selected: prefs.allDiets.contains(style),
+                        onTap: () {
+                          final next = Set<DietStyle>.of(prefs.allDiets);
+                          if (!next.remove(style)) next.add(style);
+                          _apply(prefs.copyWith(diets: next));
+                        },
+                      ),
                 ],
               ),
             ),

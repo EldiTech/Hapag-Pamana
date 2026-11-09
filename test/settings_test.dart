@@ -219,6 +219,70 @@ void main() {
         ).dietarySummary,
         'Halal-friendly · avoiding 2 allergens',
       );
+      expect(
+        const MemberPreferences(
+          diets: {DietStyle.vegetarian, DietStyle.pescatarian},
+          avoidAllergens: {'peanut'},
+        ).dietarySummary,
+        'Vegetarian, Pescatarian · avoiding 1 allergen',
+      );
+    });
+
+    test('supports multiple diets round-trip', () {
+      const prefs = MemberPreferences(
+        diets: {DietStyle.vegetarian, DietStyle.pescatarian},
+      );
+      final fromMap = MemberPreferences.fromMap(prefs.toMap());
+      expect(fromMap.diets, {DietStyle.vegetarian, DietStyle.pescatarian});
+    });
+
+    test('accurately identifies dietary conflicts for selected diets', () {
+      const vegPesc = MemberPreferences(
+        diets: {DietStyle.vegetarian, DietStyle.pescatarian},
+      );
+      // Pork violates both
+      expect(
+        vegPesc.dietaryConflictsFor(name: 'Lechon Kawali', category: 'Pork'),
+        isNotEmpty,
+      );
+      // Beef violates both
+      expect(
+        vegPesc.dietaryConflictsFor(name: 'Beef Caldereta', category: 'Beef'),
+        isNotEmpty,
+      );
+      // Vegetables do not violate either
+      expect(
+        vegPesc.dietaryConflictsFor(name: 'Chopsuey', category: 'Vegetables'),
+        isEmpty,
+      );
+
+      const noPork = MemberPreferences(diets: {DietStyle.noPork});
+      expect(
+        noPork.dietaryConflictsFor(name: 'Pork Sisig', category: 'Pork'),
+        ['Contains pork'],
+      );
+      expect(
+        noPork.dietaryConflictsFor(name: 'Chicken Inasal', category: 'Chicken'),
+        isEmpty,
+      );
+    });
+
+    test('combining vegetarian and pescatarian permits seafood while flagging meat', () {
+      const combo = MemberPreferences(
+        diets: {DietStyle.vegetarian, DietStyle.pescatarian},
+      );
+      final fishConflicts = combo.dietaryConflictsFor(
+        name: 'Sinigang na Bangus',
+        category: 'Seafood',
+        allergens: ['fish'],
+      );
+      expect(fishConflicts, isEmpty);
+
+      final porkConflicts = combo.dietaryConflictsFor(
+        name: 'Lechon Kawali',
+        category: 'Main Dishes',
+      );
+      expect(porkConflicts, contains('Contains meat'));
     });
 
     test('only reports avoided allergens the dish actually carries', () {

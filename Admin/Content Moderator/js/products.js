@@ -29,6 +29,7 @@
   const mapEl = document.getElementById("allergenMap");
   const gridEl = document.getElementById("rows");
   const pagerEl = document.getElementById("productPager");
+  const pagerTopEl = document.getElementById("productPagerTop");
 
   HP.shell.onSearch((term) => { searchTerm = term; page = 1; render(); });
 
@@ -62,6 +63,7 @@
   function renderSkeleton() {
     tabsEl.innerHTML = "";
     chipsEl.innerHTML = "";
+    if (pagerTopEl) pagerTopEl.innerHTML = "";
     pagerEl.innerHTML = "";
     if (mapEl) mapEl.innerHTML = "";
     gridEl.innerHTML = HP.skel.cards(8);
@@ -137,7 +139,7 @@
                (object-fit: cover), so the blurred bg layer was invisible —
                and each bg duplicated the multi-hundred-KB data URL in the
                DOM. The detail view keeps its two-layer letterbox treatment. */
-            ? `<img class="prod-thumb-fg" src="${HP.esc(d.image)}" alt="${HP.esc(d.name)}" loading="lazy">`
+            ? `<img class="prod-thumb-fg" src="${HP.esc(d.image)}" alt="${HP.esc(d.name)}" loading="lazy" decoding="async">`
             : `<span class="prod-thumb-letter">${HP.esc((d.name[0] || "?").toUpperCase())}</span>`}
           <button class="prod-feat ${d.featured ? "is-on" : ""}" data-feat="${d.id}" aria-pressed="${!!d.featured}"
             title="${d.featured ? "Featured on Home — click to remove" : "Feature on Home"}"
@@ -177,21 +179,35 @@
 
   // ── Bulk action bar ─────────────────────────────────────────────────────
   function renderPager(total, pageCount) {
-    if (pageCount <= 1) { pagerEl.innerHTML = ""; return; }
+    if (pageCount <= 1) {
+      if (pagerTopEl) pagerTopEl.innerHTML = "";
+      pagerEl.innerHTML = "";
+      return;
+    }
     const first = (page - 1) * PAGE_SIZE + 1;
     const last = Math.min(page * PAGE_SIZE, total);
     const numbers = Array.from({ length: pageCount }, (_, i) => i + 1)
-      .map((n) => `<button class="page-btn${n === page ? " active" : ""}" data-page="${n}" ${n === page ? 'aria-current="page"' : ""}>${n}</button>`)
+      .map((n) => {
+        const active = n === page ? " active" : "";
+        const current = n === page ? ' aria-current="page"' : "";
+        return `<button class="page-btn${active}" data-page="${n}"${current}>${n}</button>`;
+      })
       .join("");
-    pagerEl.innerHTML = `
+    const pagerHtml = `
       <span class="pager-count">${first}–${last} of ${total}</span>
       <button class="icon-btn" data-prev ${page === 1 ? "disabled" : ""} aria-label="Previous page">${HP.icon("chevronLeft")}</button>
       <div class="page-nums">${numbers}</div>
       <button class="icon-btn" data-next ${page === pageCount ? "disabled" : ""} aria-label="Next page">${HP.icon("chevronRight")}</button>`;
-    pagerEl.querySelector("[data-prev]").addEventListener("click", () => { page--; render(); });
-    pagerEl.querySelector("[data-next]").addEventListener("click", () => { page++; render(); });
-    pagerEl.querySelectorAll("[data-page]").forEach((b) =>
-      b.addEventListener("click", () => { page = Number(b.dataset.page); render(); }));
+    const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+    [pagerTopEl, pagerEl].forEach((el) => {
+      if (!el) return;
+      el.innerHTML = pagerHtml;
+      el.querySelector("[data-prev]").addEventListener("click", () => { page--; render(); scrollToTop(); });
+      el.querySelector("[data-next]").addEventListener("click", () => { page++; render(); scrollToTop(); });
+      el.querySelectorAll("[data-page]").forEach((b) =>
+        b.addEventListener("click", () => { page = Number(b.dataset.page); render(); scrollToTop(); }));
+    });
   }
 
   function renderBulk() {

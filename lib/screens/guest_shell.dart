@@ -126,9 +126,9 @@ class _GuestShellState extends State<GuestShell> {
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(showAppBar ? 72 : 0),
             child: AnimatedSwitcher(
-              duration: Motion.base,
-              switchInCurve: Motion.standard,
-              switchOutCurve: Motion.exit,
+              duration: Motion.tab,
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
               transitionBuilder: (child, animation) => FadeTransition(
                 opacity: animation,
                 child: SizeTransition(
@@ -294,13 +294,13 @@ class _GuestDestination extends StatelessWidget {
             highlightColor: AppColors.gold.withValues(alpha: 0.08),
             onTap: onTap,
             child: AnimatedContainer(
-              duration: Motion.base,
+              duration: Motion.quick,
               curve: Motion.standard,
               height: 58,
               decoration: const BoxDecoration(shape: BoxShape.circle),
               child: Center(
                 child: AnimatedSwitcher(
-                  duration: Motion.base,
+                  duration: Motion.quick,
                   switchInCurve: Motion.standard,
                   switchOutCurve: Motion.exit,
                   child: Icon(

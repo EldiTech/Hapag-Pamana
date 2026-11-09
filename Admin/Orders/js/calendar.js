@@ -75,9 +75,15 @@
     const byDay = bookingsByDay();
     const year = calMonth.getFullYear(), month = calMonth.getMonth();
     const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
-    const list = [...byDay.entries()]
+    const rawList = [...byDay.entries()]
       .filter(([key]) => key.startsWith(prefix))
       .flatMap(([, dayOrders]) => dayOrders);
+    const seenIds = new Set();
+    const list = rawList.filter((o) => {
+      if (seenIds.has(o.id)) return false;
+      seenIds.add(o.id);
+      return true;
+    });
     if (!list.length) {
       HP.toast("No bookings this month to export.", "warn");
       return;
@@ -151,11 +157,21 @@
     }
     return String(o.kindOfFunction || "").trim() || "Catering booking";
   }
-  // The wizard writes functionDate spelled out ("June 12, 2026") — parseable
-  // directly. Free-typed dates that don't parse just aren't on the calendar.
+  // The wizard writes functionDate spelled out ("June 12, 2026" or
+  // "June 12, 2026 – June 14, 2026" for multi-day ranges).
   function eventMs(o) {
-    const t = Date.parse(String(o.functionDate || ""));
+    const startRaw = String(o.functionStartDate || "").trim() ||
+      String(o.functionDate || "").split(/\s*[–—-]\s*/)[0];
+    const t = Date.parse(startRaw);
     return Number.isFinite(t) ? t : 0;
+  }
+  function eventEndMs(o) {
+    const parts = String(o.functionDate || "").split(/\s*[–—-]\s*/);
+    const endRaw = String(o.functionEndDate || "").trim() ||
+      (parts.length > 1 ? parts[1] : "");
+    if (!endRaw) return eventMs(o);
+    const t = Date.parse(endRaw);
+    return Number.isFinite(t) ? t : eventMs(o);
   }
 
   /* ── Time-clash detection ─────────────────────────────────────────────── */
@@ -200,22 +216,34 @@
     return clashing;
   }
 
-  // Local-date key ("2026-08-27") from the wizard's spelled-out functionDate,
-  // so entries land on the calendar cell regardless of time-of-day parsing.
+  // Local-date key ("2026-08-27") from a Date or timestamp, so entries land on
+  // the calendar cell regardless of time-of-day parsing.
+  function fmtDateKey(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
   function dateKeyOf(o) {
     const ms = eventMs(o);
     if (!ms) return "";
-    const d = new Date(ms);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return fmtDateKey(new Date(ms));
   }
 
   function bookingsByDay() {
     const byDay = new Map();
     orders.forEach((o) => {
-      const key = dateKeyOf(o);
-      if (!key) return;
-      if (!byDay.has(key)) byDay.set(key, []);
-      byDay.get(key).push(o);
+      const startMs = eventMs(o);
+      if (!startMs) return;
+      const endMs = Math.max(startMs, eventEndMs(o));
+      const cur = new Date(startMs);
+      cur.setHours(0, 0, 0, 0);
+      const end = new Date(endMs);
+      end.setHours(0, 0, 0, 0);
+      let guard = 0;
+      while (cur <= end && guard++ < 60) {
+        const key = fmtDateKey(cur);
+        if (!byDay.has(key)) byDay.set(key, []);
+        byDay.get(key).push(o);
+        cur.setDate(cur.getDate() + 1);
+      }
     });
     return byDay;
   }

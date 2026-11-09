@@ -31,16 +31,60 @@
   const db = HP.ONLINE ? firebase.firestore() : null;
 
   let items = [];
+  let itemById = new Map();
   let categories = [];
   let query = "";
   let filter = "all";
+  const PAGE_STEP = 60;
+  let pageLimit = PAGE_STEP;
   let loaded = false;
   const unsubs = [];
 
   statsEl.innerHTML = HP.skel.stats(4);
   rowsEl.innerHTML = HP.skel.rows(6, 6);
 
-  HP.shell.onSearch((q) => { query = q; renderRows(); });
+  // Single delegated click & toggle listeners on rowsEl
+  rowsEl.addEventListener("toggle", (e) => {
+    const d = e.target;
+    if (d && d.matches && d.matches("details.eq-dropdown") && d.open) {
+      rowsEl.querySelectorAll("details.eq-dropdown[open]").forEach((other) => {
+        if (other !== d) other.open = false;
+      });
+    }
+  }, true);
+
+  rowsEl.addEventListener("click", (e) => {
+    const moreBtn = e.target.closest("[data-page-more]");
+    if (moreBtn) {
+      pageLimit += Number(moreBtn.dataset.pageMore) || PAGE_STEP;
+      renderRows();
+      return;
+    }
+    const allBtn = e.target.closest("[data-page-all]");
+    if (allBtn) {
+      pageLimit = Infinity;
+      renderRows();
+      return;
+    }
+    const actBtn = e.target.closest("[data-act]");
+    if (actBtn) {
+      e.stopPropagation();
+      const tr = actBtn.closest("tr[data-id]");
+      const it = tr && itemById.get(tr.dataset.id);
+      if (!it) return;
+      if (actBtn.dataset.act === "edit") openItem(it);
+      else openMove(it);
+      return;
+    }
+    if (e.target.closest("button") || e.target.closest(".eq-dropdown")) return;
+    const tr = e.target.closest("tr[data-id]");
+    if (tr) {
+      const it = itemById.get(tr.dataset.id);
+      if (it) openHistory(it);
+    }
+  });
+
+  HP.shell.onSearch((q) => { query = q; pageLimit = PAGE_STEP; renderRows(); });
   HP.shell.onExport(exportCSV);
   HP.ready.then(boot);
 
@@ -52,12 +96,19 @@
     }
     unsubs.push(db.collection("equipmentCategories").orderBy("name").onSnapshot((snap) => {
       categories = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
-      renderRows(); // item rows don't depend on categories, but modals do
     }, () => { /* categories still work without live sync; the modal re-reads on open */ }));
 
     unsubs.push(db.collection("equipmentItems").onSnapshot((snap) => {
-      items = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
-      items.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+      const next = snap.docs.map((d) => {
+        const it = Object.assign({ id: d.id }, d.data());
+        it._state = K.itemState(it);
+        it._search = [it.name, it.categoryName, it.note, ...(it.variants || []).map((v) => v.label)]
+          .join(" ").toLowerCase();
+        return it;
+      });
+      next.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+      items = next;
+      itemById = new Map(next.map((it) => [it.id, it]));
       loaded = true;
       renderAll();
     }, (e) => {
@@ -80,10 +131,13 @@
   function renderAll() { renderStats(); renderChips(); renderRows(); }
 
   function renderStats() {
-    const inStock = items.filter((i) => K.itemState(i) === "ok").length;
-    const partial = items.filter((i) => K.itemState(i) === "partial").length;
-    const out = items.filter((i) => K.itemState(i) === "out").length;
-    const variantCount = items.reduce((sum, i) => sum + (Array.isArray(i.variants) ? i.variants.length : 0), 0);
+    let inStock = 0, partial = 0, out = 0;
+    for (let i = 0; i < items.length; i++) {
+      const st = items[i]._state;
+      if (st === "ok") inStock++;
+      else if (st === "partial") partial++;
+      else if (st === "out") out++;
+    }
 
     const stat = (ic, n, label) => `
       <div class="stat">
@@ -99,25 +153,23 @@
   }
 
   function renderChips() {
-    const counts = {
-      all: items.length,
-      ok: items.filter((i) => K.itemState(i) === "ok").length,
-      partial: items.filter((i) => K.itemState(i) === "partial").length,
-      out: items.filter((i) => K.itemState(i) === "out").length,
-    };
+    const counts = { all: items.length, ok: 0, partial: 0, out: 0 };
+    for (let i = 0; i < items.length; i++) {
+      const st = items[i]._state;
+      if (counts[st] !== undefined) counts[st]++;
+    }
     const chip = (key, label) =>
       `<button class="seg-btn ${filter === key ? "active" : ""}" data-chip="${key}">${label} <span class="seg-count">${counts[key]}</span></button>`;
     chipsEl.innerHTML = chip("all", "All items") + chip("ok", "In stock") + chip("partial", "Partial stock") + chip("out", "Out of stock");
     chipsEl.querySelectorAll("[data-chip]").forEach((b) =>
-      b.addEventListener("click", () => { filter = b.dataset.chip; renderChips(); renderRows(); }));
+      b.addEventListener("click", () => { filter = b.dataset.chip; pageLimit = PAGE_STEP; renderChips(); renderRows(); }));
   }
 
   function visible() {
     return items.filter((it) => {
-      if (filter !== "all" && K.itemState(it) !== filter) return false;
+      if (filter !== "all" && it._state !== filter) return false;
       if (!query) return true;
-      return [it.name, it.categoryName, it.note, ...(it.variants || []).map((v) => v.label)]
-        .join(" ").toLowerCase().includes(query);
+      return it._search.includes(query);
     });
   }
 
@@ -174,8 +226,14 @@
         : "No equipment yet — press “Add item” to start the inventory.");
       return;
     }
-    HP.shell.paint(rowsEl, list.map((it) => {
-      const st = K.itemState(it);
+
+    const totalCount = list.length;
+    const slice = totalCount > pageLimit ? list.slice(0, pageLimit) : list;
+    const icLogbook = HP.icon("logbook");
+    const icPencil = HP.icon("pencil");
+
+    let html = slice.map((it) => {
+      const st = it._state;
       return `
       <tr data-id="${HP.esc(it.id)}">
         <td>
@@ -191,39 +249,33 @@
         <td>
           <div class="row-actions">
             <button class="icon-btn" data-act="move" title="Record a movement"
-              aria-label="Record a movement for ${HP.esc(it.name || "item")}"><span class="ic">${HP.icon("logbook")}</span></button>
+              aria-label="Record a movement for ${HP.esc(it.name || "item")}"><span class="ic">${icLogbook}</span></button>
             <button class="icon-btn" data-act="edit" title="Edit this item"
-              aria-label="Edit ${HP.esc(it.name || "item")}"><span class="ic">${HP.icon("pencil")}</span></button>
+              aria-label="Edit ${HP.esc(it.name || "item")}"><span class="ic">${icPencil}</span></button>
           </div>
         </td>
       </tr>`;
-    }).join(""));
-    HP.hydrateIcons(rowsEl);
+    }).join("");
 
-    // Auto-close other open dropdowns when one is opened
-    rowsEl.querySelectorAll("details.eq-dropdown").forEach((d) => {
-      d.addEventListener("toggle", () => {
-        if (d.open) {
-          rowsEl.querySelectorAll("details.eq-dropdown[open]").forEach((other) => {
-            if (other !== d) other.open = false;
-          });
-        }
-      });
-    });
+    if (totalCount > slice.length) {
+      const rem = totalCount - slice.length;
+      html += `
+      <tr class="eq-more-row">
+        <td colspan="6" style="text-align:center; padding:14px 16px;">
+          <span style="color:var(--ink-soft); font-size:0.85rem; margin-right:12px;">
+            Showing <strong>${slice.length}</strong> of <strong>${totalCount}</strong> items
+          </span>
+          <button type="button" class="btn btn-ghost btn-sm" data-page-more="60" style="margin-right:6px;">
+            Show ${Math.min(60, rem)} more
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" data-page-all="1">
+            Show all (${totalCount})
+          </button>
+        </td>
+      </tr>`;
+    }
 
-    rowsEl.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const it = items.find((x) => x.id === e.currentTarget.closest("tr").dataset.id);
-      if (!it) return;
-      if (e.currentTarget.dataset.act === "edit") openItem(it);
-      else openMove(it);
-    }));
-    rowsEl.querySelectorAll("tr[data-id]").forEach((tr) =>
-      tr.addEventListener("click", (e) => {
-        if (e.target.closest("button") || e.target.closest(".eq-dropdown")) return;
-        const it = items.find((x) => x.id === tr.dataset.id);
-        if (it) openHistory(it);
-      }));
+    HP.shell.paint(rowsEl, html);
   }
 
   // Close any open variant dropdown when clicking outside

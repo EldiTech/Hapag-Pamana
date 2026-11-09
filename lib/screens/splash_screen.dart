@@ -11,7 +11,7 @@ import 'guest_shell.dart';
 import 'user/user_shell.dart';
 
 // How long the splash holds (after first frame) before advancing.
-const int _holdMs = 3200;
+const int _holdMs = 1600;
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,6 +23,9 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _intro;
+  late final Animation<double> _logoAnim;
+  late final Animation<double> _scaleAnim;
+  late final Animation<double> _footerAnim;
   Timer? _advanceTimer;
 
   @override
@@ -40,9 +43,22 @@ class _SplashScreenState extends State<SplashScreen>
 
     _intro = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1700),
-    )..forward();
+      duration: const Duration(milliseconds: 1500),
+    );
 
+    _logoAnim = CurvedAnimation(
+      parent: _intro,
+      curve: const Interval(0.00, 0.65, curve: Curves.easeOutCubic),
+    );
+
+    _scaleAnim = Tween<double>(begin: 0.90, end: 1.00).animate(_logoAnim);
+
+    _footerAnim = CurvedAnimation(
+      parent: _intro,
+      curve: const Interval(0.55, 1.00, curve: Curves.easeOut),
+    );
+
+    _intro.forward();
     _advanceTimer = Timer(const Duration(milliseconds: _holdMs), _goHome);
   }
 
@@ -71,16 +87,8 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  Animation<double> _stage(double begin, double end, Curve curve) =>
-      CurvedAnimation(
-        parent: _intro,
-        curve: Interval(begin, end, curve: curve),
-      );
-
   @override
   Widget build(BuildContext context) {
-    final logo = _stage(0.00, 0.62, Curves.easeOutCubic);
-    final footer = _stage(0.55, 1.00, Curves.easeOut);
     final logoWidth = MediaQuery.of(context).size.width * 0.66;
 
     return Scaffold(
@@ -88,33 +96,27 @@ class _SplashScreenState extends State<SplashScreen>
         children: [
           const ParchmentBackground(weave: true),
           Center(
-            child: AnimatedBuilder(
-              animation: _intro,
-              builder: (context, _) {
-                return Opacity(
-                  opacity: logo.value,
-                  child: Transform.scale(
-                    scale: 0.90 + 0.10 * logo.value,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 40),
-                      child: Hero(
-                        tag: AppAssets.logoHeroTag,
-                        child: Image.asset(AppAssets.logo, width: logoWidth),
-                      ),
-                    ),
+            child: FadeTransition(
+              opacity: _logoAnim,
+              child: ScaleTransition(
+                scale: _scaleAnim,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 40),
+                  child: Hero(
+                    tag: AppAssets.logoHeroTag,
+                    child: Image.asset(AppAssets.logo, width: logoWidth),
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 56),
-              child: AnimatedBuilder(
-                animation: _intro,
-                builder: (context, _) =>
-                    Opacity(opacity: footer.value, child: const LoadingDots()),
+              child: FadeTransition(
+                opacity: _footerAnim,
+                child: const LoadingDots(),
               ),
             ),
           ),

@@ -63,7 +63,11 @@ List<Widget> _allergenSection(Product product) {
 
   // Nothing tagged anywhere in this corner of the menu — say so quietly rather
   // than imply an all-clear.
-  if (contains.isEmpty && !categoryHasData) {
+  final prefs = MemberPreferencesScope.value;
+  final avoided = prefs.avoidedIn(product.allergens);
+  final conflicts = prefs.dietaryConflicts(product);
+
+  if (contains.isEmpty && !categoryHasData && conflicts.isEmpty) {
     return [
       const SizedBox(height: AppSpacing.lg),
       const _AllergenHairline(),
@@ -77,18 +81,14 @@ List<Widget> _allergenSection(Product product) {
     ];
   }
 
-  // Only the allergens this member asked us to avoid, and only those this dish
-  // actually carries.
-  final avoided = MemberPreferencesScope.value.avoidedIn(product.allergens);
-
   return [
     const SizedBox(height: AppSpacing.lg),
     const _AllergenHairline(),
     const SizedBox(height: AppSpacing.lg),
 
     // ── Your preference ──
-    if (avoided.isNotEmpty) ...[
-      _AvoidNotice(avoided),
+    if (avoided.isNotEmpty || conflicts.isNotEmpty) ...[
+      _AvoidNotice(avoided: avoided, conflicts: conflicts),
       const SizedBox(height: AppSpacing.lg),
     ],
 
@@ -104,14 +104,40 @@ List<Widget> _allergenSection(Product product) {
     if (categoryHasData) ...[
       const SizedBox(height: AppSpacing.xl),
       Text(
-        'COMMON IN ${product.category.toUpperCase()}',
+        'ALLERGENS ACROSS ${product.category.toUpperCase()} CATEGORY',
         style: AppTextStyles.eyebrow,
       ),
-      const SizedBox(height: 4),
-      Text(
-        'Across the ${siblings.length} dish${siblings.length == 1 ? '' : 'es'} '
-        'here — warmer means more common and higher-risk.',
-        style: AppTextStyles.bodySmall,
+      const SizedBox(height: 6),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.gold.withValues(alpha: 0.1),
+          borderRadius: AppRadius.smAll,
+          border: Border.all(color: AppColors.gold.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: 1),
+              child: Icon(
+                Icons.info_outline_rounded,
+                size: 14,
+                color: AppColors.brown,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Category Context: Counts below show how many dishes across all ${siblings.length} items in "${product.category}" contain each allergen — not the allergen content of this individual dish.',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.brown,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
       const SizedBox(height: AppSpacing.md),
       AllergenHeatmap(stats: stats),
@@ -126,17 +152,29 @@ List<Widget> _allergenSection(Product product) {
 /// and it stops short of telling the member what to do: they set the preference,
 /// so the sheet's job is to make sure they noticed, not to overrule them.
 class _AvoidNotice extends StatelessWidget {
-  const _AvoidNotice(this.avoided);
+  const _AvoidNotice({
+    this.avoided = const [],
+    this.conflicts = const [],
+  });
 
   final List<Allergen> avoided;
+  final List<String> conflicts;
 
   @override
   Widget build(BuildContext context) {
     final severity = avoided.fold<double>(
-      0,
+      conflicts.isNotEmpty ? 1.0 : 0.0,
       (worst, a) => a.severity > worst ? a.severity : worst,
     );
     final tint = allergenHeatColor(severity);
+
+    final parts = <String>[];
+    if (conflicts.isNotEmpty) {
+      parts.add(conflicts.join(' and '));
+    }
+    if (avoided.isNotEmpty) {
+      parts.add('carries ${allergenSentence(avoided)}');
+    }
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -155,7 +193,7 @@ class _AvoidNotice extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'HEADS UP',
+                  'DIETARY HEADS UP',
                   style: AppTextStyles.engraved(
                     size: 9,
                     color: AppColors.brown,
@@ -164,8 +202,7 @@ class _AvoidNotice extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'This dish carries ${allergenSentence(avoided)}, which you '
-                  'asked us to avoid.',
+                  'This dish ${parts.join(' and ')}, which you asked us to avoid.',
                   style: AppTextStyles.sans(
                     size: 12,
                     weight: FontWeight.w600,

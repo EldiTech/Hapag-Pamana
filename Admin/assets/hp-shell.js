@@ -78,7 +78,12 @@
   // Reveal the "Owner Overview" link once the signed-in user's role is known.
   function revealOwnerLink() {
     const link = document.getElementById("ownerBackLink");
-    if (!link || !HP.userReady) return;
+    if (!link) return;
+    if (HP.user && HP.user.roleKey === "owner") {
+      link.hidden = false;
+      return;
+    }
+    if (!HP.userReady) return;
     HP.userReady.then(() => { if (HP.user.roleKey === "owner") link.hidden = false; });
   }
 
@@ -93,7 +98,7 @@
     app.innerHTML = `
       <aside class="sidebar" id="sidebar">
         <div class="side-brand">
-          <span class="side-logo"><img src="../../assets/HapagPamana.png" alt="" /></span>
+          <span class="side-logo"><img src="../../assets/HapagPamana-nav.png" width="36" height="36" decoding="async" alt="" /></span>
           <span class="side-brand-text">
             <strong>HapagPamana</strong>
             <small>${HP.esc(CFG.brandSub || "Staff Portal")}</small>
@@ -178,16 +183,39 @@
     return viewEl;
   }
 
-  // Page transitions: clicking an internal link fades the view out behind a slim
-  // gilt progress bar, then navigates. The destination paints back in via the
-  // body pageFade + .view-enter rise, so pages cross-fade instead of flashing.
+  // Page transitions: prefetch internal HTML pages on hover and navigate
+  // immediately on click so there is zero artificial delay between screens.
   function setupRouteTransitions(app) {
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
-    // Browsers that support cross-document view transitions (the
-    // @view-transition rule in global.css) run the navigation natively: the
-    // pages cross-fade, the sidebar/topbar hold still and the gilt indicator
-    // glides — so the manual leave choreography below would only fight it.
     const nativeVT = "CSSViewTransitionRule" in window;
+    const prefetched = new Set();
+
+    function prefetchLink(a) {
+      if (!a || a.closest(".side-logout")) return;
+      const raw = a.getAttribute("href");
+      if (!raw || raw.startsWith("#") || /^(mailto:|tel:|javascript:)/i.test(raw)) return;
+      let url;
+      try { url = new URL(a.href, location.href); } catch { return; }
+      if (url.origin !== location.origin || url.href === location.href) return;
+      if (!/\.html?($|[?#])/i.test(url.pathname)) return;
+      if (prefetched.has(url.href)) return;
+      prefetched.add(url.href);
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.href = url.href;
+      link.as = "document";
+      document.head.appendChild(link);
+    }
+
+    document.addEventListener("mouseover", (e) => {
+      const a = e.target.closest("a[href]");
+      if (a) prefetchLink(a);
+    }, { passive: true });
+    document.addEventListener("touchstart", (e) => {
+      const a = e.target.closest("a[href]");
+      if (a) prefetchLink(a);
+    }, { passive: true });
+
     document.addEventListener("click", (e) => {
       // Respect new-tab / modified clicks and anything already handled (logout).
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -212,25 +240,14 @@
       if (!/\.html?($|[?#])/i.test(url.pathname)) return;     // only our page documents
 
       // Native view transition: let the browser handle the whole navigation.
-      // (Don't pre-flip the active nav item — the old page's snapshot must
-      // show the indicator where it was for the glide to read.)
       if (nativeVT && !(reduce && reduce.matches)) return;
 
-      e.preventDefault();
-      // Reflect the chosen sidebar item immediately, so the gilt indicator slides
-      // before the page swaps.
+      // Reflect the chosen sidebar item immediately and let navigation proceed
+      // without the old 230ms artificial setTimeout block.
       if (a.classList.contains("nav-item")) {
         app.querySelectorAll(".nav-item.active").forEach((n) => n.classList.remove("active"));
         a.classList.add("active");
       }
-      if (reduce && reduce.matches) { location.href = url.href; return; }
-      app.classList.add("is-leaving");
-      if (!document.querySelector(".auth-bar")) {
-        const bar = document.createElement("div");
-        bar.className = "auth-bar";
-        document.body.appendChild(bar);
-      }
-      setTimeout(() => { location.href = url.href; }, 230);
     });
   }
 

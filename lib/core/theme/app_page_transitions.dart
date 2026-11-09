@@ -30,20 +30,22 @@ Widget brandPageTransition(
     reverseCurve: Motion.exit,
   );
 
-  return FadeTransition(
-    opacity: enter,
-    child: SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, 0.04),
-        end: Offset.zero,
-      ).animate(enter),
-      child: ScaleTransition(
-        scale: Tween<double>(begin: 0.96, end: 1.0).animate(enter),
-        child: FadeTransition(
-          opacity: Tween<double>(begin: 1.0, end: 0.0).animate(leave),
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 1.0, end: 1.04).animate(leave),
-            child: child,
+  return RepaintBoundary(
+    child: FadeTransition(
+      opacity: enter,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.04),
+          end: Offset.zero,
+        ).animate(enter),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.96, end: 1.0).animate(enter),
+          child: FadeTransition(
+            opacity: Tween<double>(begin: 1.0, end: 0.0).animate(leave),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 1.0, end: 1.04).animate(leave),
+              child: child,
+            ),
           ),
         ),
       ),

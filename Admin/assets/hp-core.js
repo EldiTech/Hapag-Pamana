@@ -155,6 +155,7 @@ window.HP = (function () {
     owner: "Owner",
   };
   const DEFAULT_ROLE = CFG.defaultRoleLabel || "Staff";
+  const PROFILE_KEY = "hp_user_profile_v1";
   const user = { name: "Signed in", role: DEFAULT_ROLE, roleKey: "", initial: "·", greet: "" };
 
   // Paint the current user into the sidebar (no-op if the shell isn't built
@@ -180,6 +181,21 @@ window.HP = (function () {
     user.greet = safe.split(/\s+/)[0];
     applyUser();
   }
+
+  // Hydrate identity synchronously from sessionStorage if already verified in
+  // this tab so the sidebar name, role, avatar, and Owner back-link render on
+  // the very first frame with zero flicker.
+  (function hydrateCachedUser() {
+    try {
+      const raw = sessionStorage.getItem(PROFILE_KEY);
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      if (!p || !p.uid) return;
+      const emailName = (p.email || "").split("@")[0];
+      setUser(p.name || p.displayName || emailName, ROLE_LABEL[p.role] || DEFAULT_ROLE, p.role);
+    } catch (_) {}
+  })();
+
   // Read the signed-in user's role record and show their name + role label.
   // hp-guard.js already fetches the same document on every page (the role
   // check) and stashes its promise on window.__hpUserDoc — reuse it instead

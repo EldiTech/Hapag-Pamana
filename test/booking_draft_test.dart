@@ -13,6 +13,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:hapag_pamana/core/widgets/booking_schedule_picker.dart';
 import 'package:hapag_pamana/data/booking.dart';
 
 Booking booking(Map<String, dynamic> data) => Booking(
@@ -101,6 +102,64 @@ void main() {
       final b = booking({'status': 'draft'});
       expect(b.needsDownpayment, isFalse);
       expect(b.payment, PaymentState.none);
+    });
+  });
+
+  group('Multi-day scheduling & date range parsing', () {
+    test('single-day BookingScheduleSelection formats as a single date', () {
+      final sel = BookingScheduleSelection(
+        start: DateTime(2026, 6, 12),
+        end: DateTime(2026, 6, 12),
+      );
+      expect(sel.isMultiDay, isFalse);
+      expect(sel.days, 1);
+      expect(sel.displayLabel, 'June 12, 2026');
+    });
+
+    test('multi-day BookingScheduleSelection computes inclusive days and range label', () {
+      final sel = BookingScheduleSelection(
+        start: DateTime(2026, 6, 12),
+        end: DateTime(2026, 6, 14),
+      );
+      expect(sel.isMultiDay, isTrue);
+      expect(sel.days, 3);
+      expect(sel.formattedStart, 'June 12, 2026');
+      expect(sel.formattedEnd, 'June 14, 2026');
+      expect(sel.displayLabel, 'June 12, 2026 – June 14, 2026');
+    });
+
+    test('parseBookingSchedule round-trips both single-day and multi-day strings', () {
+      final single = parseBookingSchedule('August 20, 2026');
+      expect(single, isNotNull);
+      expect(single!.isMultiDay, isFalse);
+      expect(single.days, 1);
+      expect(single.formattedStart, 'August 20, 2026');
+
+      final range = parseBookingSchedule('June 12, 2026 – June 15, 2026');
+      expect(range, isNotNull);
+      expect(range!.isMultiDay, isTrue);
+      expect(range.days, 4);
+      expect(range.formattedStart, 'June 12, 2026');
+      expect(range.formattedEnd, 'June 15, 2026');
+    });
+
+    test('Booking exposes eventDays and isMultiDay from stored fields', () {
+      final singleBooking = booking({
+        'functionDate': 'June 12, 2026',
+      });
+      expect(singleBooking.eventDays, 1);
+      expect(singleBooking.isMultiDay, isFalse);
+
+      final multiBooking = booking({
+        'functionDate': 'June 12, 2026 – June 14, 2026',
+        'functionStartDate': 'June 12, 2026',
+        'functionEndDate': 'June 14, 2026',
+        'functionDays': '3',
+      });
+      expect(multiBooking.eventDays, 3);
+      expect(multiBooking.isMultiDay, isTrue);
+      expect(multiBooking.eventStartDate, 'June 12, 2026');
+      expect(multiBooking.eventEndDate, 'June 14, 2026');
     });
   });
 }

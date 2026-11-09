@@ -91,11 +91,15 @@
     };
 
     // Pantry prices complete missing recipe prices when finance opens a sheet.
-    // This never edits the kitchen plan; it only builds the costing snapshot.
-    unsubPantry = db.collection("pantry").onSnapshot((snap) => {
-      pantryItems = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      renderAll();
-    }, (e) => console.warn("HapagPamana: pantry auto-cost unavailable —", e));
+    // Deferred slightly so confirmed orders, plans, and costings paint first
+    // without competing against the 633-item pantry collection on boot.
+    setTimeout(() => {
+      if (!db) return;
+      unsubPantry = db.collection("pantry").onSnapshot((snap) => {
+        pantryItems = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        renderAll();
+      }, (e) => console.warn("HapagPamana: pantry auto-cost unavailable —", e));
+    }, 150);
 
     // Live stream #1 — the confirmed orders. An order the manager completes or
     // declines leaves this query, and with it the board; its costing lives on
@@ -232,7 +236,7 @@
 
   /* ── Rendering ───────────────────────────────────────────────────────────── */
   function renderAll() {
-    if (!loadedOrders || !loadedPlans || !loadedCostings) return;
+    if (!loadedOrders) return;
     renderStats(); renderSeg(); renderChips(); renderRows();
   }
 

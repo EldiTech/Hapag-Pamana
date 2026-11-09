@@ -83,8 +83,10 @@
   window.addEventListener("beforeunload", () => { if (unsub) unsub(); });
 
   const dateKey = (o) => {
-    const t = Date.parse(String(o.functionDate || ""));
-    return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
+    const raw = String(o.functionStartDate || "").trim() ||
+      String(o.functionDate || "").split(/\s*[–—-]\s*/)[0];
+    const parsedMs = Date.parse(raw);
+    return Number.isFinite(parsedMs) ? parsedMs : Number.MAX_SAFE_INTEGER;
   };
   // Anything the kitchen is waiting on comes first — this desk is the
   // bottleneck for those — then by how soon the event is.

@@ -48,7 +48,9 @@ window.HPFin = (function () {
      directly. Free-typed dates that don't parse just aren't schedulable.
      (Same reading as the kitchen's prep board.) */
   function eventMs(o) {
-    const t = Date.parse(String((o && o.functionDate) || ""));
+    const raw = String((o && o.functionStartDate) || "").trim() ||
+      String((o && o.functionDate) || "").split(/\s*[–—-]\s*/)[0];
+    const t = Date.parse(raw);
     return Number.isFinite(t) ? t : 0;
   }
   function daysUntil(o) {
@@ -374,14 +376,13 @@ window.HPFin = (function () {
   function watchByIds(db, coll, ids, onData, onError) {
     if (!ids || !ids.length) { onData(new Map()); return () => {}; }
     const chunks = [];
-    for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+    for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
     const byChunk = new Map();
     const unsubs = chunks.map((chunk, ci) =>
       db.collection(coll)
         .where(firebase.firestore.FieldPath.documentId(), "in", chunk)
         .onSnapshot((snap) => {
           byChunk.set(ci, snap.docs.map((d) => [d.id, d.data()]));
-          if (byChunk.size < chunks.length) return; // first paint waits for all
           const merged = new Map();
           byChunk.forEach((pairs) => pairs.forEach(([k, v]) => merged.set(k, v)));
           onData(merged);

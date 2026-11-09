@@ -26,8 +26,10 @@
      have free-typed something Date.parse can't read, in which case eventMs
      stays 0 and the row is excluded from any date-indexed series (still
      counted in totals that don't need a date). */
-  function parseEventMs(functionDate) {
-    const t = Date.parse(String(functionDate || ""));
+  function parseEventMs(functionDate, functionStartDate) {
+    const raw = String(functionStartDate || "").trim() ||
+      String(functionDate || "").split(/\s*[–—-]\s*/)[0];
+    const t = Date.parse(raw);
     return Number.isFinite(t) ? t : 0;
   }
 
@@ -46,7 +48,7 @@
   }
 
   function clean(doc) {
-    const eventMs = parseEventMs(doc.functionDate);
+    const eventMs = parseEventMs(doc.functionDate, doc.functionStartDate);
     const orderMs = tsMs(doc.createdAt);
     return {
       ...doc,

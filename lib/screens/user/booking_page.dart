@@ -14,6 +14,7 @@ import '../../data/booking_repository.dart';
 import '../../data/catering.dart';
 import '../../data/catering_repository.dart';
 import '../../data/customer_repository.dart';
+import '../../data/member_preferences.dart';
 import '../../data/menu_category.dart';
 import '../../data/xendit_config.dart';
 import '../../data/product.dart';
@@ -243,6 +244,17 @@ class _BookingPageState extends State<BookingPage> {
   /// checks compare real clock values instead of re-parsing localised strings.
   final Map<String, TimeOfDay> _times = {};
 
+  /// Whether the customer has toggled Multi-Day (date range) scheduling on Step 0.
+  bool _multiDaySchedule = false;
+
+  /// The structured single-day or multi-day schedule selection backing `functionDate`.
+  BookingScheduleSelection? _scheduleSelection;
+
+  /// Number of scheduled days (`1` for a single-day event).
+  int get _days =>
+      _scheduleSelection?.days ??
+      (int.tryParse(_ctrl('functionDays').text.trim()) ?? 1).clamp(1, 365);
+
   /// The extras the member chose from the add-on picker — never typed, so they
   /// always name a dish the kitchen actually publishes.
   final List<_AddOnLine> _addOns = [];
@@ -430,6 +442,15 @@ class _BookingPageState extends State<BookingPage> {
         final value = entry.value?.toString() ?? '';
         if (value.isEmpty) continue;
         _ctrl(entry.key).text = value;
+      }
+      final parsedSchedule = parseBookingSchedule(
+        draft.value('functionDate'),
+        startRaw: draft.value('functionStartDate'),
+        endRaw: draft.value('functionEndDate'),
+      );
+      if (parsedSchedule != null) {
+        _scheduleSelection = parsedSchedule;
+        _multiDaySchedule = parsedSchedule.isMultiDay;
       }
       // Picked times don't round-trip through their display text (locale-
       // dependent formatting), so the chronology check simply has nothing to
@@ -813,19 +834,52 @@ class _BookingPageState extends State<BookingPage> {
     other.dispose();
   }
 
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
+  void _applyScheduleSelection(BookingScheduleSelection selection) {
+    _scheduleSelection = selection;
+    _multiDaySchedule = selection.isMultiDay;
+    _ctrl('functionDate').text = selection.displayLabel;
+    _ctrl('functionStartDate').text = selection.formattedStart;
+    _ctrl('functionEndDate').text = selection.formattedEnd;
+    _ctrl('functionDays').text = '${selection.days}';
+    _errors.remove('functionDate');
+  }
+
+  void _onScheduleModeChanged(bool multiDay) {
+    if (_multiDaySchedule == multiDay) return;
+    setState(() {
+      _multiDaySchedule = multiDay;
+      if (!multiDay && _scheduleSelection != null) {
+        // Collapse an existing range back to its start date when switching to Single Day.
+        _applyScheduleSelection(
+          BookingScheduleSelection(
+            start: _scheduleSelection!.startDay,
+            end: _scheduleSelection!.startDay,
+          ),
+        );
+      }
+    });
+    if (multiDay || _scheduleSelection == null) {
+      _pickDate(forceMultiDay: multiDay);
+    }
+  }
+
+  Future<void> _pickDate({bool? forceMultiDay}) async {
+    final current =
+        _scheduleSelection ??
+        parseBookingSchedule(
+          _ctrl('functionDate').text,
+          startRaw: _ctrl('functionStartDate').text,
+          endRaw: _ctrl('functionEndDate').text,
+        );
+    final picked = await showBookingSchedulePicker(
       context: context,
-      initialDate: now.add(const Duration(days: 14)),
-      firstDate: now,
-      lastDate: DateTime(now.year + 2, now.month, now.day),
+      initialSelection: current,
+      initialMultiDay: forceMultiDay ?? _multiDaySchedule,
+      defaultLeadDays: 14,
+      eyebrow: 'THE OCCASION · ${_labels['functionDate']!.toUpperCase()}',
     );
     if (picked == null || !mounted) return;
-    setState(() {
-      _ctrl('functionDate').text = _formatDate(picked);
-      _errors.remove('functionDate');
-    });
+    setState(() => _applyScheduleSelection(picked));
   }
 
   /// The address popup: a full-screen Google Places search plus a draggable
@@ -1247,20 +1301,21 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
-  /// What the package alone comes to — its per-head discounted price times the headcount.
+  /// What the package alone comes to — its per-head discounted price times the
+  /// headcount and number of scheduled days.
   num? get _packageTotal {
     final price = widget.package?.price ?? 0;
     if (price <= 0 || _pax <= 0) return null;
     final disc = _packageDiscount;
     final effectivePrice = disc != null ? disc.discountedPrice : price;
-    return effectivePrice * _pax;
+    return effectivePrice * _pax * _days;
   }
 
-  /// Total money saved on the package.
+  /// Total money saved on the package across all scheduled days.
   num get _packageSavingsTotal {
     final disc = _packageDiscount;
     if (disc == null || _pax <= 0) return 0;
-    return disc.discountSavings * _pax;
+    return disc.discountSavings * _pax * _days;
   }
 
   /// What one head of the add-ons comes to (reflecting any active promo discounts).
@@ -1281,7 +1336,7 @@ class _BookingPageState extends State<BookingPage> {
     return sum;
   }
 
-  /// Total money saved on add-ons across all pax.
+  /// Total money saved on add-ons across all pax and scheduled days.
   num get _addOnsSavingsTotal {
     num sum = 0;
     if (_pax <= 0) return 0;
@@ -1294,7 +1349,7 @@ class _BookingPageState extends State<BookingPage> {
           packageName: widget.package?.name,
         );
         if (disc != null) {
-          sum += disc.discountSavings * line.qty * _pax;
+          sum += disc.discountSavings * line.qty * _pax * _days;
         }
       }
     }
@@ -1304,8 +1359,8 @@ class _BookingPageState extends State<BookingPage> {
   /// Total promo savings across package and all add-ons.
   num get _totalSavings => _packageSavingsTotal + _addOnsSavingsTotal;
 
-  /// The add-ons' share of the order — per-head rates times the headcount.
-  num get _addOnsTotal => _pax > 0 ? _addOnsPerHead * _pax : 0;
+  /// The add-ons' share of the order — per-head rates times the headcount and days.
+  num get _addOnsTotal => _pax > 0 ? _addOnsPerHead * _pax * _days : 0;
 
   /// The chosen extras that carry no price, so the summary can say plainly
   /// which ones the team will still quote.
@@ -1327,7 +1382,8 @@ class _BookingPageState extends State<BookingPage> {
     if (price <= 0 || _pax <= 0) return null;
     final pkgDisc = _packageDiscount;
     final effectivePrice = pkgDisc != null ? pkgDisc.discountedPrice : price;
-    var line = '${peso(effectivePrice)} per head × $_pax pax';
+    final daysSuffix = _days > 1 ? ' × $_days days' : '';
+    var line = '${peso(effectivePrice)} per head × $_pax pax$daysSuffix';
     if (pkgDisc != null) {
       line += ' (${pkgDisc.badgeLabel})';
     }
@@ -1683,10 +1739,25 @@ class _BookingPageState extends State<BookingPage> {
             : null,
         onTap: _pickOccasion,
       ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: BookingScheduleModeToggle(
+          isMultiDay: _multiDaySchedule,
+          daysCount: _days,
+          onChanged: _onScheduleModeChanged,
+        ),
+      ),
       _pickerField(
         'functionDate',
-        hint: 'Pick a date',
-        icon: Icons.event_outlined,
+        hint: _multiDaySchedule
+            ? 'Pick start and end dates'
+            : 'Pick a date or date range',
+        icon: _multiDaySchedule
+            ? Icons.date_range_outlined
+            : Icons.event_outlined,
+        note: _days > 1
+            ? 'Multi-day schedule: $_days days (${_scheduleSelection?.formattedStart} – ${_scheduleSelection?.formattedEnd}).'
+            : null,
         onTap: _pickDate,
       ),
       _pickerField(
@@ -1758,6 +1829,7 @@ class _BookingPageState extends State<BookingPage> {
           'package',
           hint: 'Choose from our Packages tab, or describe one',
           icon: Icons.local_dining_outlined,
+          readOnly: widget.package != null,
           inputFormatters: [LengthLimitingTextInputFormatter(120)],
         ),
       for (final course in courses) _courseField(course.key),
@@ -2009,9 +2081,10 @@ class _BookingPageState extends State<BookingPage> {
 
     final lines = <String>[chosen];
     if (perHead > 0) {
+      final daysSuffix = _days > 1 ? ' × $_days days' : '';
       lines.add(
         _pax > 0
-            ? '${peso(perHead)} per head × $_pax pax  =  ${peso(_addOnsTotal)}'
+            ? '${peso(perHead)} per head × $_pax pax$daysSuffix  =  ${peso(_addOnsTotal)}'
             : '${peso(perHead)} per head — enter your headcount to see the total.',
       );
     }
@@ -2206,6 +2279,7 @@ class _BookingPageState extends State<BookingPage> {
     String key, {
     String? hint,
     IconData? icon,
+    bool readOnly = false,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
   }) {
@@ -2216,6 +2290,7 @@ class _BookingPageState extends State<BookingPage> {
         hint: hint,
         controller: _ctrl(key),
         prefixIcon: icon,
+        readOnly: readOnly,
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
         errorText: _errors[key],
@@ -2292,11 +2367,12 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   /// Every available dish for a course, in the app's centered quick-look
-  /// dialog — tap one to fill the field. There's no clearing it: the course is
-  /// required, so the only move from here is a different dish.
+  /// dialog — tap a dish to choose it for this package inclusion.
   Future<void> _pickDish(String key, List<Product> dishes) {
     final ctrl = _ctrl(key);
     final label = _labelFor(key);
+    final current = ctrl.text.trim();
+
     return showCenterDialog<void>(
       context: context,
       builder: (dialogContext) => AppDialogShell(
@@ -2312,21 +2388,21 @@ class _BookingPageState extends State<BookingPage> {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            '${dishes.length} dish${dishes.length == 1 ? '' : 'es'} available '
-            'from our menu.',
+            'Select one dish for this inclusion in your selected package.',
             style: AppTextStyles.bodySmall,
           ),
           const SizedBox(height: AppSpacing.lg),
           for (final dish in dishes) ...[
             _DishChoiceRow(
               dish: dish,
-              selected: ctrl.text.trim() == dish.name,
+              selected: current == dish.name,
               onTap: () {
                 Navigator.of(dialogContext).pop();
                 setState(() {
                   ctrl.text = dish.name;
                   _errors.remove(key);
                 });
+                _scheduleAutoSave();
               },
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -3097,6 +3173,14 @@ class _DishChoiceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final prefs = MemberPreferencesScope.value;
+    final conflicts = prefs.dietaryConflicts(dish);
+    final avoided = prefs.avoidedIn(dish.allergens);
+    final warnings = [
+      ...conflicts,
+      if (avoided.isNotEmpty) 'Carries ${allergenSentence(avoided)}',
+    ];
+
     return PressableScale(
       onTap: onTap,
       child: Container(
@@ -3125,11 +3209,28 @@ class _DishChoiceRow extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: Text(
-                dish.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.sans(size: 13, weight: FontWeight.w600),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    dish.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.sans(size: 13, weight: FontWeight.w600),
+                  ),
+                  if (warnings.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      warnings.join(' · '),
+                      style: AppTextStyles.sans(
+                        size: 10,
+                        weight: FontWeight.w600,
+                        color: const Color(0xFF9B3B2E),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -3287,23 +3388,4 @@ class _ProgressRule extends StatelessWidget {
       ),
     );
   }
-}
-
-/// "June 12, 2026" — spelled-out date for the booking form.
-String _formatDate(DateTime d) {
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  return '${months[d.month - 1]} ${d.day}, ${d.year}';
 }

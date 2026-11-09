@@ -78,7 +78,9 @@
   // Soonest event first; undated orders sink. MAX_SAFE_INTEGER rather than
   // Infinity — two undated orders would compare Infinity - Infinity = NaN.
   const dateKey = (o) => {
-    const t = Date.parse(String(o.functionDate || ""));
+    const raw = String(o.functionStartDate || "").trim() ||
+      String(o.functionDate || "").split(/\s*[–—-]\s*/)[0];
+    const t = Date.parse(raw);
     return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
   };
   const byFunctionDate = (a, b) => dateKey(a) - dateKey(b);

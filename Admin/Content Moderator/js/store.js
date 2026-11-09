@@ -381,6 +381,20 @@
      non-sensitive menu content is cached. Cleared on logout / bounce
      (clearCache). */
   const IDB_NAME = "hp_admin_cache", IDB_STORE = "kv", CACHE_KEY = "content_v5";
+  const META_KEY = "meta_v6";
+  const IMG_KEYS = {
+    dishes: "img_dishes_v6",
+    packages: "img_packages_v6",
+    setups: "img_setups_v6",
+  };
+  const PAGE_FILE = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  const PAGE_IMG_KIND =
+    PAGE_FILE === "products.html" ? "dishes" :
+    PAGE_FILE === "packages.html" ? "packages" :
+    PAGE_FILE === "setups.html"   ? "setups" : null;
+  const hydratedImages = { dishes: false, packages: false, setups: false };
+  const dirtyImages = new Set();
+
   /* A fresh-enough cache also skips the background refetch entirely — the
      full dataset measures ~43MB (inline images), so a refetch is never casual.
      Local writes update the cache optimistically, so within one session it is
@@ -390,62 +404,179 @@
      page views. */
   const CACHE_TTL = 30 * 60 * 1000;
   let cacheAt = 0;
-  function idbOp(mode, fn) {
+
+  function openIdb() {
     return new Promise((resolve, reject) => {
       const open = indexedDB.open(IDB_NAME, 1);
       open.onupgradeneeded = () => open.result.createObjectStore(IDB_STORE);
       open.onerror = () => reject(open.error);
       open.onblocked = () => reject(new Error("IndexedDB blocked"));
-      open.onsuccess = () => {
-        const db = open.result;
-        // NB: an exception inside this handler does NOT reject the promise on
-        // its own — it would leave it pending forever — so trap everything.
-        try {
-          const req = fn(db.transaction(IDB_STORE, mode).objectStore(IDB_STORE));
-          req.onsuccess = () => { resolve(req.result); db.close(); };
-          req.onerror = () => { reject(req.error); db.close(); };
-        } catch (e) { reject(e); try { db.close(); } catch { /* ignore */ } }
-      };
+      open.onsuccess = () => resolve(open.result);
     });
   }
-  // The serialized DB runs to tens of MB (inline images), so the IndexedDB
-  // put is debounced ~2s trailing: a burst of persist() calls (a category
-  // rename cascading over dozens of dishes) serializes once, not once per
-  // call. Flushed on pagehide so navigating right after a save still lands.
+
+  function idbTx(mode, work) {
+    return openIdb().then((db) => new Promise((resolve, reject) => {
+      try {
+        const tx = db.transaction(IDB_STORE, mode);
+        const store = tx.objectStore(IDB_STORE);
+        const out = work(store, tx);
+        tx.oncomplete = () => { db.close(); resolve(out); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+        tx.onabort = () => { db.close(); reject(tx.error || new Error("IndexedDB aborted")); };
+      } catch (e) {
+        try { db.close(); } catch { /* ignore */ }
+        reject(e);
+      }
+    }));
+  }
+
+  function buildMetaDb(src) {
+    let previewSetups = 0;
+    return {
+      ...src,
+      dishes: (src.dishes || []).map(({ image, ...rest }) => rest),
+      packages: (src.packages || []).map(({ image, ...rest }) => rest),
+      setups: (src.setups || []).map((s) => {
+        if (!s.deleted && s.image && previewSetups < 4) {
+          previewSetups++;
+          return s;
+        }
+        const { image, ...rest } = s;
+        return rest;
+      }),
+    };
+  }
+
+  function buildImgMap(rows) {
+    const map = {};
+    (rows || []).forEach((r) => {
+      if (r && r.id && r.image) map[r.id] = r.image;
+    });
+    return map;
+  }
+
+  function applyImgMap(rows, map) {
+    if (!Array.isArray(rows) || !map) return;
+    rows.forEach((r) => {
+      if (r && r.id && map[r.id]) r.image = map[r.id];
+    });
+  }
+
+  // Split IndexedDB cache: `meta_v6` (~35 KB) holds all metadata without heavy
+  // base64 strings so lightweight pages (Overview, Categories, Allergens,
+  // Announcements, About, Users, Settings) load in <10ms. Image maps are only
+  // read on the page that renders them (Products, Packages, or Setups).
   let cacheTimer = null;
-  function writeCache() {
+  function writeCache(dirtyKind) {
     if (!DB) return;
     cacheAt = Date.now();
+    if (dirtyKind === "all") {
+      dirtyImages.add("dishes").add("packages").add("setups");
+    } else if (dirtyKind && IMG_KEYS[dirtyKind] && hydratedImages[dirtyKind]) {
+      dirtyImages.add(dirtyKind);
+    }
     clearTimeout(cacheTimer);
-    cacheTimer = setTimeout(writeCacheNow, 2000);
+    cacheTimer = setTimeout(writeCacheNow, 1200);
   }
+
   function writeCacheNow() {
     clearTimeout(cacheTimer);
     cacheTimer = null;
     if (!DB) return;
-    idbOp("readwrite", (s) => s.put({ at: cacheAt, db: DB }, CACHE_KEY))
+    const toWrite = Array.from(dirtyImages).filter((k) => hydratedImages[k]);
+    dirtyImages.clear();
+    const metaPayload = { at: cacheAt, db: buildMetaDb(DB) };
+    idbTx("readwrite", (s) => {
+      s.put(metaPayload, META_KEY);
+      toWrite.forEach((k) => s.put(buildImgMap(DB[k]), IMG_KEYS[k]));
+    })
       .catch(() => {
-        // Exotic values (e.g. Firestore Timestamps) can defeat structured
-        // clone — retry with a JSON-plain copy before giving up.
         try {
-          const plain = JSON.parse(JSON.stringify({ at: cacheAt, db: DB }));
-          return idbOp("readwrite", (s) => s.put(plain, CACHE_KEY));
+          const plain = JSON.parse(JSON.stringify(metaPayload));
+          return idbTx("readwrite", (s) => {
+            s.put(plain, META_KEY);
+            toWrite.forEach((k) => s.put(buildImgMap(DB[k]), IMG_KEYS[k]));
+          });
         } catch (e) { return Promise.reject(e); }
       })
       .catch((e) => console.warn("HapagPamana: cache write failed — navigation stays network-bound.", e));
   }
+
   window.addEventListener("pagehide", () => { if (cacheTimer) writeCacheNow(); });
+
   function clearCache() {
     cacheAt = 0;
     clearTimeout(cacheTimer);
     cacheTimer = null;
-    idbOp("readwrite", (s) => s.delete(CACHE_KEY)).catch(() => { /* ignore */ });
+    dirtyImages.clear();
+    idbTx("readwrite", (s) => {
+      s.delete(META_KEY);
+      s.delete(CACHE_KEY);
+      Object.values(IMG_KEYS).forEach((k) => s.delete(k));
+    }).catch(() => { /* ignore */ });
   }
-  // Raw cache read, kicked off immediately so it races page setup. The cached
-  // record carries every inline image, so on a slow disk this can take a
-  // while — it is never raced away or discarded; boot applies it whenever it
-  // lands (unless fresh network data already won). Resolves {at, db} | null.
-  const cacheRead = idbOp("readonly", (s) => s.get(CACHE_KEY)).catch(() => null);
+
+  async function hydrateAllImages() {
+    if (!DB) return;
+    const missing = Object.keys(IMG_KEYS).filter((k) => !hydratedImages[k]);
+    if (!missing.length) return;
+    try {
+      const maps = {};
+      await idbTx("readonly", (s) => {
+        missing.forEach((k) => {
+          const r = s.get(IMG_KEYS[k]);
+          r.onsuccess = () => { maps[k] = r.result; };
+        });
+      });
+      missing.forEach((k) => {
+        if (maps[k]) {
+          applyImgMap(DB[k], maps[k]);
+          hydratedImages[k] = true;
+        }
+      });
+    } catch { /* ignore */ }
+  }
+
+  // Raw cache read, kicked off immediately so it races page setup. Reads only
+  // `meta_v6` (~35 KB) plus the current page's image collection if needed.
+  const cacheRead = (async () => {
+    try {
+      let meta = null, imgMap = null;
+      await idbTx("readonly", (s) => {
+        const mReq = s.get(META_KEY);
+        mReq.onsuccess = () => { meta = mReq.result; };
+        if (PAGE_IMG_KIND) {
+          const iReq = s.get(IMG_KEYS[PAGE_IMG_KIND]);
+          iReq.onsuccess = () => { imgMap = iReq.result; };
+        }
+      });
+      if (meta && meta.db) {
+        if (PAGE_IMG_KIND && imgMap) {
+          applyImgMap(meta.db[PAGE_IMG_KIND], imgMap);
+          hydratedImages[PAGE_IMG_KIND] = true;
+        }
+        return meta;
+      }
+      // One-time migration from legacy monolithic `content_v5` blob if present
+      let legacy = null;
+      await idbTx("readonly", (s) => {
+        const lReq = s.get(CACHE_KEY);
+        lReq.onsuccess = () => { legacy = lReq.result; };
+      });
+      if (legacy && legacy.db) {
+        hydratedImages.dishes = hydratedImages.packages = hydratedImages.setups = true;
+        setTimeout(() => {
+          writeCache("all");
+          idbTx("readwrite", (s) => s.delete(CACHE_KEY)).catch(() => {});
+        }, 300);
+        return legacy;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  })();
 
   // In-memory key → Firestore collection name. Settings is a single document.
   const COLL = { categories: "categories", dishes: "products", packages: "packages", setups: "setups" };
@@ -541,7 +672,8 @@
         DB = raw ? JSON.parse(raw) : structuredClone(SEED);
       } catch { DB = structuredClone(SEED); }
       await ensureSchema();
-      writeCache();
+      hydratedImages.dishes = hydratedImages.packages = hydratedImages.setups = true;
+      writeCache("all");
       return DB;
     }
     let data = await loadFromFirestore(); // throws only if READS are denied
@@ -562,8 +694,9 @@
     delete data._seeded;
     delete data._allergensSeeded;
     adoptLoaded(data);
+    hydratedImages.dishes = hydratedImages.packages = hydratedImages.setups = true;
     await ensureSchema();
-    writeCache();
+    writeCache("all");
     scheduleProductIndex(); // keep the dish picker's index doc current
     return DB;
   }
@@ -589,7 +722,7 @@
   function onWriteError(e, what, revert) {
     const denied = e && e.code === "permission-denied";
     Promise.resolve().then(revert)
-      .then(() => { writeCache(); notifyRefresh(); })
+      .then(() => { writeCache("all"); notifyRefresh(); })
       .catch(() => { /* offline — the next load reconciles */ })
       .then(() => toast(denied
         ? `Couldn't ${what} — your account doesn't have permission.`
@@ -597,7 +730,7 @@
   }
 
   function persist(kind, obj) {
-    writeCache(); // keep the session cache in step with the in-memory change
+    writeCache(kind); // keep the session cache in step with the in-memory change
     if (kind === "dishes") scheduleProductIndex();
     if (!ONLINE) return persistLocal();
     const ref = FB.db.collection(COLL[kind]).doc(obj.id);
@@ -611,7 +744,7 @@
       }));
   }
   function remove(kind, id) {
-    writeCache();
+    writeCache(kind);
     if (kind === "dishes") scheduleProductIndex();
     if (!ONLINE) return persistLocal();
     const ref = FB.db.collection(COLL[kind]).doc(id);
@@ -1047,8 +1180,9 @@
   }
 
   // "Export as JSON" — download the current content as a JSON file.
-  function exportData() {
+  async function exportData() {
     if (!DB) { toast("The content is still loading — try again in a moment.", "warn"); return; }
+    await hydrateAllImages();
     const blob = new Blob([JSON.stringify(DB, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1168,8 +1302,10 @@
         settle({ cached: true });
         if (Date.now() - cacheAt > CACHE_TTL) startLoad();
       });
-      // Cache slow or absent — stop waiting and hit the network in parallel.
-      setTimeout(() => { if (!settled) startLoad(); }, 350);
+      // Safety guard if IndexedDB is blocked by another tab's upgrade/transaction;
+      // generous enough (2500ms vs old 350ms) so normal disk reads never trigger
+      // a redundant 43MB network download.
+      setTimeout(() => { if (!settled) startLoad(); }, 2500);
     });
   });
 

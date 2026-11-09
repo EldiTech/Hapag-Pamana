@@ -37,18 +37,53 @@
   const db = HP.ONLINE ? firebase.firestore() : null;
 
   let items = [];
+  let itemById = new Map();
   let plans = [];        // prepPlans — the orders whose ingredients can be issued
   let query = "";
   let filter = "all";
   let selectedDept = "all";
   let selectedSec = "all";
+  const PAGE_STEP = 60;
+  let pageLimit = PAGE_STEP;
   let loaded = false;
   const unsubs = [];
 
   statsEl.innerHTML = HP.skel.stats(4);
   rowsEl.innerHTML = HP.skel.rows(7, 6);
 
-  HP.shell.onSearch((q) => { query = q; renderRows(); });
+  // Single delegated click listener on rowsEl (eliminates ~1,900 per-row listeners)
+  rowsEl.addEventListener("click", (e) => {
+    const moreBtn = e.target.closest("[data-page-more]");
+    if (moreBtn) {
+      pageLimit += Number(moreBtn.dataset.pageMore) || PAGE_STEP;
+      renderRows();
+      return;
+    }
+    const allBtn = e.target.closest("[data-page-all]");
+    if (allBtn) {
+      pageLimit = Infinity;
+      renderRows();
+      return;
+    }
+    const actBtn = e.target.closest("[data-act]");
+    if (actBtn) {
+      e.stopPropagation();
+      const tr = actBtn.closest("tr[data-id]");
+      const it = tr && itemById.get(tr.dataset.id);
+      if (!it) return;
+      if (actBtn.dataset.act === "edit") openItem(it);
+      else openMove(it);
+      return;
+    }
+    if (e.target.closest("button")) return;
+    const tr = e.target.closest("tr[data-id]");
+    if (tr) {
+      const it = itemById.get(tr.dataset.id);
+      if (it) openHistory(it);
+    }
+  });
+
+  HP.shell.onSearch((q) => { query = q; pageLimit = PAGE_STEP; renderRows(); });
   HP.shell.onExport(exportCSV);
   HP.ready.then(boot);
 
@@ -59,8 +94,17 @@
       return;
     }
     unsubs.push(db.collection("pantry").onSnapshot((snap) => {
-      items = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
-      items.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+      const next = snap.docs.map((d) => {
+        const it = Object.assign({ id: d.id }, d.data());
+        it._dept = K.departmentOf(it);
+        it._state = K.stateOf(it);
+        it._cat = it.category || "Other";
+        it._search = [it.name, it.category, it.department, it.note].join(" ").toLowerCase();
+        return it;
+      });
+      next.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+      items = next;
+      itemById = new Map(next.map((it) => [it.id, it]));
       loaded = true;
       renderAll();
     }, (e) => {
@@ -97,37 +141,39 @@
   function renderDepartments() {
     if (!deptBarEl) return;
     const depts = K.DEPARTMENTS || [];
-    const counts = {};
-    counts["all"] = items.length;
-    depts.forEach((d) => {
-      if (d.key !== "all") {
-        counts[d.key] = items.filter((it) => K.departmentOf(it) === d.label).length;
-      }
-    });
+    const byLabel = {};
+    for (let i = 0; i < items.length; i++) {
+      const lbl = items[i]._dept;
+      byLabel[lbl] = (byLabel[lbl] || 0) + 1;
+    }
 
     deptBarEl.innerHTML = depts.map((d) => {
       const active = selectedDept === d.key ? " active" : "";
-      const n = counts[d.key] || 0;
+      const n = d.key === "all" ? items.length : (byLabel[d.label] || 0);
       return `<button class="pantry-dept-btn${active}" data-dept="${d.key}">
         <span class="ic">${HP.icon(d.icon)}</span>
         <span class="pantry-dept-name">${d.label}</span>
         <span class="pantry-dept-count">${n}</span>
       </button>`;
     }).join("");
-    HP.hydrateIcons(deptBarEl);
 
     deptBarEl.querySelectorAll("[data-dept]").forEach((btn) => {
       btn.addEventListener("click", () => {
         selectedDept = btn.dataset.dept;
         selectedSec = "all";
+        pageLimit = PAGE_STEP;
         renderAll();
       });
     });
   }
 
   function renderStats() {
-    const low = items.filter((i) => K.stateOf(i) === "low").length;
-    const out = items.filter((i) => K.stateOf(i) === "out").length;
+    let low = 0, out = 0;
+    for (let i = 0; i < items.length; i++) {
+      const st = items[i]._state;
+      if (st === "low") low++;
+      else if (st === "out") out++;
+    }
     // Plans still worth issuing against — an order already fully issued is
     // no longer waiting on this desk.
     const waiting = plans.filter((p) => !p.issuedAt &&
@@ -148,23 +194,25 @@
 
   function renderChips() {
     const curDept = (K.DEPARTMENTS || []).find((d) => d.key === selectedDept);
-    const inDept = selectedDept === "all"
-      ? items
-      : items.filter((it) => K.departmentOf(it) === (curDept ? curDept.label : ""));
+    const deptLabel = curDept ? curDept.label : "";
+    const counts = { all: 0, low: 0, out: 0 };
+    const secCounts = new Map();
 
-    const counts = {
-      all: inDept.length,
-      low: inDept.filter((i) => K.stateOf(i) === "low").length,
-      out: inDept.filter((i) => K.stateOf(i) === "out").length,
-    };
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (selectedDept !== "all" && it._dept !== deptLabel) continue;
+      counts.all++;
+      if (it._state === "low") counts.low++;
+      else if (it._state === "out") counts.out++;
+      secCounts.set(it._cat, (secCounts.get(it._cat) || 0) + 1);
+    }
 
-    // Extract available sections in this department
-    const availSections = Array.from(new Set(inDept.map((it) => it.category || "Other"))).sort();
+    const availSections = Array.from(secCounts.keys()).sort();
     let secSelect = "";
     if (availSections.length > 1) {
-      const secOpts = [`<option value="all">All Sections (${inDept.length})</option>`]
+      const secOpts = [`<option value="all">All Sections (${counts.all})</option>`]
         .concat(availSections.map((sec) => {
-          const cnt = inDept.filter((it) => (it.category || "Other") === sec).length;
+          const cnt = secCounts.get(sec) || 0;
           return `<option value="${HP.esc(sec)}"${selectedSec === sec ? " selected" : ""}>${HP.esc(sec)} (${cnt})</option>`;
         })).join("");
       secSelect = `<label style="display:inline-flex; align-items:center; gap:6px; margin-left:12px; font-size:0.8rem; color:var(--ink-soft); font-family:var(--display);">Section: <select class="pantry-sec-select" id="pantrySecSelect">${secOpts}</select></label>`;
@@ -176,15 +224,15 @@
       chip("all", "All items") + chip("low", "Running low") + chip("out", "Out of stock") +
       secSelect +
       `<button class="btn btn-primary seg-cta" id="issueBtn"><span class="ic">${HP.icon("crates")}</span>Issue to kitchen</button>`;
-    HP.hydrateIcons(chipsEl);
 
     chipsEl.querySelectorAll("[data-chip]").forEach((b) =>
-      b.addEventListener("click", () => { filter = b.dataset.chip; renderChips(); renderRows(); }));
+      b.addEventListener("click", () => { filter = b.dataset.chip; pageLimit = PAGE_STEP; renderChips(); renderRows(); }));
     
     const secEl = document.getElementById("pantrySecSelect");
     if (secEl) {
       secEl.addEventListener("change", (e) => {
         selectedSec = e.target.value;
+        pageLimit = PAGE_STEP;
         renderRows();
       });
     }
@@ -195,12 +243,13 @@
 
   function visible() {
     const curDept = (K.DEPARTMENTS || []).find((d) => d.key === selectedDept);
+    const deptLabel = curDept ? curDept.label : "";
     return items.filter((it) => {
-      if (selectedDept !== "all" && curDept && K.departmentOf(it) !== curDept.label) return false;
-      if (selectedSec !== "all" && (it.category || "Other") !== selectedSec) return false;
-      if (filter !== "all" && K.stateOf(it) !== filter) return false;
+      if (selectedDept !== "all" && curDept && it._dept !== deptLabel) return false;
+      if (selectedSec !== "all" && it._cat !== selectedSec) return false;
+      if (filter !== "all" && it._state !== filter) return false;
       if (!query) return true;
-      return [it.name, it.category, it.department, it.note].join(" ").toLowerCase().includes(query);
+      return it._search.includes(query);
     });
   }
 
@@ -214,31 +263,45 @@
       return;
     }
 
-    // Group items by Section/Category
+    const totalCount = list.length;
+    const slice = totalCount > pageLimit ? list.slice(0, pageLimit) : list;
+
+    // Group visible slice by Section/Category (preserving total category counts)
+    const totalByCat = new Map();
+    for (let i = 0; i < list.length; i++) {
+      const c = list[i]._cat;
+      totalByCat.set(c, (totalByCat.get(c) || 0) + 1);
+    }
+
     const groups = new Map();
-    list.forEach((it) => {
-      const cat = it.category || "Other";
+    slice.forEach((it) => {
+      const cat = it._cat;
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat).push(it);
     });
 
+    const icShelf = HP.icon("shelf");
+    const icScales = HP.icon("scales");
+    const icPencil = HP.icon("pencil");
+
     let html = "";
     groups.forEach((catItems, catName) => {
+      const catTotal = totalByCat.get(catName) || catItems.length;
       html += `
         <tr class="pantry-group-row">
           <td colspan="7">
             <div class="pantry-group-header">
               <div class="pantry-group-left">
-                <span class="ic" style="color:var(--gold);">${HP.icon("shelf")}</span>
+                <span class="ic" style="color:var(--gold);">${icShelf}</span>
                 <span class="pantry-group-name">${HP.esc(catName)}</span>
               </div>
-              <span class="pantry-group-pill">${catItems.length} ${catItems.length === 1 ? 'item' : 'items'}</span>
+              <span class="pantry-group-pill">${catTotal} ${catTotal === 1 ? 'item' : 'items'}</span>
             </div>
           </td>
         </tr>`;
 
       catItems.forEach((it) => {
-        const st = K.stateOf(it);
+        const st = it._state;
         html += `
         <tr data-id="${HP.esc(it.id)}">
           <td>
@@ -259,31 +322,34 @@
           <td>
             <div class="row-actions">
               <button class="icon-btn" data-act="move" title="Record a movement"
-                aria-label="Record a movement for ${HP.esc(it.name || "item")}"><span class="ic">${HP.icon("scales")}</span></button>
+                aria-label="Record a movement for ${HP.esc(it.name || "item")}"><span class="ic">${icScales}</span></button>
               <button class="icon-btn" data-act="edit" title="Edit this item"
-                aria-label="Edit ${HP.esc(it.name || "item")}"><span class="ic">${HP.icon("pencil")}</span></button>
+                aria-label="Edit ${HP.esc(it.name || "item")}"><span class="ic">${icPencil}</span></button>
             </div>
           </td>
         </tr>`;
       });
     });
 
-    HP.shell.paint(rowsEl, html);
-    HP.hydrateIcons(rowsEl);
+    if (totalCount > slice.length) {
+      const rem = totalCount - slice.length;
+      html += `
+        <tr class="pantry-more-row">
+          <td colspan="7" style="text-align:center; padding:14px 16px;">
+            <span style="color:var(--ink-soft); font-size:0.85rem; margin-right:12px;">
+              Showing <strong>${slice.length}</strong> of <strong>${totalCount}</strong> items
+            </span>
+            <button type="button" class="btn btn-ghost btn-sm" data-page-more="120" style="margin-right:6px;">
+              Show ${Math.min(120, rem)} more
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm" data-page-all="1">
+              Show all (${totalCount})
+            </button>
+          </td>
+        </tr>`;
+    }
 
-    rowsEl.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const it = items.find((x) => x.id === e.currentTarget.closest("tr").dataset.id);
-      if (!it) return;
-      if (e.currentTarget.dataset.act === "edit") openItem(it);
-      else openMove(it);
-    }));
-    rowsEl.querySelectorAll("tr[data-id]").forEach((tr) =>
-      tr.addEventListener("click", (e) => {
-        if (e.target.closest("button")) return;
-        const it = items.find((x) => x.id === tr.dataset.id);
-        if (it) openHistory(it);
-      }));
+    HP.shell.paint(rowsEl, html);
   }
 
   /* ── Add / edit an item ───────────────────────────────────────────────────

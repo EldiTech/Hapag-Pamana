@@ -17,6 +17,8 @@
 
   const CFG = window.HP_DASHBOARD || {};
   const VERIFIED_KEY = CFG.verifiedKey || "hp_staff_verified";
+  const PROFILE_KEY = "hp_user_profile_v1";
+  const PROFILE_TTL = 5 * 60 * 1000; // 5 minutes before immediate foreground re-check
   const ROLES = CFG.roles || [];
 
   function configured() {
@@ -32,13 +34,44 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
 
+  function readCachedProfile(uid) {
+    try {
+      const raw = sessionStorage.getItem(PROFILE_KEY);
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      if (!p || (uid && p.uid !== uid)) return null;
+      return p;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function writeCachedProfile(user, data) {
+    try {
+      sessionStorage.setItem(PROFILE_KEY, JSON.stringify({
+        uid: user.uid,
+        email: user.email || "",
+        displayName: user.displayName || "",
+        name: (data && data.name) || "",
+        role: (data && data.role) || "",
+        active: !!(data && data.active !== false),
+        ts: Date.now(),
+      }));
+    } catch (_) {}
+  }
+
   const indicator = document.createElement("div");
   indicator.className = "auth-bar";
-  const attach = () => (document.body || document.documentElement).appendChild(indicator);
-  if (document.body) attach(); else document.addEventListener("DOMContentLoaded", attach);
+  // Only show the top verification bar when the session hasn't been verified yet
+  // in this tab, avoiding visual loading flashes on every sidebar click.
+  if (sessionStorage.getItem(VERIFIED_KEY) !== "1") {
+    const attach = () => (document.body || document.documentElement).appendChild(indicator);
+    if (document.body) attach(); else document.addEventListener("DOMContentLoaded", attach);
+  }
 
   function dropSession() {
     sessionStorage.removeItem(VERIFIED_KEY);
+    sessionStorage.removeItem(PROFILE_KEY);
     // The Content Moderator keeps a content cache — clear it wherever it exists.
     if (window.HP && window.HP.clearCache) window.HP.clearCache();
   }
@@ -56,14 +89,37 @@
      gate instead. bounce() runs via finally() so a rejected signOut() can
      never strand the visitor on a page they shouldn't see. */
   function verify(user) {
+    const cached = readCachedProfile(user.uid);
+    const cacheValid = cached && cached.active !== false && ROLES.includes(cached.role);
+
+    if (cacheValid && Date.now() - (cached.ts || 0) < PROFILE_TTL) {
+      sessionStorage.setItem(VERIFIED_KEY, "1");
+      indicator.remove();
+      removeGate();
+      // Provide an immediate resolved snapshot for hp-core.js populateUser()
+      window.__hpUserDoc = Promise.resolve({
+        exists: true,
+        data: () => ({ name: cached.name, role: cached.role, active: cached.active }),
+      });
+      // Re-verify silently in the background after initial page queries settle
+      setTimeout(() => verifyFromNetwork(user, true), 1200);
+      return;
+    }
+
+    verifyFromNetwork(user, false);
+  }
+
+  function verifyFromNetwork(user, silent) {
     // Stash the read so hp-core.js (populateUser) can reuse it instead of
     // fetching the same users/{uid} document a second time on every page.
-    window.__hpUserDoc = db.collection(window.USERS_COLLECTION).doc(user.uid).get();
-    window.__hpUserDoc.then((snap) => {
+    const req = db.collection(window.USERS_COLLECTION).doc(user.uid).get();
+    if (!silent) window.__hpUserDoc = req;
+    req.then((snap) => {
       const data = snap.exists ? snap.data() : null;
       const ok = data && data.active !== false && ROLES.includes(data.role);
       if (ok) {
         sessionStorage.setItem(VERIFIED_KEY, "1");
+        writeCachedProfile(user, data);
         indicator.remove();
         removeGate();
       } else {
@@ -71,6 +127,7 @@
       }
     }).catch((e) => {
       if (e && e.code === "permission-denied") return void auth.signOut().finally(bounce);
+      if (silent) return;
       console.warn("HapagPamana: couldn't verify access —", e);
       if (sessionStorage.getItem(VERIFIED_KEY) === "1") {
         indicator.remove();

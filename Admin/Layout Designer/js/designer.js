@@ -130,7 +130,9 @@
   };
 
   function dateKey(o) {
-    const t = Date.parse(String((o && o.functionDate) || ""));
+    const raw = String((o && o.functionStartDate) || "").trim() ||
+      String((o && o.functionDate) || "").split(/\s*[–—-]\s*/)[0];
+    const t = Date.parse(raw);
     return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
   }
   function byFunctionDate(a, b) { return dateKey(a) - dateKey(b); }
@@ -251,6 +253,21 @@
   HP.ready.then(boot);
 
   /* ── Loading the confirmed orders ─────────────────────────────────────── */
+  let designerAssetsStarted = false;
+  function ensureDesignerAssets() {
+    if (designerAssetsStarted) return;
+    designerAssetsStarted = true;
+    /* Load the 3.75 MB GLB library and setup gallery once confirmed orders
+       have painted (or immediately when entering the #designer tab). */
+    if (A && A.available()) A.load();
+    if (!HP.ONLINE) return;
+    loadSetups().then(() => {
+      if (setupChoice) applySetup(setupChoice);
+      else if (current) applySetup(initialSetup(current));
+      renderThemeBtn();
+    });
+  }
+
   function boot() {
     handleHash();
     ensureDraft();
@@ -261,10 +278,7 @@
     fitCanvas();
     renderThemeBtn();
 
-    /* Load the GLB even when the designer stays in 2D. This makes Blender
-       models discoverable from Add Pieces instead of waiting for a 3D tab
-       visit. scene3d.js shares the same idempotent loading promise. */
-    if (A && A.available()) A.load();
+    if (activeNav === "designer") ensureDesignerAssets();
 
     if (!HP.ONLINE) {
       chipsEl.innerHTML = "";
@@ -272,17 +286,6 @@
       return;
     }
 
-    // The setup gallery, fetched alongside the events. Not awaited: the plan
-    // is drawable before the dressing is available, and a slow gallery must
-    // not hold the desk shut.
-    loadSetups().then(() => {
-      // A plan opened before the gallery landed still gets its dressing —
-      // including the client's own choice, which is stored as a title and so
-      // can only be resolved once there is a gallery to resolve it against.
-      if (setupChoice) applySetup(setupChoice);
-      else if (current) applySetup(initialSetup(current));
-      renderThemeBtn();
-    });
     unsub = db.collection("bookings").where("status", "==", "confirmed").limit(LIVE_LIMIT)
       .onSnapshot((snap) => {
         orders = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()))
@@ -291,6 +294,8 @@
         loaded = true;
         renderOverview();
         renderChips();
+        // Warm up 3D GLB + setup themes idly after the overview table is painted
+        setTimeout(ensureDesignerAssets, 500);
         // Keep the open plan in step with the live document — but never
         // overwrite unsaved drawing with a snapshot echo of the old one.
         if (current) {
@@ -329,6 +334,7 @@
 
   function switchNav(navKey) {
     activeNav = navKey;
+    if (navKey === "designer") ensureDesignerAssets();
     const overviewEl = document.getElementById("ldOverviewView");
     const chipsContainer = document.getElementById("ldChips");
     const workContainer = document.querySelector(".ld-work");

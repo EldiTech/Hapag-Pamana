@@ -58,9 +58,9 @@ List<Product> mostLoved(List<Product> all, {int take = 6, int minOrders = 2}) {
 }
 
 // ════════════════════════════ Featured ════════════════════════════
-/// Cadence for the Featured carousel — a brisk 1s auto-advance that slides
+/// Cadence for the Featured carousel — a calm 4s auto-advance that slides
 /// smoothly and loops forever, pausing only while the guest is touching it.
-const Duration _kFeaturedAutoAdvance = Duration(seconds: 1);
+const Duration _kFeaturedAutoAdvance = Duration(seconds: 4);
 
 /// Run of the featured dishes. A single featured item (or the loading / empty
 /// state) fills the screen width; with several featured, the cards auto-advance

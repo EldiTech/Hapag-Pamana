@@ -22,30 +22,36 @@ class ParchmentBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        DecoratedBox(
-          // Near-uniform parchment: hold pure cream across most of the field
-          // and let only the extreme corners darken. A stronger vignette made
-          // the (static, non-scrolling) ground read brightest at the top, so
-          // the immersive hero looked like a lighter colour block than the
-          // content scrolling below it. Keeping the falloff to the edges lets
-          // the hero and content sit on one continuous paper tone.
-          decoration: vignette
-              ? const BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(0, -0.2),
-                    radius: 1.2,
-                    colors: [AppColors.cream, AppColors.creamEdge],
-                    stops: [0.82, 1.0],
-                  ),
-                )
-              : const BoxDecoration(color: AppColors.cream),
-          child: const SizedBox.expand(),
-        ),
-        if (weave)
-          const Positioned.fill(child: CustomPaint(painter: WeavePainter())),
-      ],
+    return RepaintBoundary(
+      child: Stack(
+        children: [
+          DecoratedBox(
+            // Near-uniform parchment: hold pure cream across most of the field
+            // and let only the extreme corners darken. A stronger vignette made
+            // the (static, non-scrolling) ground read brightest at the top, so
+            // the immersive hero looked like a lighter colour block than the
+            // content scrolling below it. Keeping the falloff to the edges lets
+            // the hero and content sit on one continuous paper tone.
+            decoration: vignette
+                ? const BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment(0, -0.2),
+                      radius: 1.2,
+                      colors: [AppColors.cream, AppColors.creamEdge],
+                      stops: [0.82, 1.0],
+                    ),
+                  )
+                : const BoxDecoration(color: AppColors.cream),
+            child: const SizedBox.expand(),
+          ),
+          if (weave)
+            const Positioned.fill(
+              child: RepaintBoundary(
+                child: CustomPaint(painter: WeavePainter()),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

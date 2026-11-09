@@ -89,9 +89,11 @@ class _SkeletonSurface extends StatelessWidget {
       child: child,
     );
     if (anim == null) return surface(null, AppColors.shimmerBase);
-    return AnimatedBuilder(
-      animation: anim,
-      builder: (_, _) => surface(_shimmerGradient(anim.value), null),
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: anim,
+        builder: (_, _) => surface(_shimmerGradient(anim.value), null),
+      ),
     );
   }
 }

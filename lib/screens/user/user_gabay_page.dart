@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../brand.dart';
+import '../../core/theme/bottom_navigation_layout.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/customer_repository.dart';
 import '../../data/catering.dart';
@@ -220,106 +221,117 @@ class _UserGabayPageState extends State<UserGabayPage> {
     // toggling it in Settings takes the panel away without a tab bounce.
     return ValueListenableBuilder<MemberPreferences>(
       valueListenable: MemberPreferencesScope.notifier,
-      builder: (context, prefs, _) => Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.lg,
-                AppSpacing.screen,
-                AppSpacing.xl,
-              ),
-              children: [
-                FadeSlideIn(child: const _GabayHeader()),
-                const SizedBox(height: AppSpacing.xl),
-
-                // Greeting from the assistant.
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 80),
-                  child: _AssistantBubble(
-                    'Kumusta, $first! I\'m Gabay, your catering companion. '
-                    'I can suggest meals and packages, work to your budget and '
-                    'guest count, and answer your planning questions. How can I '
-                    'help today?',
-                  ),
+      builder: (context, prefs, _) {
+        final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+        return Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  AppSpacing.lg,
+                  AppSpacing.screen,
+                  AppSpacing.xl,
                 ),
-                const SizedBox(height: AppSpacing.section),
+                children: [
+                  FadeSlideIn(child: const _GabayHeader()),
+                  const SizedBox(height: AppSpacing.xl),
 
-                // ── Picks just for you (live) ────────────────────────────────
-                SmoothReveal(
-                  visible:
-                      prefs.gabaySuggestions &&
-                      (_recsLoading || _recs.isNotEmpty),
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.section),
-                    child: FadeSlideIn(
-                      delay: const Duration(milliseconds: 110),
-                      child: _RecommendedPanel(
-                        loading: _recsLoading,
-                        set: _recs,
-                        onOpenPackages: widget.onNavigate == null
-                            ? null
-                            : () => widget.onNavigate!(UserShell.tabPackages),
+                  // Greeting from the assistant.
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 80),
+                    child: _AssistantBubble(
+                      'Kumusta, $first! I\'m Gabay, your catering companion. '
+                      'I can suggest meals and packages, work to your budget and '
+                      'guest count, and answer your planning questions. How can I '
+                      'help today?',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.section),
+
+                  // ── Picks just for you (live) ────────────────────────────────
+                  SmoothReveal(
+                    visible:
+                        prefs.gabaySuggestions &&
+                        (_recsLoading || _recs.isNotEmpty),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.section),
+                      child: FadeSlideIn(
+                        delay: const Duration(milliseconds: 110),
+                        child: _RecommendedPanel(
+                          loading: _recsLoading,
+                          set: _recs,
+                          onOpenPackages: widget.onNavigate == null
+                              ? null
+                              : () => widget.onNavigate!(UserShell.tabPackages),
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // ── Conversation ─────────────────────────────────────────────
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 140),
-                  child: _ChatHistory(_chat.messages),
-                ),
-                if (_thinking) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  const _AssistantTyping(),
-                ],
-                const SizedBox(height: AppSpacing.section),
-
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 170),
-                  child: Text(
-                    'HERE\'S HOW I CAN HELP',
-                    style: AppTextStyles.eyebrow,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                for (var i = 0; i < _capabilities.length; i++) ...[
+                  // ── Conversation ─────────────────────────────────────────────
                   FadeSlideIn(
-                    delay: Duration(milliseconds: 200 + i * 50),
-                    child: _CapabilityCard(
-                      icon: _capabilities[i].$1,
-                      title: _capabilities[i].$2,
-                      subtitle: _capabilities[i].$3,
+                    delay: const Duration(milliseconds: 140),
+                    child: _ChatHistory(_chat.messages),
+                  ),
+                  if (_thinking) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    const _AssistantTyping(),
+                  ],
+                  const SizedBox(height: AppSpacing.section),
+
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 170),
+                    child: Text(
+                      'HERE\'S HOW I CAN HELP',
+                      style: AppTextStyles.eyebrow,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.sm + 2),
-                ],
-                const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.md),
+                  for (var i = 0; i < _capabilities.length; i++) ...[
+                    FadeSlideIn(
+                      delay: Duration(milliseconds: 200 + i * 50),
+                      child: _CapabilityCard(
+                        icon: _capabilities[i].$1,
+                        title: _capabilities[i].$2,
+                        subtitle: _capabilities[i].$3,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm + 2),
+                  ],
+                  const SizedBox(height: AppSpacing.lg),
 
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 280),
-                  child: Text('TRY ASKING', style: AppTextStyles.eyebrow),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 320),
-                  child: Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      for (final prompt in _starters)
-                        _PromptChip(prompt, onTap: () => _sendStarter(prompt)),
-                    ],
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 280),
+                    child: Text('TRY ASKING', style: AppTextStyles.eyebrow),
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.md),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 320),
+                    child: Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        for (final prompt in _starters)
+                          _PromptChip(prompt, onTap: () => _sendStarter(prompt)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          _Composer(controller: _controller, onSend: _send),
-        ],
-      ),
+            _Composer(
+              controller: _controller,
+              onSend: _send,
+              keyboardOpen: keyboardOpen,
+            ),
+            if (!keyboardOpen)
+              SizedBox(
+                height: AppBottomNavigationLayout.memberContentClearance(context),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -710,10 +722,15 @@ class _PromptChip extends StatelessWidget {
 
 // ════════════════════════════ Composer ════════════════════════════
 class _Composer extends StatelessWidget {
-  const _Composer({required this.controller, required this.onSend});
+  const _Composer({
+    required this.controller,
+    required this.onSend,
+    required this.keyboardOpen,
+  });
 
   final TextEditingController controller;
   final VoidCallback onSend;
+  final bool keyboardOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -724,6 +741,7 @@ class _Composer extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
+        bottom: keyboardOpen,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.md,

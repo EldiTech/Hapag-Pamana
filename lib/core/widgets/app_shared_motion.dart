@@ -182,7 +182,7 @@ class FadeSlideIn extends StatefulWidget {
     super.key,
     required this.child,
     this.delay = Duration.zero,
-    this.duration = Motion.slow,
+    this.duration = Motion.base,
     this.offsetY = 18,
   });
 
@@ -201,10 +201,14 @@ class _FadeSlideInState extends State<FadeSlideIn>
     vsync: this,
     duration: widget.duration,
   );
-  late final Animation<double> _a = CurvedAnimation(
+  late final Animation<double> _fade = CurvedAnimation(
     parent: _c,
     curve: Motion.standard,
   );
+  late final Animation<Offset> _slide = Tween<Offset>(
+    begin: const Offset(0, 0.03),
+    end: Offset.zero,
+  ).animate(_fade);
   Timer? _timer;
 
   @override
@@ -228,16 +232,15 @@ class _FadeSlideInState extends State<FadeSlideIn>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _a,
-      builder: (_, child) => Opacity(
-        opacity: _a.value,
-        child: Transform.translate(
-          offset: Offset(0, (1 - _a.value) * widget.offsetY),
-          child: child,
-        ),
+    final disable = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (disable) return widget.child;
+
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: widget.child,
       ),
-      child: widget.child,
     );
   }
 }
@@ -260,7 +263,7 @@ class _TabTransitionState extends State<TabTransition>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: Motion.base,
+    duration: Motion.tab,
   )..forward();
 
   late int _previous = widget.index;
@@ -268,14 +271,14 @@ class _TabTransitionState extends State<TabTransition>
   late Animation<Offset> _slide = _buildSlide(forward: true);
 
   Animation<double> _buildFade() =>
-      CurvedAnimation(parent: _c, curve: Motion.standard);
+      CurvedAnimation(parent: _c, curve: Curves.easeOut);
 
   Animation<Offset> _buildSlide({required bool forward}) {
-    final dx = forward ? 0.06 : -0.06;
+    final dx = forward ? 0.03 : -0.03;
     return Tween<Offset>(
       begin: Offset(dx, 0),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _c, curve: Motion.standard));
+    ).animate(CurvedAnimation(parent: _c, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -300,9 +303,14 @@ class _TabTransitionState extends State<TabTransition>
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fade,
-      child: SlideTransition(position: _slide, child: widget.child),
+    final disable = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (disable) return widget.child;
+
+    return RepaintBoundary(
+      child: FadeTransition(
+        opacity: _fade,
+        child: SlideTransition(position: _slide, child: widget.child),
+      ),
     );
   }
 }

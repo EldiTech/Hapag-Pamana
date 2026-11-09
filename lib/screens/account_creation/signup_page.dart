@@ -7,15 +7,15 @@ import '../../core/auth_validation.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/customer_repository.dart';
 import '../../widgets.dart';
+import 'account_creation_loading_page.dart';
 import 'taste_profile_page.dart';
+import 'welcome_hapag_page.dart';
 
 /// Guest Sign-Up — a three-step wizard (Name · Contact · Security). Each step
 /// validates before advancing; the final step creates a Firebase Auth account
-/// and a matching `customers/{uid}` profile via [CustomerRepository], then hands
-/// off to [TasteProfilePage] — the taste quiz that gives the recommendation
-/// engine something to work from before the member has ordered anything. That
-/// screen is what opens the member-side `UserShell`, whether the quiz is
-/// answered or skipped. Mirrors the app's Heirloom-Editorial styling.
+/// and a matching `customers/{uid}` profile via [CustomerRepository] on
+/// [AccountCreationLoadingPage], transitions to the celebratory
+/// [WelcomeHapagPage], and then hands off to [TasteProfilePage].
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -44,7 +44,6 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _obscurePw = true;
   bool _obscureConfirm = true;
   bool _submitting = false;
-  bool _success = false;
 
   static final RegExp _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
@@ -119,52 +118,45 @@ class _SignUpPageState extends State<SignUpPage> {
     final pw = _password.text;
 
     final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
 
     setState(() => _submitting = true);
-    try {
-      await CustomerRepository().signUp(
-        name: name,
-        email: email,
-        phone: phone,
-        password: pw,
-      );
-      if (!mounted) return;
-      // Hold the CTA in its ✓ ACCOUNT CREATED state for a beat so the moment
-      // of success registers before the member side takes over.
-      setState(() => _success = true);
-      await Future<void>.delayed(const Duration(milliseconds: 700));
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Welcome to the hapag, $name!')),
-      );
-      // Now signed in: drop Sign-Up and Log In and ask the taste questions,
-      // keeping the guest shell as the root so logout can return to it. The
-      // quiz opens the member shell itself, on the same root, so a skipped
-      // quiz and an answered one land in exactly the same place.
-      navigator.pushAndRemoveUntil(
-        BrandPageRoute(builder: (_) => TasteProfilePage(name: name)),
-        (route) => route.isFirst,
-      );
-    } on AuthInputException catch (e) {
-      if (!mounted) return;
+
+    // Prompt to the animated loading screen while account creation takes place
+    final error = await Navigator.of(context).push<dynamic>(
+      BrandPageRoute(
+        builder: (_) => AccountCreationLoadingPage(
+          name: name,
+          email: email,
+          phone: phone,
+          password: pw,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      setState(() => _submitting = false);
+    }
+
+    // If null, account creation succeeded and AccountCreationLoadingPage
+    // already transitioned to WelcomeHapagPage.
+    if (error == null) return;
+    if (!mounted) return;
+
+    if (error is AuthInputException) {
       setState(() {
-        _submitting = false;
-        if (e.field == 'phone') {
-          _phoneErr = e.message;
+        if (error.field == 'phone') {
+          _phoneErr = error.message;
         } else {
-          _passwordErr = e.message;
+          _passwordErr = error.message;
         }
       });
-      if (e.field == 'phone') {
+      if (error.field == 'phone') {
         _pager.animateToPage(1, duration: Motion.base, curve: Motion.standard);
       }
-    } on DuplicateAccountException catch (e) {
-      if (!mounted) return;
+    } else if (error is DuplicateAccountException) {
       setState(() {
-        _submitting = false;
-        if (e.field == 'email') {
-          _emailErr = e.message;
+        if (error.field == 'email') {
+          _emailErr = error.message;
         } else {
           _phoneErr = 'That phone number is already registered';
         }
@@ -172,11 +164,9 @@ class _SignUpPageState extends State<SignUpPage> {
       // Email and phone both live on the Contact step — jump there so the
       // duplication message is visible.
       _pager.animateToPage(1, duration: Motion.base, curve: Motion.standard);
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
+    } else if (error is FirebaseAuthException) {
       setState(() {
-        _submitting = false;
-        switch (e.code) {
+        switch (error.code) {
           case 'email-already-in-use':
             _emailErr = 'That email already has an account';
           case 'invalid-email':
@@ -189,7 +179,7 @@ class _SignUpPageState extends State<SignUpPage> {
       });
       // An email problem surfaces on the Contact step — jump back to it so the
       // message is visible (the user is on the Security step at submit time).
-      if (e.code == 'email-already-in-use' || e.code == 'invalid-email') {
+      if (error.code == 'email-already-in-use' || error.code == 'invalid-email') {
         _pager.animateToPage(1, duration: Motion.base, curve: Motion.standard);
       }
       const fieldCodes = {
@@ -198,35 +188,31 @@ class _SignUpPageState extends State<SignUpPage> {
         'weak-password',
         'password-does-not-meet-requirements',
       };
-      if (!fieldCodes.contains(e.code)) {
+      if (!fieldCodes.contains(error.code)) {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              e.code == 'operation-not-allowed'
+              error.code == 'operation-not-allowed'
                   ? 'Email sign-up isn\'t enabled yet. Please try again later.'
-                  : (e.message ?? 'Sign-up failed. Please try again.'),
+                  : (error.message ?? 'Sign-up failed. Please try again.'),
             ),
           ),
         );
       }
-    } on FirebaseException catch (e) {
+    } else if (error is FirebaseException) {
       // Firestore-side failure — most often `permission-denied` because the
       // security rules for `customers` / `customer_phones` haven't been
       // published yet, so the profile + phone-index writes are rejected.
-      if (!mounted) return;
-      setState(() => _submitting = false);
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            e.code == 'permission-denied'
+            error.code == 'permission-denied'
                 ? "Couldn't save your account — the server rejected the request. Please try again shortly."
-                : (e.message ?? 'Sign-up failed. Please try again.'),
+                : (error.message ?? 'Sign-up failed. Please try again.'),
           ),
         ),
       );
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _submitting = false);
+    } else {
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Something went wrong. Please try again.'),
@@ -238,17 +224,12 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     final isLast = _step == _stepCount - 1;
-    final primaryLabel = isLast
-        ? (_success ? 'ACCOUNT CREATED' : 'CREATE ACCOUNT')
-        : 'CONTINUE';
+    final primaryLabel = isLast ? 'CREATE ACCOUNT' : 'CONTINUE';
 
     final primary = AppButton.primary(
       label: primaryLabel,
-      icon: _success ? Icons.check_rounded : null,
-      busy: _submitting && !_success,
-      // A no-op keeps the success state in the full brand color (a null
-      // handler would dim it) for its brief hold.
-      onPressed: _success ? () {} : (_submitting ? null : _next),
+      busy: _submitting,
+      onPressed: _submitting ? null : _next,
       fullWidth: _step == 0,
     );
 

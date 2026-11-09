@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../brand.dart';
+import '../../core/theme/bottom_navigation_layout.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/customer.dart';
 import '../../data/customer_repository.dart';
@@ -303,6 +304,9 @@ class _AccountPageState extends State<AccountPage> {
             fullWidth: true,
             onPressed: widget.onLogout,
           ),
+        ),
+        SizedBox(
+          height: AppBottomNavigationLayout.memberContentClearance(context),
         ),
       ],
     );

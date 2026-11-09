@@ -7,9 +7,10 @@ part of 'app_shared.dart';
 /// grid and the Home page's featured / kitchen cards so image handling stays
 /// in one place.
 class ProductImage extends StatelessWidget {
-  const ProductImage(this.product, {super.key});
+  const ProductImage(this.product, {super.key, this.cacheWidth = 600});
 
   final Product product;
+  final int? cacheWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +25,14 @@ class ProductImage extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        cacheWidth: cacheWidth,
+        filterQuality: FilterQuality.medium,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded || frame != null) {
+            return child;
+          }
+          return const PlaceholderBox(radius: 12);
+        },
         loadingBuilder: (context, child, progress) =>
             progress == null ? child : const PlaceholderBox(radius: 12),
         errorBuilder: (_, _, _) => fallback(),
@@ -35,6 +44,8 @@ class ProductImage extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        cacheWidth: cacheWidth,
+        filterQuality: FilterQuality.medium,
         errorBuilder: (_, _, _) => fallback(),
       );
     }
@@ -64,7 +75,7 @@ void showProductImageViewer(BuildContext context, Product product) {
                     Center(
                       child: InteractiveViewer(
                         maxScale: 4,
-                        child: ProductImage(product),
+                        child: ProductImage(product, cacheWidth: null),
                       ),
                     ),
                     Positioned(
@@ -92,9 +103,10 @@ void showProductImageViewer(BuildContext context, Product product) {
 /// Cover-fit image for a [CateringPackage] (remote URL or inline data URL),
 /// with a branded letter-tile fallback. Mirrors [ProductImage].
 class PackageImage extends StatelessWidget {
-  const PackageImage(this.package, {super.key});
+  const PackageImage(this.package, {super.key, this.cacheWidth = 600});
 
   final CateringPackage package;
+  final int? cacheWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +121,8 @@ class PackageImage extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        cacheWidth: cacheWidth,
+        filterQuality: FilterQuality.medium,
         loadingBuilder: (context, child, progress) =>
             progress == null ? child : const PlaceholderBox(radius: 12),
         errorBuilder: (_, _, _) => fallback(),
@@ -120,6 +134,8 @@ class PackageImage extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        cacheWidth: cacheWidth,
+        filterQuality: FilterQuality.medium,
         errorBuilder: (_, _, _) => fallback(),
       );
     }
@@ -130,9 +146,10 @@ class PackageImage extends StatelessWidget {
 /// Cover-fit image for an [EventSetup] (remote URL or inline data URL), with a
 /// branded letter-tile fallback. Mirrors [ProductImage].
 class SetupImage extends StatelessWidget {
-  const SetupImage(this.setup, {super.key});
+  const SetupImage(this.setup, {super.key, this.cacheWidth = 600});
 
   final EventSetup setup;
+  final int? cacheWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -147,6 +164,8 @@ class SetupImage extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        cacheWidth: cacheWidth,
+        filterQuality: FilterQuality.medium,
         loadingBuilder: (context, child, progress) =>
             progress == null ? child : const PlaceholderBox(radius: 12),
         errorBuilder: (_, _, _) => fallback(),
@@ -158,6 +177,8 @@ class SetupImage extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        cacheWidth: cacheWidth,
+        filterQuality: FilterQuality.medium,
         errorBuilder: (_, _, _) => fallback(),
       );
     }

@@ -11,8 +11,11 @@ class Motion {
   /// Taps, toggles, press feedback — barely-there.
   static const Duration quick = Duration(milliseconds: 120);
 
-  /// The default for most transitions (tab switches, container tweens).
+  /// The default for most transitions (container tweens, sheets).
   static const Duration base = Duration(milliseconds: 300);
+
+  /// Tab and shell switches — responsive, subtle, and settles without lag.
+  static const Duration tab = Duration(milliseconds: 220);
 
   /// Section reveals and staggered entrances.
   static const Duration slow = Duration(milliseconds: 480);
