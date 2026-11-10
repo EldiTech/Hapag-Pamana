@@ -296,6 +296,9 @@ class AboutContent {
     this.contact = const AboutContact(),
     this.social = const AboutSocial(),
     this.footer = 'FILL AT HOME · SINCE 2016',
+    this.termsOfServiceData,
+    this.privacyPolicyData,
+    this.faqGroupsData,
   });
 
   final AboutMantra mantra;
@@ -311,6 +314,9 @@ class AboutContent {
   final AboutContact contact;
   final AboutSocial social;
   final String footer;
+  final Map<String, dynamic>? termsOfServiceData;
+  final Map<String, dynamic>? privacyPolicyData;
+  final List<dynamic>? faqGroupsData;
 
   static const List<AboutMilestone> defaultMilestones = [
     AboutMilestone(
@@ -505,6 +511,13 @@ class AboutContent {
       contact: AboutContact.fromMap(data['contact'] as Map<String, dynamic>?),
       social: AboutSocial.fromMap(data['social'] as Map<String, dynamic>?),
       footer: (data['footer'] as String?) ?? 'FILL AT HOME · SINCE 2016',
+      termsOfServiceData: data['termsOfService'] is Map<String, dynamic>
+          ? data['termsOfService'] as Map<String, dynamic>
+          : null,
+      privacyPolicyData: data['privacyPolicy'] is Map<String, dynamic>
+          ? data['privacyPolicy'] as Map<String, dynamic>
+          : null,
+      faqGroupsData: data['faqGroups'] is List ? data['faqGroups'] as List<dynamic> : null,
     );
   }
 }

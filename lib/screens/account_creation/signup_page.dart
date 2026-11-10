@@ -228,6 +228,9 @@ class _SignUpPageState extends State<SignUpPage> {
 
     final primary = AppButton.primary(
       label: primaryLabel,
+      padding: _step == 0
+          ? null
+          : const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       busy: _submitting,
       onPressed: _submitting ? null : _next,
       fullWidth: _step == 0,
@@ -351,6 +354,10 @@ class _SignUpPageState extends State<SignUpPage> {
                                     AppButton.secondary(
                                       label: 'BACK',
                                       icon: Icons.arrow_back_rounded,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 14,
+                                      ),
                                       onPressed: _submitting ? null : _back,
                                     ),
                                     const SizedBox(width: 12),

@@ -10,7 +10,7 @@ import '../../core/widgets/app_widgets.dart';
 import '../../data/customer.dart';
 import '../../data/customer_repository.dart';
 import '../../widgets.dart';
-import 'settings/settings_page.dart';
+import 'settings/settings.dart';
 
 /// Member account tab — shows the signed-in customer's profile (from
 /// `customers/{uid}`, falling back to the auth record), lets them set a profile
@@ -64,12 +64,12 @@ class _AccountPageState extends State<AccountPage> {
 
   Duration _d(int ms) => Duration(milliseconds: ms);
 
+  void _push(Widget page) {
+    Navigator.of(context).push(BrandPageRoute(builder: (_) => page));
+  }
+
   void _openSettings() {
-    Navigator.of(context).push(
-      BrandPageRoute(
-        builder: (_) => UserSettingsPage(onLogout: widget.onLogout),
-      ),
-    );
+    _push(UserSettingsPage(onLogout: widget.onLogout));
   }
 
   // ── Profile photo ─────────────────────────────────────────────────────────
@@ -276,13 +276,23 @@ class _AccountPageState extends State<AccountPage> {
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Text(
-                    'Settings',
-                    style: AppTextStyles.sans(
-                      size: 14,
-                      weight: FontWeight.w600,
-                      color: AppColors.brown,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Settings',
+                        style: AppTextStyles.sans(
+                          size: 14,
+                          weight: FontWeight.w600,
+                          color: AppColors.brown,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Orders, notifications, preferences & security.',
+                        style: AppTextStyles.bodySmall,
+                      ),
+                    ],
                   ),
                 ),
                 Icon(
@@ -294,10 +304,44 @@ class _AccountPageState extends State<AccountPage> {
             ),
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.xl),
 
         FadeSlideIn(
-          delay: _d(260),
+          delay: _d(230),
+          child: SettingsSection(
+            title: 'HELP & LEGAL',
+            rows: [
+              SettingsNavRow(
+                icon: Icons.help_outline,
+                title: 'Help & FAQ',
+                subtitle: 'Answers to common booking and menu questions.',
+                onTap: () => _push(const HelpFaqPage()),
+              ),
+              SettingsNavRow(
+                icon: Icons.info_outline,
+                title: 'About Hapag Pamana',
+                subtitle: 'Our story, heritage kitchen, and team.',
+                onTap: () => _push(const SettingsAboutPage()),
+              ),
+              SettingsNavRow(
+                icon: Icons.privacy_tip_outlined,
+                title: 'Privacy Policy',
+                subtitle: 'How we handle your personal details.',
+                onTap: () => _push(const PrivacyPolicyPage()),
+              ),
+              SettingsNavRow(
+                icon: Icons.description_outlined,
+                title: 'Terms of Service',
+                subtitle: 'Booking, payment, and cancellation terms.',
+                onTap: () => _push(const TermsOfServicePage()),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.section),
+
+        FadeSlideIn(
+          delay: _d(280),
           child: AppButton.secondary(
             label: 'LOG OUT',
             icon: Icons.logout,

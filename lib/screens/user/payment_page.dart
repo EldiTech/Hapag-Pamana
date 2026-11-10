@@ -427,6 +427,10 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
             AppButton.primary(
               label: 'PAY ${peso(widget.due)} NOW',
               icon: Icons.lock_outline_rounded,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 16,
+              ),
               busy: _busy,
               fullWidth: true,
               onPressed: _pay,
@@ -451,6 +455,10 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
             AppButton.primary(
               label: 'I\'VE PAID — CHECK NOW',
               icon: Icons.refresh_rounded,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 16,
+              ),
               busy: _busy,
               fullWidth: true,
               onPressed: () => _check(),
@@ -461,16 +469,24 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
                 Expanded(
                   child: AppButton.secondary(
                     label: 'PAY LATER',
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 14,
+                    ),
                     onPressed: _busy
                         ? null
                         : () => Navigator.of(context).pop(false),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.md),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: AppButton.secondary(
                     label: 'REOPEN',
                     icon: Icons.open_in_new_rounded,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 14,
+                    ),
                     onPressed: _busy || _checkoutUrl == null
                         ? null
                         : () => _open(_checkoutUrl!),

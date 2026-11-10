@@ -139,7 +139,7 @@
   gap: 10px;
   padding: 22px;
   background: var(--paper-2);
-  border: 1px solid var(--hair-soft);
+  border: 1px solid var(--gold-hair);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
   text-decoration: none;
@@ -152,7 +152,7 @@
 .owner-card:focus-visible {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: var(--gold-hair);
+  border-color: var(--ink);
 }
 /* bento sizing — first two desks get the wide spotlight tiles */
 .owner-card:nth-child(1),
@@ -161,6 +161,7 @@
   flex-direction: row;
   align-items: center;
   gap: 18px;
+  border-top: 2.5px solid var(--ink);
 }
 .owner-card:nth-child(1) .owner-card-label,
 .owner-card:nth-child(2) .owner-card-label {

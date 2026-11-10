@@ -81,8 +81,9 @@
 .client-ava {
   flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%;
   display: grid; place-items: center;
-  background: linear-gradient(160deg, var(--gold-light), var(--gold-deep));
-  color: #FFFBF0; font-family: var(--display); font-weight: 700; font-size: 1.2rem;
+  background-color: #503311;
+  border: 1.5px solid #AC834B;
+  color: #F6EFDF; font-family: var(--display); font-weight: 700; font-size: 1.2rem;
 }
 .client-txt { min-width: 0; }
 .client-txt strong {

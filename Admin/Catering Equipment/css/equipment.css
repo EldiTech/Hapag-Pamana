@@ -17,17 +17,16 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 12px;
-  background: var(--paper-2);
+  padding: 5px 11px;
+  background-color: var(--paper-3);
   border: 1px solid var(--gold-hair);
-  border-radius: 20px;
+  border-radius: var(--r);
   color: var(--ink);
   cursor: pointer;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   user-select: none;
   list-style: none;
   transition: all 0.15s ease;
-  box-shadow: var(--shadow-sm);
 }
 
 .eq-dropdown summary.eq-dropdown-btn::-webkit-details-marker {
@@ -35,7 +34,7 @@
 }
 
 .eq-dropdown summary.eq-dropdown-btn:hover {
-  background: var(--paper-3);
+  background-color: var(--vellum);
   border-color: var(--gold);
 }
 
@@ -54,9 +53,9 @@
 }
 
 .eq-dd-arrow {
-  color: var(--gold);
-  font-size: 0.7rem;
-  display: inline-block;
+  color: var(--gold-deep);
+  font-size: 14px;
+  display: inline-flex;
   transition: transform 0.2s ease;
   margin-left: 2px;
 }
@@ -66,13 +65,13 @@
 }
 
 .eq-dropdown-menu {
-  margin-top: 8px;
+  margin-top: 6px;
   min-width: 280px;
   max-width: 380px;
-  background: var(--paper-2);
+  background-color: var(--paper-2);
   border: 1px solid var(--gold-hair);
   border-radius: var(--r);
-  box-shadow: var(--shadow-sm), 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
   animation: eqMenuSlide 0.15s ease-out;
 }
@@ -87,9 +86,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.18);
-  border-bottom: 1px solid var(--hair);
-  font-size: 0.75rem;
+  background-color: var(--vellum);
+  border-bottom: 1px solid var(--gold-hair);
+  font-size: 0.76rem;
 }
 
 .eq-dropdown-head strong {

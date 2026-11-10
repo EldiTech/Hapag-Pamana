@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#503413" />
-  <title>HapagPamana · About Page</title>
+  <meta name="theme-color" content="#503311" />
+  <title>HapagPamana · About, Legal & FAQ</title>
 
   <link rel="icon" type="image/png" href="../../assets/HapagPamana-nav.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -14,71 +14,38 @@
     rel="stylesheet"
   />
   <link rel="stylesheet" href="../css/global.css" />
-  <style>
-    .about-section { margin-bottom: 24px; }
-    .about-item-card {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      padding: 14px 16px;
-      background: var(--paper-3);
-      border: 1px solid var(--hair);
-      border-radius: var(--r);
-      margin-bottom: 10px;
-    }
-    .about-item-card:hover { border-color: var(--gold); }
-    .about-item-card .meta { flex: 1; min-width: 0; }
-    .about-item-card .meta strong { display: block; font-family: var(--display); font-size: 17px; color: var(--ink); }
-    .about-item-card .meta small { display: block; color: var(--ink-soft); font-size: 13px; margin-top: 4px; line-height: 1.4; }
-    .about-item-card .tag-pill {
-      display: inline-block;
-      padding: 2px 8px;
-      background: var(--vellum);
-      border-radius: 99px;
-      font-size: 11px;
-      color: var(--gold-deep);
-      font-weight: 600;
-      margin-top: 4px;
-    }
-    .about-item-actions { display: flex; gap: 6px; flex: none; align-self: center; }
-    .milestone-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      background: var(--brown);
-      color: var(--paper-2);
-      border-radius: var(--r);
-      font-family: var(--engraved);
-      font-size: 10px;
-      letter-spacing: 1px;
-    }
-    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    @media (max-width: 768px) { .form-grid-2 { grid-template-columns: 1fr; } }
-  </style>
 </head>
 <body>
   <template id="tpl-view">
     <div class="bento about-bento">
-      <!-- Top banner / Actions -->
+      <!-- Top banner / Actions & Section Tabs -->
       <section class="bento-tile b-12">
-        <div class="bento-head">
+        <div class="bento-head" style="flex-wrap: wrap; gap: 12px;">
           <div class="label-grp">
             <span class="stat-ic"><span class="ic" data-icon="book"></span></span>
-            <span class="bento-label">About Page Content</span>
+            <span class="bento-label">About, Policies & Help Content</span>
           </div>
-          <div style="display:flex; gap:10px;">
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <button class="btn btn-ghost" id="aboutReset"><span class="ic" data-icon="undo"></span>Restore Defaults</button>
             <button class="btn btn-primary" id="aboutSave"><span class="ic" data-icon="upload"></span>Save Changes</button>
           </div>
         </div>
-        <p class="bento-desc">Manage the narrative, family timeline, offerings, contact details, and social channels displayed on the guest and member About screen.</p>
+        <p class="bento-desc" style="margin-bottom: 14px;">Manage the About narrative, Terms of Service clauses, Privacy Policy clauses, and Help &amp; FAQ items displayed live in the customer app.</p>
+        <div class="seg" id="contentSectionTabs" role="tablist" style="display:inline-flex; flex-wrap:wrap; gap:6px;">
+          <button type="button" class="active" data-section-tab="about">About Page</button>
+          <button type="button" data-section-tab="tos">Terms of Service</button>
+          <button type="button" data-section-tab="privacy">Privacy Policy</button>
+          <button type="button" data-section-tab="faq">Help &amp; FAQ</button>
+        </div>
       </section>
 
+      <!-- ════════════════════════════ TAB: ABOUT PAGE ════════════════════════════ -->
       <!-- 1. Hero Mantra & Story -->
-      <section class="bento-tile b-6">
+      <section class="bento-tile b-6" data-section-pane="about">
         <div class="bento-head">
           <div class="label-grp">
             <span class="stat-ic"><span class="ic" data-icon="star"></span></span>
-            <span class="bento-label">Hero & Mantra</span>
+            <span class="bento-label">Hero &amp; Mantra</span>
           </div>
         </div>
         <div class="field">
@@ -96,7 +63,7 @@
       </section>
 
       <!-- 2. Story / Where it Began -->
-      <section class="bento-tile b-6">
+      <section class="bento-tile b-6" data-section-pane="about">
         <div class="bento-head">
           <div class="label-grp">
             <span class="stat-ic"><span class="ic" data-icon="ledger"></span></span>
@@ -124,7 +91,7 @@
       </section>
 
       <!-- 3. Milestones Timeline -->
-      <section class="bento-tile b-12">
+      <section class="bento-tile b-12" data-section-pane="about">
         <div class="bento-head">
           <div class="label-grp">
             <span class="stat-ic"><span class="ic" data-icon="calendar"></span></span>
@@ -146,7 +113,7 @@
       </section>
 
       <!-- 4. Offerings -->
-      <section class="bento-tile b-12">
+      <section class="bento-tile b-12" data-section-pane="about">
         <div class="bento-head">
           <div class="label-grp">
             <span class="stat-ic"><span class="ic" data-icon="dish"></span></span>
@@ -172,11 +139,11 @@
       </section>
 
       <!-- 5. Contact Details -->
-      <section class="bento-tile b-6">
+      <section class="bento-tile b-6" data-section-pane="about">
         <div class="bento-head">
           <div class="label-grp">
             <span class="stat-ic"><span class="ic" data-icon="pin"></span></span>
-            <span class="bento-label">Contact & Location</span>
+            <span class="bento-label">Contact &amp; Location</span>
           </div>
         </div>
         <div class="field">
@@ -204,7 +171,7 @@
       </section>
 
       <!-- 6. Social Channels -->
-      <section class="bento-tile b-6">
+      <section class="bento-tile b-6" data-section-pane="about">
         <div class="bento-head">
           <div class="label-grp">
             <span class="stat-ic"><span class="ic" data-icon="eye"></span></span>
@@ -226,11 +193,11 @@
       </section>
 
       <!-- 7. Family Closing Quote & Footer -->
-      <section class="bento-tile b-12">
+      <section class="bento-tile b-12" data-section-pane="about">
         <div class="bento-head">
           <div class="label-grp">
             <span class="stat-ic"><span class="ic" data-icon="heart"></span></span>
-            <span class="bento-label">Family Closing Quote & Footer Sign-off</span>
+            <span class="bento-label">Family Closing Quote &amp; Footer Sign-off</span>
           </div>
         </div>
         <div class="field">
@@ -247,6 +214,65 @@
             <input class="control" id="footerText" placeholder="FILL AT HOME · SINCE 2016" />
           </div>
         </div>
+      </section>
+
+      <!-- ════════════════════════════ TAB: TERMS OF SERVICE ════════════════════════════ -->
+      <section class="bento-tile b-12" data-section-pane="tos" hidden>
+        <div class="bento-head" style="flex-wrap:wrap; gap:10px;">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="ledger"></span></span>
+            <span class="bento-label">Terms of Service</span>
+          </div>
+          <button class="btn btn-primary btn-sm" id="tosClauseAdd"><span class="ic" data-icon="plus"></span>Add Numbered Clause</button>
+        </div>
+        <p class="bento-desc">Each clause is automatically numbered (01, 02, 03…) in the customer app with a prominent badge indicator so members always see which section they are reading.</p>
+        <div class="form-grid-2" style="margin-bottom: 16px;">
+          <div class="field">
+            <label>Last Updated Date</label>
+            <input class="control" id="tosLastUpdated" placeholder="4 August 2026" />
+          </div>
+          <div class="field">
+            <label>Opening Subtitle (Lede)</label>
+            <input class="control" id="tosLede" placeholder="The understanding between you and our kitchen when you order through this app." />
+          </div>
+        </div>
+        <div id="tosClauseList"></div>
+      </section>
+
+      <!-- ════════════════════════════ TAB: PRIVACY POLICY ════════════════════════════ -->
+      <section class="bento-tile b-12" data-section-pane="privacy" hidden>
+        <div class="bento-head" style="flex-wrap:wrap; gap:10px;">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="shield"></span></span>
+            <span class="bento-label">Privacy Policy</span>
+          </div>
+          <button class="btn btn-primary btn-sm" id="ppClauseAdd"><span class="ic" data-icon="plus"></span>Add Numbered Clause</button>
+        </div>
+        <p class="bento-desc">Manage the numbered Privacy Policy clauses, paragraphs, and bullet lists shown in the app.</p>
+        <div class="form-grid-2" style="margin-bottom: 16px;">
+          <div class="field">
+            <label>Last Updated Date</label>
+            <input class="control" id="ppLastUpdated" placeholder="4 August 2026" />
+          </div>
+          <div class="field">
+            <label>Opening Subtitle (Lede)</label>
+            <input class="control" id="ppLede" placeholder="What we keep about you, who can see it, and how to have it changed or removed." />
+          </div>
+        </div>
+        <div id="ppClauseList"></div>
+      </section>
+
+      <!-- ════════════════════════════ TAB: HELP & FAQ ════════════════════════════ -->
+      <section class="bento-tile b-12" data-section-pane="faq" hidden>
+        <div class="bento-head" style="flex-wrap:wrap; gap:10px;">
+          <div class="label-grp">
+            <span class="stat-ic"><span class="ic" data-icon="book"></span></span>
+            <span class="bento-label">Help &amp; FAQ</span>
+          </div>
+          <button class="btn btn-primary btn-sm" id="faqGroupAdd"><span class="ic" data-icon="plus"></span>Add FAQ Category</button>
+        </div>
+        <p class="bento-desc">Organize frequently asked questions by category. Questions are numbered automatically within each category in the app.</p>
+        <div id="faqGroupList"></div>
       </section>
     </div>
   </template>

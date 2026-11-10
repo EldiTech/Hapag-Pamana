@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hapag_pamana/brand.dart';
+import 'package:hapag_pamana/data/about_content.dart';
 import 'package:hapag_pamana/data/allergens.dart';
 import 'package:hapag_pamana/data/member_preferences.dart';
 import 'package:hapag_pamana/screens/user/settings/settings.dart';
@@ -152,13 +153,50 @@ void main() {
     testWidgets('the policies render their clauses', (tester) async {
       await _open(tester, const PrivacyPolicyPage());
       expect(find.textContaining('LAST UPDATED'), findsOneWidget);
+      expect(find.text('01'), findsOneWidget);
+      expect(find.text('1 of 10'), findsOneWidget);
       expect(find.text('WHAT WE KEEP'), findsOneWidget);
       await _scrollTo(tester, find.text('WHEN THIS CHANGES'));
 
       await _open(tester, const TermsOfServicePage());
+      expect(find.text('01'), findsOneWidget);
+      expect(find.text('1 of 13'), findsOneWidget);
       expect(find.text('THE AGREEMENT'), findsOneWidget);
       await _scrollTo(tester, find.text('THE DOWNPAYMENT'));
       await _scrollTo(tester, find.text('CHANGES AND CANCELLATIONS'));
+    });
+
+    testWidgets('the policies reflect Content Moderator overrides', (
+      tester,
+    ) async {
+      addTearDown(() {
+        AboutContentScope.notifier.value = const AboutContent();
+      });
+
+      AboutContentScope.notifier.value = AboutContent.fromMap(const {
+        'termsOfService': {
+          'lastUpdated': '10 November 2026',
+          'lede': 'Custom moderator lede.',
+          'clauses': [
+            {
+              'heading': 'Moderator Custom Clause',
+              'paragraphs': ['Updated directly from Content Moderator.'],
+              'bullets': ['First custom bullet'],
+            },
+          ],
+        },
+      });
+
+      await _open(tester, const TermsOfServicePage());
+      expect(find.textContaining('10 NOVEMBER 2026'), findsOneWidget);
+      expect(find.text('Custom moderator lede.'), findsOneWidget);
+      expect(find.text('MODERATOR CUSTOM CLAUSE'), findsOneWidget);
+      expect(
+        find.text('Updated directly from Content Moderator.'),
+        findsOneWidget,
+      );
+      expect(find.text('First custom bullet'), findsOneWidget);
+      expect(find.text('1 of 1'), findsOneWidget);
     });
 
     testWidgets('Contact us lists live ways to reach the kitchen', (

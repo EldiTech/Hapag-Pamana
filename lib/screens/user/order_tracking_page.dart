@@ -368,14 +368,22 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
             Expanded(
               child: AppButton.secondary(
                 label: 'KEEP IT',
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 14,
+                ),
                 onPressed: () => Navigator.of(dialogContext).pop(false),
               ),
             ),
-            const SizedBox(width: AppSpacing.md),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: AppButton.primary(
                 label: 'DISCARD',
                 icon: Icons.delete_outline_rounded,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 14,
+                ),
                 onPressed: () => Navigator.of(dialogContext).pop(true),
               ),
             ),
@@ -1010,6 +1018,10 @@ class _OrderSheet extends StatelessWidget {
                   ? 'PAY ${peso(order.paymentDue)} NOW'
                   : 'PAY THE DOWNPAYMENT',
               icon: Icons.lock_outline_rounded,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 16,
+              ),
               fullWidth: true,
               onPressed: onPay,
             ),

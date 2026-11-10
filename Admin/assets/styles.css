@@ -1,274 +1,532 @@
 /* ════════════════════════════════════════════════════════════════
-   HapagPamana · Admin portal
-   Palette sampled from Assets/HapagPamana.png — same tokens as the app.
+   HapagPamana · Admin Sign-In Portal ("Ukit & Bahay Kubo")
+   Uses assets/Log In.png as the full-bleed heritage background and
+   follows the reference sign-in ledger design.
    ════════════════════════════════════════════════════════════════ */
-:root {
-  --cream:       #F6EFDF; /* parchment ground            */
-  --cream-edge:  #EADFC8; /* edge vignette               */
-  --surface:     #FCF8EF; /* card / field surface        */
-  --brown:       #503413; /* coffee brown (primary ink)  */
-  --brown-soft:  #7A5630; /* secondary text              */
-  --olive:       #44462B; /* olive green accent          */
-  --gold:        #AF854A; /* antique gold (decorative)   */
-  --gold-deep:   #7E5E2B; /* AA-contrast gold on cream   */
-  --gold-light:  #D9A85C; /* AA-contrast gold on brown   */
 
-  --hairline:    rgba(80, 52, 19, 0.12);
-  --hairline-lt: rgba(246, 239, 223, 0.22);
-  --shadow:      0 24px 60px -28px rgba(80, 52, 19, 0.45);
+:root,
+[data-theme="light"] {
+  --paper:       #F3EBD9;   /* Warm heritage parchment ground */
+  --paper-2:     #F9F4E8;   /* Sign-in card surface */
+  --paper-3:     #FCF9F2;   /* Crisp input field surface */
+  --vellum:      #EAE0CC;   /* Right-hand vellum ground */
+  --callout-bg:  #F1E7D3;   /* Secure ledger access callout box */
+  --callout-bd:  #DCC9A5;
 
-  --serif:    "Cormorant Garamond", Georgia, serif;
-  --sans:     "Montserrat", system-ui, -apple-system, sans-serif;
-  --engraved: "Cinzel", Georgia, serif;
+  --ink:         #3A220A;   /* Deep roasted timber ink */
+  --ink-deep:    #281605;   /* Darkest timber hover / footer wave */
+  --ink-soft:    #5C4020;   /* Secondary bark text */
+  --ink-faint:   #8A6C45;   /* Muted reed placeholder */
 
-  --radius: 20px;
-  --ease: cubic-bezier(0.22, 1, 0.36, 1); /* signature settle — eases in to rest */
+  --gold:        #AC834B;   /* Philippine Sun Ochre */
+  --gold-deep:   #845F2B;   /* Burnished ochre */
+  --gold-light:  #D8BC90;   /* Sunlit ochre highlight */
+  --card-border: #B5915B;   /* Card frame border */
+  --input-bd:    #D5C29F;   /* Input border */
+
+  --danger:      #8E3220;
+  --danger-bg:   rgba(142, 50, 32, 0.09);
+  --warn:        #9A631A;
+  --warn-bg:     rgba(154, 99, 26, 0.10);
+
+  --hair:        rgba(58, 34, 10, 0.16);
+  --hair-soft:   rgba(58, 34, 10, 0.09);
+  --gold-hair:   rgba(172, 131, 75, 0.38);
+  --gold-hair2:  rgba(172, 131, 75, 0.22);
+
+  --serif:       "Cormorant Garamond", Georgia, serif;
+  --body:        "Spectral", Georgia, serif;
+  --display:     "Cinzel", Georgia, serif;
+
+  --r-sm:        6px;
+  --r-md:        10px;
+  --shadow-card: 0 18px 42px rgba(42, 24, 6, 0.13), 0 2px 6px rgba(42, 24, 6, 0.06);
 }
 
-* { box-sizing: border-box; }
+[data-theme="dark"] {
+  --paper:       #1C130B;
+  --paper-2:     #24190F;
+  --paper-3:     #2D1F13;
+  --vellum:      #170F08;
+  --callout-bg:  #2C1E12;
+  --callout-bd:  rgba(200, 155, 94, 0.30);
 
-html, body { height: 100%; }
+  --ink:         #F6EFDF;
+  --ink-deep:    #120B05;
+  --ink-soft:   #D2C0A0;
+  --ink-faint:   #9E8663;
 
-body {
+  --gold:        #C89B5E;
+  --gold-deep:   #DCA668;
+  --gold-light:  #E2B878;
+  --card-border: rgba(200, 155, 94, 0.45);
+  --input-bd:    rgba(200, 155, 94, 0.32);
+
+  --danger:      #E07A64;
+  --danger-bg:   rgba(224, 122, 100, 0.14);
+  --warn:        #E0A346;
+  --warn-bg:     rgba(224, 163, 70, 0.14);
+
+  --hair:        rgba(246, 239, 223, 0.16);
+  --hair-soft:   rgba(246, 239, 223, 0.09);
+  --gold-hair:   rgba(200, 155, 94, 0.36);
+  --gold-hair2:  rgba(200, 155, 94, 0.20);
+
+  --shadow-card: 0 20px 48px rgba(0, 0, 0, 0.55);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
   margin: 0;
-  font-family: var(--sans);
-  color: var(--brown);
-  background: var(--cream);
+  padding: 0;
+}
+
+html, body {
+  min-height: 100%;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  overflow-x: hidden;
 }
 
-/* Visible keyboard focus for every interactive control. */
-:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
-
-/* ─────────────────────────── Layout ─────────────────────────── */
+/* ── Main Split Layout (Full-Bleed Log In.png Background) ───────── */
 .layout {
-  min-height: 100dvh;
+  min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-@media (min-width: 900px) {
-  /* 70 / 30 split — form column keeps a floor so it stays usable on laptops */
-  .layout { grid-template-columns: minmax(0, 7fr) minmax(340px, 3fr); }
+  grid-template-columns: 1.12fr 0.88fr;
+  background-color: var(--paper);
+  background-image: url("Log%20In.png");
+  background-size: 100% 100%;
+  background-position: left bottom;
+  background-repeat: no-repeat;
+  position: relative;
+  overflow: hidden;
 }
 
-/* ───────────────────── Brand showcase panel ──────────────────── */
+/* ── Left Column: Heritage Bahay Kubo Showcase ──────────────────── */
 .brand-panel {
   position: relative;
-  min-width: 0;
-  display: none;
+  display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 56px 48px;
+  padding: 0;
   overflow: hidden;
-  color: var(--cream);
-  background:
-    radial-gradient(120% 120% at 30% 20%, #6b4a23 0%, var(--brown) 48%, #3a2710 100%);
 }
-@media (min-width: 900px) { .brand-panel { display: flex; } }
 
-/* Inset "plate" frame — turns the open canvas into a deliberate, framed
-   field and echoes the logo's double-ring border. */
+/* Soft parchment veil that masks the smaller background sun at (44%, 25%),
+   masks the smaller background hut at (32%, 57%), and clears a warm reading
+   area behind "HapagPamana" while keeping the woven dark-brown & gold wave,
+   left palm trees, and water horizon intact. */
 .brand-panel::before {
   content: "";
   position: absolute;
-  inset: 30px;
-  border: 1px solid rgba(217, 168, 92, 0.30);
-  border-radius: 12px;
-  pointer-events: none;
-  z-index: 2;
-}
-/* Soft spotlight that lifts the logo cluster off the field. */
-.brand-panel::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  width: min(70%, 620px);
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(246, 239, 223, 0.10) 0%, rgba(246, 239, 223, 0) 62%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Faint banig (woven) lattice — echoes the app's WeavePainter */
-.weave {
-  position: absolute;
   inset: 0;
-  z-index: 0;
+  background:
+    radial-gradient(ellipse 36% 26% at 44% 25%, #F2E6CE 65%, rgba(242, 230, 206, 0.85) 84%, transparent 100%),
+    radial-gradient(ellipse 22% 16% at 32% 57%, #ECD9B8 72%, rgba(236, 217, 184, 0.85) 88%, transparent 100%),
+    radial-gradient(ellipse 46% 18% at 54% 72%, rgba(243, 234, 214, 0.92) 45%, rgba(243, 234, 214, 0.65) 75%, transparent 100%);
   pointer-events: none;
-  opacity: 0.5;
-  background-image:
-    repeating-linear-gradient(45deg,  rgba(246,239,223,0.05) 0 1px, transparent 1px 30px),
-    repeating-linear-gradient(-45deg, rgba(246,239,223,0.05) 0 1px, transparent 1px 30px);
+  z-index: 1;
 }
 
-.brand-inner {
+[data-theme="dark"] .brand-panel::before {
+  background:
+    radial-gradient(ellipse 36% 26% at 44% 25%, #423322 65%, rgba(66, 51, 34, 0.85) 84%, transparent 100%),
+    radial-gradient(ellipse 22% 16% at 32% 57%, #3F3120 70%, rgba(63, 49, 32, 0.85) 88%, transparent 100%),
+    linear-gradient(180deg, rgba(24, 15, 8, 0.85) 0%, rgba(24, 15, 8, 0.78) 55%, rgba(20, 12, 5, 0.90) 100%);
+}
+
+.brand-frame {
   position: relative;
-  z-index: 1;
-  max-width: 460px;
-  text-align: center;
+  z-index: 3;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 26px 46px 16px 56px;
 }
 
-.medallion {
-  width: 188px;
-  height: 188px;
-  margin: 0 auto 28px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--cream);
-  border: 3px solid rgba(246, 239, 223, 0.5);
-  box-shadow: 0 14px 36px -22px rgba(0, 0, 0, 0.45);
-}
-.medallion-logo { width: 90%; height: 90%; object-fit: contain; }
-
-.brand-title {
-  margin: 0;
-  font-family: var(--serif);
+/* ── Top Metadata Bar ───────────────────────────────────────────── */
+.brand-top-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-left: 14px;
+  font-family: var(--display);
+  font-size: 0.68rem;
   font-weight: 700;
-  font-size: 2.6rem;
-  letter-spacing: 0.5px;
-  line-height: 1;
-}
-.brand-sub {
-  margin: 10px 0 22px;
-  font-family: var(--engraved);
-  font-weight: 600;
-  font-size: 0.82rem;
-  letter-spacing: 4px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold-light);
+  color: var(--ink);
 }
 
-.brand-foot {
-  position: absolute;
-  bottom: 34px;
-  z-index: 1;
-  margin: 0;
-  font-size: 0.72rem;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  color: rgba(246, 239, 223, 0.78);
-}
-
-/* ─────────── Engraved divider label (echoes logo ring) ─────────── */
-.engraved {
+.meta-lead {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--engraved);
-  font-weight: 600;
-  font-size: 0.7rem;
-  letter-spacing: 3px;
-  text-transform: uppercase;
 }
-.engraved .rule { width: 26px; height: 1px; display: inline-block; }
-.engraved .dot {
-  width: 3px; height: 3px; border-radius: 50%;
-  background: var(--gold); display: inline-block;
-}
-.engraved--light { color: rgba(246, 239, 223, 0.85); }
-.engraved--light .rule { background: var(--hairline-lt); }
-.engraved--dark { color: var(--gold-deep); }
-.engraved--dark .rule { background: var(--hairline); }
 
-/* ─────────────────────── Form panel ─────────────────────── */
-.form-panel {
+.meta-ornament {
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.meta-sep {
+  flex: 1;
+  height: 1px;
+  background-color: rgba(58, 34, 10, 0.42);
+}
+
+[data-theme="dark"] .meta-sep {
+  background-color: rgba(200, 155, 94, 0.35);
+}
+
+/* ── Centerpiece Bahay Kubo & Typography ────────────────────────── */
+.brand-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin: auto 0;
+  padding: 0 0 28px;
+}
+
+.woodblock-plate {
   position: relative;
-  min-width: 0;
+  width: 100%;
+  max-width: 470px;
+  padding: 0;
+  margin-bottom: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 24px;
-  background:
-    radial-gradient(110% 90% at 50% 0%, var(--cream) 55%, var(--cream-edge) 100%);
 }
-@media (max-width: 420px) { .form-panel { padding: 36px 18px; } }
 
-.form-card {
+.woodblock-plate::before {
+  content: "";
+  position: absolute;
+  inset: 42% 25% 12% 15%;
+  background: rgba(244, 233, 212, 0.94);
+  filter: blur(8px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme="dark"] .woodblock-plate::before {
+  inset: -6% -4%;
+  background: radial-gradient(ellipse 52% 48% at 50% 52%, rgba(200, 155, 94, 0.16) 0%, transparent 72%);
+  filter: none;
+}
+
+.woodblock-art {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 420px;
+  max-width: 455px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+[data-theme="dark"] .woodblock-art {
+  filter: brightness(1.35) sepia(0.20) saturate(1.05) drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+}
+
+.brand-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(2.9rem, 4.2vw, 3.9rem);
+  line-height: 1.04;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.brand-sub {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-family: var(--display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.21em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+
+.brand-sub .sub-rule {
+  display: inline-block;
+  width: 48px;
+  height: 1.5px;
+  background-color: var(--ink);
+}
+
+/* ── Engraved Rule Divider ──────────────────────────────────────── */
+.engraved {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--display);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.engraved .rule {
+  display: inline-block;
+  width: 54px;
+  height: 1px;
+  background-color: rgba(58, 34, 10, 0.55);
+}
+
+[data-theme="dark"] .engraved .rule {
+  background-color: rgba(200, 155, 94, 0.48);
+}
+
+.engraved-ornament {
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+/* ── Bottom Footer Over Dark Timber Wave ────────────────────────── */
+.brand-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 58px;
+  padding-top: 8px;
+  margin-left: -28px;
+  font-family: var(--display);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #F4EBDC;
+  text-shadow: 0 1px 3px rgba(18, 10, 3, 0.75);
+}
+
+.foot-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #F4EBDC;
+}
+
+.foot-item svg {
+  color: #F4EBDC;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(18, 10, 3, 0.65));
+}
+
+/* ── Right Column: Sign-In Form Panel ───────────────────────────── */
+.form-panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 28px;
+  background-color: rgba(232, 221, 200, 0.48);
+  border-left: 1px solid rgba(58, 34, 10, 0.15);
   min-width: 0;
-  margin: 0 auto;
-  text-align: center;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .form-panel {
+  background-color: rgba(20, 13, 7, 0.86);
+  border-left-color: rgba(200, 155, 94, 0.22);
+}
+
+.botanical-corner {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.botanical-corner--tl {
+  top: 0;
+  left: 0;
+  width: 190px;
+  height: auto;
+}
+
+.theme-toggle-login {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background-color: var(--paper-2);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(42, 24, 6, 0.08);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.theme-toggle-login:hover {
+  background-color: var(--paper-3);
+  border-color: var(--gold-deep);
+  color: var(--gold-deep);
+}
+
+.theme-toggle-login .ic {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+}
+
+.theme-toggle-login svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Sign-In Card ───────────────────────────────────────────────── */
+.form-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 440px;
+  min-width: 0;
+  background-color: var(--paper-2);
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--r-md);
+  padding: 30px 32px 24px;
+  box-shadow: var(--shadow-card);
+}
+
+.mobile-brand {
+  display: none;
+  justify-content: center;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background-color: #F3EBD9;
+  border: 1px solid var(--gold-hair);
+  border-radius: var(--r-sm);
 }
 
 .mobile-logo {
-  width: 132px;
-  margin: 0 auto 12px;
+  width: 160px;
+  height: auto;
   display: block;
 }
-@media (min-width: 900px) { .mobile-logo { display: none; } }
 
-/* Circular seal — brown outer ring + gold inner ring (logo's double stamp) */
-.seal {
-  width: 66px;
-  height: 66px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--surface);
-  border: 1.4px solid var(--brown);
-  box-shadow: 0 8px 18px -10px rgba(80, 52, 19, 0.5);
+.card-header {
+  text-align: center;
+  margin-bottom: 20px;
 }
+
+.seal {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
 .seal-ring {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(175, 133, 74, 0.5);
-  color: var(--gold-deep);
+  background-color: var(--paper);
+  border: 1.5px solid var(--gold);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.engraved--dark {
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  color: var(--ink);
+}
+
+.engraved--dark .rule {
+  width: 44px;
+  background-color: rgba(154, 116, 56, 0.55);
 }
 
 .title {
-  margin: 16px 0 6px;
   font-family: var(--serif);
   font-weight: 600;
-  font-size: 1.85rem;
-  color: var(--brown);
-}
-.subtitle {
-  margin: 0 0 26px;
-  font-size: 0.84rem;
-  color: var(--brown-soft);
+  font-size: 2.15rem;
+  line-height: 1.14;
+  color: var(--ink);
+  margin-top: 6px;
 }
 
-/* ─────────── Secure access panel ─────────── */
-.secure-panel {
-  text-align: left;
-  min-width: 0;
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  padding: 20px 20px 22px;
-  box-shadow: var(--shadow);
+.subtitle {
+  font-family: var(--body);
+  font-style: italic;
+  font-size: 0.93rem;
+  color: var(--ink-soft);
+  margin-top: 4px;
 }
+
+/* ── Form & Callout Box ─────────────────────────────────────────── */
+.secure-panel {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
 .panel-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--olive);
-  font-weight: 700;
-  font-size: 0.66rem;
-  letter-spacing: 1.4px;
-  padding-bottom: 14px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--hairline);
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  background-color: var(--callout-bg);
+  border: 1px solid var(--callout-bd);
+  border-radius: 7px;
+  color: var(--gold-deep);
 }
 
-.field { margin-bottom: 16px; }
+.panel-head svg {
+  flex-shrink: 0;
+}
+
+.panel-head-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.panel-head-copy strong {
+  font-family: var(--display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  color: var(--ink);
+}
+
+.panel-head-copy small {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.field {
+  margin-bottom: 15px;
+}
+
 .field label {
   display: block;
-  margin-bottom: 8px;
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--brown-soft);
+  font-family: var(--display);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 6px;
 }
 
 .input-wrap {
@@ -276,962 +534,380 @@ body {
   display: flex;
   align-items: center;
 }
+
 .input-wrap .lead {
   position: absolute;
-  left: 14px;
-  width: 19px;
-  height: 19px;
-  color: var(--brown-soft);
+  left: 13px;
+  width: 17px;
+  height: 17px;
+  color: var(--ink-soft);
   pointer-events: none;
 }
+
 .input-wrap input {
   width: 100%;
-  font-family: var(--sans);
-  font-size: 0.92rem;
-  color: var(--brown);
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: 14px;
-  padding: 14px 14px 14px 44px;
-  outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  height: 44px;
+  padding: 8px 40px 8px 40px;
+  font-family: var(--body);
+  font-size: 0.95rem;
+  color: var(--ink);
+  background-color: var(--paper-3);
+  border: 1px solid var(--input-bd);
+  border-radius: var(--r-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.input-wrap input::placeholder { color: rgba(122, 86, 48, 0.55); }
-.input-wrap input:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(175, 133, 74, 0.18);
-}
-.input-wrap:has(input:focus) .lead { color: var(--gold-deep); }
 
-/* Caps Lock warning — shown by app.js while typing a password */
-.capslock-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 8px 2px 0;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #8a5816;
+.input-wrap input::placeholder {
+  color: var(--ink-faint);
+  opacity: 0.85;
 }
-.capslock-hint[hidden] { display: none; } /* beat .capslock-hint's display:flex */
-.capslock-hint svg { width: 13px; height: 13px; flex: none; }
+
+.input-wrap input:focus {
+  outline: none;
+  border-color: var(--gold-deep);
+  box-shadow: 0 0 0 3px var(--gold-hair2);
+}
 
 .reveal {
   position: absolute;
-  right: 8px;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
+  right: 7px;
+  width: 32px;
+  height: 32px;
   border: none;
-  background: none;
-  border-radius: 10px;
-  color: var(--brown-soft);
+  background: transparent;
+  color: var(--ink-soft);
+  border-radius: var(--r-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
 }
-.reveal svg { width: 20px; height: 20px; }
-.reveal:hover { background: rgba(80, 52, 19, 0.06); color: var(--brown); }
 
-/* ─────────── Remember / forgot row ─────────── */
+.reveal:hover {
+  color: var(--ink);
+  background-color: var(--hair-soft);
+}
+
+.reveal svg {
+  width: 17px;
+  height: 17px;
+}
+
+.capslock-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 9px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--warn);
+  background-color: var(--warn-bg);
+  border: 1px solid rgba(154, 99, 26, 0.28);
+  border-radius: var(--r-sm);
+}
+
+.capslock-hint[hidden] {
+  display: none !important;
+}
+
+.capslock-hint svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Remember + Forgot Row ──────────────────────────────────────── */
 .row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 6px;
+  gap: 10px;
+  margin: 14px 0 16px;
+  font-size: 0.88rem;
 }
+
 .remember {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--brown-soft);
+  gap: 8px;
+  color: var(--ink);
   cursor: pointer;
   user-select: none;
 }
-.remember input { position: absolute; opacity: 0; pointer-events: none; }
-.remember .box {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  border: 1.5px solid rgba(122, 86, 48, 0.5);
-  display: grid;
-  place-items: center;
-  color: var(--cream);
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-.remember .box svg {
-  width: 13px; height: 13px;
+
+.remember input {
+  position: absolute;
   opacity: 0;
-  transform: scale(0.5);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-.remember input:checked + .box {
-  background: var(--brown);
-  border-color: var(--brown);
-}
-.remember input:checked + .box svg { opacity: 1; transform: scale(1); }
-.remember input:focus-visible { outline: none; }
-.remember input:focus-visible + .box {
-  box-shadow: 0 0 0 3px rgba(175, 133, 74, 0.25);
+  pointer-events: none;
 }
 
-.link-gold {
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--gold-deep);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.link-gold:hover { text-decoration: underline; }
-
-.form-error {
-  margin: 14px 0 0;
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: #9a3412;
-}
-/* Failed attempt: the error line rises in while the card gives one firm shake
-   (app.js re-adds .shake on each failure so repeats replay it). */
-.form-error.shake { animation: rise 0.3s var(--ease) both; }
-.form-card.shake  { animation: cardShake 0.4s ease; }
-@keyframes cardShake {
-  20% { transform: translateX(-5px); }
-  40% { transform: translateX(4px); }
-  60% { transform: translateX(-3px); }
-  80% { transform: translateX(2px); }
-}
-
-/* ─────────── Primary button ─────────── */
-.btn-primary {
-  position: relative;
-  overflow: hidden;
-  margin-top: 18px;
-  width: 100%;
+.remember .box {
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid var(--card-border);
+  border-radius: 3px;
+  background-color: var(--paper-3);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  font-family: var(--sans);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  color: var(--cream);
-  background: var(--brown);
-  border: none;
-  border-radius: 999px;
-  padding: 15px 24px;
-  cursor: pointer;
-  transition: transform 0.12s ease, background 0.18s ease, box-shadow 0.18s ease;
-}
-.btn-primary svg,
-.btn-primary .label { position: relative; z-index: 1; }
-/* Light sheen that sweeps across on hover. */
-.btn-primary::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -75%;
-  width: 45%;
-  height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(246, 239, 223, 0.18), transparent);
-  transform: skewX(-18deg);
-  transition: left 0.6s ease;
-  pointer-events: none;
-}
-.btn-primary:hover { background: #5e3e18; box-shadow: 0 12px 24px -12px rgba(80, 52, 19, 0.6); }
-.btn-primary:hover::after { left: 130%; }
-.btn-primary:active { transform: scale(0.985); }
-.btn-primary:disabled { opacity: 0.7; cursor: progress; }
-.btn-primary.loading .label { opacity: 0.85; }
-.btn-primary.loading svg {
-  animation: spin 0.8s linear infinite;
-  transform-origin: center;
+  color: transparent;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
 
-/* ─────────── Footnotes ─────────── */
+.remember .box svg {
+  width: 12px;
+  height: 12px;
+}
+
+.remember input:checked + .box {
+  background-color: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.remember input:focus-visible + .box {
+  box-shadow: 0 0 0 3px var(--gold-hair2);
+}
+
+.link-gold {
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.link-gold:hover {
+  color: var(--gold-deep);
+  border-bottom-color: var(--gold);
+}
+
+/* ── Error Alert ────────────────────────────────────────────────── */
+.form-error {
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--danger);
+  background-color: var(--danger-bg);
+  border: 1px solid rgba(142, 50, 32, 0.32);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--r-sm);
+}
+
+.form-error[hidden] {
+  display: none !important;
+}
+
+/* ── Primary Woodblock Button ───────────────────────────────────── */
+.btn-primary {
+  width: 100%;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-family: var(--display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #F6EFDF;
+  background-color: #462B0E;
+  border: 1px solid #331E08;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+[data-theme="dark"] .btn-primary {
+  color: #1C130B;
+  background-color: #C89B5E;
+  border-color: #E2B878;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #331E08;
+}
+
+[data-theme="dark"] .btn-primary:hover:not(:disabled) {
+  background-color: #DCA668;
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .authorized {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  margin: 18px 0 0;
-  font-size: 0.72rem;
-  color: rgba(122, 86, 48, 0.85);
-}
-/* ═══════════════════════════ Motion ═══════════════════════════ */
-@keyframes rise {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to   { opacity: 1; transform: scale(1); }
-}
-@keyframes frameIn {
-  from { opacity: 0; transform: scale(1.015); }
-  to   { opacity: 1; transform: scale(1); }
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Slow, low-amplitude loops — the logo settling and the seal breathing. */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-7px); }
-}
-@keyframes sealPulse {
-  0%, 100% { box-shadow: 0 8px 18px -10px rgba(80, 52, 19, 0.5), 0 0 0 0 rgba(175, 133, 74, 0); }
-  50%      { box-shadow: 0 8px 18px -10px rgba(80, 52, 19, 0.5), 0 0 0 9px rgba(175, 133, 74, 0.09); }
-}
-@keyframes glowPulse {
-  0%, 100% { opacity: 0.7; }
-  50%      { opacity: 1; }
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(172, 131, 75, 0.24);
+  font-family: var(--display);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1.45;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-align: center;
 }
 
-/* ── Staggered entrance ───────────────────────────────────────── */
-/* Brand side */
-.brand-panel::after  { animation: glowPulse 8s ease-in-out infinite 0.9s; }
-.brand-panel::before { animation: frameIn 0.9s var(--ease) both 0.10s; }
-.medallion           { animation: fadeIn 0.6s var(--ease) both 0.12s, float 7s ease-in-out infinite 0.9s; }
-.brand-title         { animation: rise 0.6s var(--ease) both 0.24s; }
-.brand-sub           { animation: rise 0.6s var(--ease) both 0.32s; }
-.brand-inner .engraved--light { animation: rise 0.6s var(--ease) both 0.40s; }
-.brand-foot          { animation: rise 0.7s var(--ease) both 0.54s; }
+.authorized svg {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+}
 
-/* Form side */
-.mobile-logo         { animation: rise 0.55s var(--ease) both 0.04s; }
-.seal                { animation: scaleIn 0.55s var(--ease) both 0.14s, sealPulse 4.5s ease-in-out infinite 1.1s; }
-.form-card .engraved--dark { animation: rise 0.55s var(--ease) both 0.22s; }
-.title               { animation: rise 0.55s var(--ease) both 0.28s; }
-.subtitle            { animation: rise 0.55s var(--ease) both 0.34s; }
-.secure-panel        { animation: rise 0.55s var(--ease) both 0.40s; }
-.authorized          { animation: rise 0.6s var(--ease) both 0.56s; }
+/* ── Shake Animation for Validation Failure ─────────────────────── */
+@keyframes shakeCard {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
 
-/* ─────────── Sign-in success → welcome veil ───────────
-   A full-screen brown curtain (echoing the brand panel) that confirms access
-   with a drawn gold check, then masks the navigation to the dashboard. */
+.shake {
+  animation: shakeCard 0.34s ease;
+}
+
+/* ── Welcome Curtain (Hand-off to Dashboard) ────────────────────── */
 .welcome-veil {
   position: fixed;
   inset: 0;
-  z-index: 9999;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  color: var(--cream);
-  background: radial-gradient(120% 120% at 50% 32%, #6b4a23 0%, var(--brown) 48%, #281a0b 100%);
+  z-index: 100;
+  background-color: #2B1707;
+  background-image: url("welcome-bg.png");
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #FAF3E6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.5s var(--ease), visibility 0.5s var(--ease);
+  pointer-events: none;
+  transition: opacity 0.32s ease;
 }
-body.is-success .welcome-veil { opacity: 1; visibility: visible; }
+
+body.is-success .welcome-veil {
+  opacity: 1;
+  pointer-events: auto;
+}
 
 .welcome-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
   text-align: center;
+  width: min(90vw, 316px);
+  padding: 28px 30px 26px;
+  border: 1.5px solid #CCA876;
+  background: linear-gradient(180deg, #523113 0%, #3E230B 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(246, 232, 206, 0.34),
+    0 18px 46px rgba(10, 5, 1, 0.65);
+  border-radius: 8px;
 }
+
 .welcome-seal {
-  width: 96px;
-  height: 96px;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 14px;
   border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--surface);
-  border: 1.5px solid var(--gold-light);
-  transform: scale(0.6);
-  opacity: 0;
+  border: 1.5px solid #E2C99F;
+  background-color: rgba(32, 17, 5, 0.36);
+  color: #FAF2E3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.welcome-seal svg { width: 46px; height: 46px; color: var(--gold-deep); }
-.welcome-seal .check { stroke-dasharray: 26; stroke-dashoffset: 26; }
+
+.welcome-seal svg {
+  width: 22px;
+  height: 22px;
+}
+
 .welcome-text {
-  margin: 0;
   font-family: var(--serif);
-  font-weight: 600;
-  font-size: 1.8rem;
-  opacity: 0;
+  font-size: 1.78rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  color: #FAF3E6;
+  margin-bottom: 10px;
 }
+
 .welcome-sub {
   display: inline-flex;
   align-items: center;
-  gap: 11px;
-  margin: 0;
-  font-family: var(--engraved);
+  justify-content: center;
+  gap: 7px;
+  font-family: var(--display);
+  font-size: 0.62rem;
   font-weight: 600;
-  font-size: 0.7rem;
-  letter-spacing: 3px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--gold-light);
-  opacity: 0;
+  color: #E5CDA4;
 }
-.welcome-spin {
-  width: 18px;
-  height: 18px;
-  flex: none;
-  border-radius: 50%;
-  border: 2.5px solid rgba(217, 168, 92, 0.28);
-  border-top-color: var(--gold-light);
-}
-/* Play the sequence only once the veil is revealed. */
-body.is-success .welcome-seal { animation: sealIn 0.55s var(--ease) 0.15s both, sealRing 1.8s ease-out 0.7s infinite; }
-body.is-success .welcome-seal .check { animation: drawCheck 0.5s var(--ease) 0.5s forwards; }
-body.is-success .welcome-text { animation: rise 0.6s var(--ease) 0.52s both; }
-body.is-success .welcome-sub { animation: rise 0.6s var(--ease) 0.66s both; }
-body.is-success .welcome-spin { animation: spin 0.8s linear infinite; }
 
-@keyframes sealIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes drawCheck { to { stroke-dashoffset: 0; } }
-@keyframes sealRing {
-  0%   { box-shadow: 0 0 0 0 rgba(217, 168, 92, 0.45); }
-  100% { box-shadow: 0 0 0 22px rgba(217, 168, 92, 0); }
+.welcome-sub-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #E5CDA4;
+  flex-shrink: 0;
+}
+
+/* ── Responsive Breakpoints ─────────────────────────────────────── */
+@media (max-width: 920px) {
+  .layout,
+  .welcome-veil {
+    grid-template-columns: minmax(0, 1fr);
+    background-size: cover;
+    background-position: left bottom;
+  }
+  .brand-panel {
+    display: none;
+  }
+  .mobile-brand {
+    display: flex;
+  }
+  .form-panel {
+    padding: 56px 18px 32px;
+    border-left: none;
+  }
+  .form-card {
+    padding: 26px 22px 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-panel {
+    padding: 52px 14px 24px;
+  }
+  .form-card {
+    padding: 22px 16px 20px;
+  }
+  .title {
+    font-size: 1.72rem;
+  }
+  .row {
+    flex-wrap: wrap;
+  }
+  .authorized {
+    font-size: 0.56rem;
+    letter-spacing: 0.07em;
+    flex-wrap: wrap;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-  /* Reduced motion: no fade — reveal instantly so the hand-off still masks. */
-  body.is-success .welcome-veil { opacity: 1; visibility: visible; }
-  body.is-success .welcome-seal { transform: none; opacity: 1; }
-  body.is-success .welcome-seal .check { stroke-dashoffset: 0; }
-  body.is-success .welcome-text,
-  body.is-success .welcome-sub { opacity: 1; }
-}
-
-/* ─────────────────────────── Theme Toggle Button (Login) ─────────────────────────── */
-.theme-toggle-login {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  z-index: 100;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid var(--hairline);
-  background: var(--surface);
-  color: var(--gold-deep);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  box-shadow: 0 4px 16px -4px rgba(80, 52, 19, 0.25);
-  transition: all 0.25s var(--ease);
-}
-.theme-toggle-login:hover {
-  transform: translateY(-2px) scale(1.05);
-  border-color: var(--gold);
-  color: var(--brown);
-  box-shadow: 0 8px 24px -6px rgba(80, 52, 19, 0.35);
-}
-.theme-toggle-login:active {
-  transform: translateY(0) scale(0.98);
-}
-.theme-toggle-login svg {
-  width: 18px;
-  height: 18px;
-  transition: transform 0.3s var(--ease);
-}
-.theme-toggle-login:hover svg {
-  transform: rotate(18deg);
-}
-.theme-toggle-login .theme-icon-sun { display: none; }
-.theme-toggle-login .theme-icon-moon { display: block; }
-
-/* ─────────────────────────── Dark Mode Support ─────────────────────────── */
-:root[data-theme="dark"],
-[data-theme="dark"] {
-  --cream:       #18120B; /* dark mahogany ground */
-  --cream-edge:  #120D08; /* edge vignette */
-  --surface:     #241A0E; /* card / field surface */
-  --brown:       #F1E6C9; /* warm cream primary text */
-  --brown-soft:  #CBB88A; /* secondary text */
-  --olive:       #9AA15C; /* olive green accent */
-  --gold:        #C9A24C; /* antique gold */
-  --gold-deep:   #D9BB78; /* high-contrast gold on dark */
-  --gold-light:  #E0C268; /* bright gold */
-
-  --hairline:    rgba(220, 182, 97, 0.20);
-  --hairline-lt: rgba(220, 182, 97, 0.10);
-  --shadow:      0 24px 60px -28px rgba(0, 0, 0, 0.75);
-}
-
-:root[data-theme="dark"] body,
-[data-theme="dark"] body {
-  background: var(--cream);
-  color: var(--brown);
-}
-
-:root[data-theme="dark"] .form-panel,
-[data-theme="dark"] .form-panel {
-  background: radial-gradient(120% 120% at 50% 10%, #251B12 0%, var(--cream) 55%, #100A04 100%);
-}
-
-:root[data-theme="dark"] .form-card,
-[data-theme="dark"] .form-card {
-  background: var(--surface);
-  border-color: var(--hairline);
-}
-
-:root[data-theme="dark"] .secure-panel,
-[data-theme="dark"] .secure-panel {
-  background: #1C140C;
-  border-color: var(--hairline);
-}
-
-:root[data-theme="dark"] .input-wrap input,
-[data-theme="dark"] .input-wrap input {
-  background: #2B2012;
-  color: var(--brown);
-  border-color: var(--hairline);
-}
-
-:root[data-theme="dark"] .input-wrap input:focus,
-[data-theme="dark"] .input-wrap input:focus {
-  border-color: var(--gold-deep);
-  background: #332616;
-}
-
-:root[data-theme="dark"] .input-wrap input::placeholder,
-[data-theme="dark"] .input-wrap input::placeholder {
-  color: var(--brown-soft);
-  opacity: 0.6;
-}
-
-:root[data-theme="dark"] .theme-toggle-login,
-[data-theme="dark"] .theme-toggle-login {
-  color: var(--gold-deep);
-  border-color: var(--hairline);
-  background: var(--surface);
-  box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.55);
-}
-
-:root[data-theme="dark"] .theme-toggle-login:hover,
-[data-theme="dark"] .theme-toggle-login:hover {
-  background: #2E2113;
-  color: var(--gold-light);
-  border-color: var(--gold);
-}
-
-:root[data-theme="dark"] .theme-toggle-login .theme-icon-sun,
-[data-theme="dark"] .theme-toggle-login .theme-icon-sun {
-  display: block;
-}
-:root[data-theme="dark"] .theme-toggle-login .theme-icon-moon,
-[data-theme="dark"] .theme-toggle-login .theme-icon-moon {
-  display: none;
-}
-
-/* Media query fallback */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --cream:       #18120B;
-    --cream-edge:  #120D08;
-    --surface:     #241A0E;
-    --brown:       #F1E6C9;
-    --brown-soft:  #CBB88A;
-    --olive:       #9AA15C;
-    --gold:        #C9A24C;
-    --gold-deep:   #D9BB78;
-    --gold-light:  #E0C268;
-
-    --hairline:    rgba(220, 182, 97, 0.20);
-    --hairline-lt: rgba(220, 182, 97, 0.10);
-    --shadow:      0 24px 60px -28px rgba(0, 0, 0, 0.75);
-  }
-  :root:not([data-theme="light"]) body {
-    background: var(--cream);
-    color: var(--brown);
-  }
-  :root:not([data-theme="light"]) .form-panel {
-    background: radial-gradient(120% 120% at 50% 10%, #251B12 0%, var(--cream) 55%, #100A04 100%);
-  }
-  :root:not([data-theme="light"]) .form-card {
-    background: var(--surface);
-    border-color: var(--hairline);
-  }
-  :root:not([data-theme="light"]) .secure-panel {
-    background: #1C140C;
-    border-color: var(--hairline);
-  }
-  :root:not([data-theme="light"]) .input-wrap input {
-    background: #2B2012;
-    color: var(--brown);
-    border-color: var(--hairline);
-  }
-  :root:not([data-theme="light"]) .input-wrap input:focus {
-    border-color: var(--gold-deep);
-    background: #332616;
-  }
-  :root:not([data-theme="light"]) .input-wrap input::placeholder {
-    color: var(--brown-soft);
-    opacity: 0.6;
-  }
-  :root:not([data-theme="light"]) .theme-toggle-login {
-    color: var(--gold-deep);
-    border-color: var(--hairline);
-    background: var(--surface);
-    box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.55);
-  }
-  :root:not([data-theme="light"]) .theme-toggle-login:hover {
-    background: #2E2113;
-    color: var(--gold-light);
-    border-color: var(--gold);
-  }
-  :root:not([data-theme="light"]) .theme-toggle-login .theme-icon-sun {
-    display: block;
-  }
-  :root:not([data-theme="light"]) .theme-toggle-login .theme-icon-moon {
-    display: none;
-  }
-}
-
-/* ════════════════════════════════════════════════════════════════
-   Login refresh · warm split-screen staff portal
-   The dark theme is the photographic-style presentation: bright brand
-   showcase on the left, deep coffee access panel on the right. The light
-   theme above remains available through the theme control.
-   ════════════════════════════════════════════════════════════════ */
-html[data-theme="dark"] .layout {
-  grid-template-columns: minmax(0, 1.62fr) minmax(410px, 0.78fr);
-  background: #160e07;
-}
-
-html[data-theme="dark"] .brand-panel {
-  display: flex;
-  padding: 72px 64px;
-  color: #3d2818;
-  background:
-    linear-gradient(135deg, rgba(255, 249, 232, 0.08), rgba(231, 211, 174, 0.04)),
-    url("admin-login-background.png") center center / cover no-repeat;
-  isolation: isolate;
-}
-
-html[data-theme="dark"] .brand-panel::before {
-  inset: 28px;
-  border-color: rgba(126, 94, 43, 0.34);
-  border-radius: 18px;
-}
-
-html[data-theme="dark"] .brand-panel::after {
-  left: 48%;
-  top: 40%;
-  width: min(82%, 760px);
-  background: radial-gradient(circle, rgba(255, 252, 239, 0.82) 0%, rgba(255, 252, 239, 0) 68%);
-  z-index: -1;
-}
-
-html[data-theme="dark"] .weave {
-  opacity: 0.16;
-  background-image:
-    repeating-linear-gradient(45deg, rgba(80, 52, 19, 0.12) 0 1px, transparent 1px 34px),
-    repeating-linear-gradient(-45deg, rgba(80, 52, 19, 0.08) 0 1px, transparent 1px 34px);
-  mix-blend-mode: multiply;
-}
-
-html[data-theme="dark"] .weave::before,
-html[data-theme="dark"] .weave::after {
-  content: "";
-  position: absolute;
-  width: 48%;
-  height: 54%;
-  border-radius: 50%;
-  filter: blur(8px);
-  opacity: 0.55;
-  transform: rotate(-24deg);
-  background:
-    radial-gradient(ellipse at 22% 24%, rgba(56, 49, 27, 0.22) 0 9%, transparent 10%),
-    radial-gradient(ellipse at 45% 42%, rgba(56, 49, 27, 0.18) 0 10%, transparent 11%),
-    radial-gradient(ellipse at 68% 62%, rgba(56, 49, 27, 0.15) 0 8%, transparent 9%);
-}
-
-html[data-theme="dark"] .weave::before { left: -14%; top: 4%; }
-html[data-theme="dark"] .weave::after { right: -16%; bottom: -8%; transform: rotate(154deg) scale(0.86); }
-
-html[data-theme="dark"] .brand-inner { max-width: 560px; }
-html[data-theme="dark"] .medallion {
-  width: 210px;
-  height: 210px;
-  margin-bottom: 32px;
-  background: rgba(255, 249, 234, 0.9);
-  border-color: rgba(80, 52, 19, 0.26);
-  box-shadow: 0 22px 38px -24px rgba(61, 40, 24, 0.65);
-}
-
-html[data-theme="dark"] .brand-title {
-  font-size: clamp(2.8rem, 4vw, 4.1rem);
-  color: #302014;
-  letter-spacing: 1px;
-}
-html[data-theme="dark"] .brand-sub { color: #94652d; }
-html[data-theme="dark"] .engraved--light { color: rgba(80, 52, 19, 0.76); }
-html[data-theme="dark"] .engraved--light .rule { background: rgba(80, 52, 19, 0.25); }
-html[data-theme="dark"] .brand-foot { color: rgba(80, 52, 19, 0.68); }
-
-html[data-theme="dark"] .form-panel {
-  align-items: center;
-  padding: 46px 44px;
-  color: #f3e7ca;
-  background:
-    radial-gradient(90% 75% at 54% 0%, rgba(91, 57, 24, 0.36), transparent 70%),
-    linear-gradient(145deg, #24160b 0%, #120b06 58%, #090604 100%);
-}
-
-html[data-theme="dark"] .form-card {
-  max-width: 530px;
-  padding: 34px 30px 30px;
-  border: 1px solid rgba(205, 157, 76, 0.28);
-  border-radius: 28px;
-  background: linear-gradient(145deg, rgba(44, 27, 13, 0.72), rgba(15, 9, 5, 0.58));
-  box-shadow: 0 28px 70px -30px rgba(0, 0, 0, 0.85), inset 0 1px rgba(255, 226, 169, 0.07);
-}
-
-html[data-theme="dark"] .seal { display: none; }
-html[data-theme="dark"] .form-card .engraved--dark { color: #e2b86d; }
-html[data-theme="dark"] .form-card .engraved--dark .rule { background: rgba(226, 184, 109, 0.34); }
-html[data-theme="dark"] .title {
-  margin-top: 18px;
-  color: #f5e8cb;
-  font-size: clamp(2.35rem, 3.3vw, 3.15rem);
-  line-height: 0.98;
-}
-html[data-theme="dark"] .subtitle { color: #c9b58e; }
-
-html[data-theme="dark"] .secure-panel {
-  margin-top: 28px;
-  padding: 24px 24px 26px;
-  border-color: rgba(205, 157, 76, 0.28);
-  border-radius: 22px;
-  background: rgba(19, 11, 6, 0.52);
-  box-shadow: 0 18px 38px -30px rgba(0, 0, 0, 0.9);
-}
-html[data-theme="dark"] .panel-head {
-  align-items: flex-start;
-  color: #e2b86d;
-  padding-bottom: 18px;
-  margin-bottom: 22px;
-  border-color: rgba(205, 157, 76, 0.18);
-}
-html[data-theme="dark"] .panel-head-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-html[data-theme="dark"] .panel-head-copy strong { font-size: 0.69rem; letter-spacing: 2.4px; }
-html[data-theme="dark"] .panel-head-copy small {
-  color: #a99778;
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-html[data-theme="dark"] .field label { color: #eadfc8; }
-html[data-theme="dark"] .input-wrap input {
-  min-height: 54px;
-  background: rgba(53, 32, 15, 0.62);
-  border-color: rgba(205, 157, 76, 0.22);
-  border-radius: 15px;
-  color: #f5e8cb;
-}
-html[data-theme="dark"] .input-wrap input:focus {
-  background: rgba(68, 41, 18, 0.78);
-  border-color: #d9a85c;
-  box-shadow: 0 0 0 4px rgba(217, 168, 92, 0.12);
-}
-html[data-theme="dark"] .input-wrap input::placeholder { color: rgba(203, 184, 138, 0.55); }
-html[data-theme="dark"] .input-wrap .lead,
-html[data-theme="dark"] .reveal { color: #c9a25c; }
-html[data-theme="dark"] .reveal:hover { background: rgba(217, 168, 92, 0.1); color: #f3d08d; }
-html[data-theme="dark"] .remember { color: #c9b58e; }
-html[data-theme="dark"] .remember .box { border-color: rgba(226, 184, 109, 0.62); }
-html[data-theme="dark"] .remember input:checked + .box { background: #e6c98f; border-color: #e6c98f; color: #2b1a0c; }
-html[data-theme="dark"] .link-gold { color: #e2b86d; }
-
-html[data-theme="dark"] .btn-primary {
-  min-height: 56px;
-  margin-top: 22px;
-  color: #382310;
-  background: linear-gradient(100deg, #f2dfb7, #fff4d7 50%, #e5c78c);
-  box-shadow: 0 14px 26px -18px rgba(241, 205, 137, 0.8);
-}
-html[data-theme="dark"] .btn-primary:hover {
-  color: #241507;
-  background: linear-gradient(100deg, #ffeac0, #fff8e7 50%, #edcf96);
-  box-shadow: 0 18px 30px -16px rgba(241, 205, 137, 0.9);
-}
-html[data-theme="dark"] .authorized { color: rgba(211, 187, 143, 0.7); }
-html[data-theme="dark"] .theme-toggle-login {
-  top: 24px;
-  right: 24px;
-  background: rgba(38, 23, 11, 0.72);
-  border-color: rgba(217, 168, 92, 0.45);
-  color: #e2b86d;
-  box-shadow: 0 10px 28px -16px #000;
-  backdrop-filter: blur(10px);
-}
-
-@media (max-width: 1100px) and (min-width: 900px) {
-  html[data-theme="dark"] .layout { grid-template-columns: minmax(0, 1.35fr) minmax(380px, 0.9fr); }
-  html[data-theme="dark"] .brand-panel { padding-inline: 36px; }
-  html[data-theme="dark"] .form-panel { padding-inline: 24px; }
-}
-
-@media (max-width: 899px) {
-  html[data-theme="dark"] .form-panel {
-    min-height: 100dvh;
-    padding: 32px 18px;
-  }
-  html[data-theme="dark"] .form-card { padding: 28px 20px 24px; }
-  html[data-theme="dark"] .mobile-logo { display: block; width: 128px; margin-bottom: 22px; }
-}
-
-/* ─────────────────────── Backgrounds in both themes ─────────────────────── */
-.panel-head-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-.panel-head-copy strong { font-size: 0.69rem; letter-spacing: 2.2px; }
-.panel-head-copy small {
-  color: var(--brown-soft);
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-
-html[data-theme="light"] .brand-panel {
-  color: #3d2818;
-  background:
-    linear-gradient(135deg, rgba(255, 250, 237, 0.16), rgba(231, 211, 174, 0.06)),
-    url("admin-login-background.png") center center / cover no-repeat;
-}
-
-html[data-theme="light"] .brand-panel::after {
-  background: radial-gradient(circle, rgba(255, 252, 239, 0.38) 0%, rgba(255, 252, 239, 0) 68%);
-}
-
-html[data-theme="light"] .form-panel {
-  background:
-    linear-gradient(90deg, rgba(252, 248, 239, 0.94), rgba(246, 239, 223, 0.9)),
-    url("admin-login-background.png") center right / cover no-repeat;
-  background-blend-mode: screen, normal;
-}
-
-html[data-theme="light"] .form-card {
-  max-width: 530px;
-  padding: 34px 30px 30px;
-  border: 1px solid rgba(126, 94, 43, 0.24);
-  border-radius: 28px;
-  background: rgba(255, 252, 244, 0.82);
-  box-shadow: 0 28px 70px -30px rgba(80, 52, 19, 0.48), inset 0 1px rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-}
-
-html[data-theme="light"] .secure-panel {
-  margin-top: 28px;
-  padding: 24px 24px 26px;
-  border-color: rgba(126, 94, 43, 0.22);
-  border-radius: 22px;
-  background: rgba(255, 252, 244, 0.64);
-  box-shadow: 0 18px 38px -30px rgba(80, 52, 19, 0.45);
-}
-
-html[data-theme="light"] .panel-head {
-  align-items: flex-start;
-  padding-bottom: 18px;
-  margin-bottom: 22px;
-}
-
-html[data-theme="light"] .input-wrap input {
-  min-height: 54px;
-  background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(126, 94, 43, 0.22);
-}
-
-html[data-theme="light"] .btn-primary {
-  min-height: 56px;
-  margin-top: 22px;
-  background: linear-gradient(100deg, #503413, #70481f 50%, #503413);
-  box-shadow: 0 14px 26px -18px rgba(80, 52, 19, 0.8);
-}
-
-html[data-theme="light"] .btn-primary:hover {
-  background: linear-gradient(100deg, #62421e, #80572a 50%, #62421e);
-}
-
-html[data-theme="dark"] .form-panel {
-  background:
-    linear-gradient(145deg, rgba(36, 22, 11, 0.94), rgba(9, 6, 4, 0.97)),
-    url("admin-login-background.png") center right / cover no-repeat;
-  background-blend-mode: multiply, normal;
-}
-
-html[data-theme="dark"] .panel-head-copy small { color: #a99778; }
-
-/* ───────── Login design-system normalization ─────────
-   Same type scale, control sizes, spacing, and radii in both themes. */
-:root {
-  --login-display-size: clamp(2.35rem, 3.15vw, 3rem);
-  --login-subtitle-size: 0.84rem;
-  --login-label-size: 0.76rem;
-  --login-body-size: 0.78rem;
-  --login-micro-size: 0.68rem;
-  --login-control-height: 54px;
-  --login-card-radius: 28px;
-  --login-panel-radius: 22px;
-  --login-control-radius: 15px;
-}
-
-.form-panel {
-  padding: 46px 44px;
-}
-
-.form-card {
-  max-width: 530px;
-  padding: 34px 30px 30px;
-  border-radius: var(--login-card-radius);
-}
-
-.brand-title {
-  font-size: clamp(2.8rem, 4vw, 4.1rem);
-  line-height: 0.96;
-}
-
-.brand-sub {
-  font-size: 0.75rem;
-  letter-spacing: 3.6px;
-  line-height: 1.35;
-}
-
-.brand-foot {
-  font-size: 0.68rem;
-  line-height: 1.4;
-}
-
-.engraved {
-  font-size: var(--login-micro-size);
-  letter-spacing: 2.4px;
-  line-height: 1.4;
-}
-
-.title {
-  margin: 18px 0 8px;
-  font-size: var(--login-display-size);
-  line-height: 0.98;
-}
-
-.subtitle {
-  margin: 0 0 28px;
-  font-size: var(--login-subtitle-size);
-  line-height: 1.45;
-}
-
-.secure-panel {
-  margin-top: 28px;
-  padding: 24px 24px 26px;
-  border-radius: var(--login-panel-radius);
-}
-
-.panel-head {
-  min-height: 44px;
-  gap: 10px;
-  padding-bottom: 18px;
-  margin-bottom: 22px;
-  font-size: var(--login-micro-size);
-  letter-spacing: 2.2px;
-  line-height: 1.25;
-}
-
-.panel-head-copy {
-  gap: 5px;
-}
-
-.panel-head-copy strong {
-  font-size: var(--login-micro-size);
-  letter-spacing: 2.2px;
-  line-height: 1.2;
-}
-
-.panel-head-copy small {
-  font-size: 0.7rem;
-  line-height: 1.35;
-}
-
-.field {
-  margin-bottom: 18px;
-}
-
-.field label {
-  margin-bottom: 9px;
-  font-size: var(--login-label-size);
-  line-height: 1.35;
-}
-
-.input-wrap input {
-  height: var(--login-control-height);
-  min-height: var(--login-control-height);
-  border-radius: var(--login-control-radius);
-  padding: 14px 48px 14px 44px;
-  font-size: 0.9rem;
-  line-height: 1.3;
-}
-
-.row {
-  min-height: 22px;
-  margin-top: 8px;
-}
-
-.remember,
-.link-gold {
-  font-size: var(--login-body-size);
-  line-height: 1.3;
-}
-
-.btn-primary {
-  height: 56px;
-  min-height: 56px;
-  margin-top: 22px;
-  padding: 15px 24px;
-  font-size: var(--login-body-size);
-  letter-spacing: 2px;
-  line-height: 1.2;
-}
-
-.authorized {
-  font-size: var(--login-micro-size);
-  line-height: 1.4;
-}
-
-html[data-theme="light"] .form-card {
-  border-color: rgba(126, 94, 43, 0.24);
-  background: rgba(255, 252, 244, 0.82);
-}
-
-html[data-theme="light"] .secure-panel {
-  border-color: rgba(126, 94, 43, 0.22);
-  background: rgba(255, 252, 244, 0.64);
-}
-
-html[data-theme="dark"] .form-card {
-  border-color: rgba(205, 157, 76, 0.28);
-}
-
-html[data-theme="dark"] .secure-panel {
-  border-color: rgba(205, 157, 76, 0.28);
-}
-
-@media (max-width: 899px) {
-  .form-panel {
-    min-height: 100dvh;
-    padding: 32px 18px;
-  }
-
-  .form-card {
-    padding: 28px 20px 24px;
-  }
-
-  .mobile-logo {
-    width: 128px;
-    margin-bottom: 22px;
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

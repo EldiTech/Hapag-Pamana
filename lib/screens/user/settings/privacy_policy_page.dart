@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../data/about_content.dart';
 import 'legal_document.dart';
 
 /// "Privacy Policy" — what the app actually holds about a member, and why.
@@ -19,12 +20,19 @@ class PrivacyPolicyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const LegalDocument(
-      title: 'Privacy Policy',
-      lede: 'What we keep about you, who can see it, and how to have it '
-          'changed or removed.',
-      lastUpdated: _lastUpdated,
-      clauses: _clauses,
+    return ValueListenableBuilder<AboutContent>(
+      valueListenable: AboutContentScope.notifier,
+      builder: (context, about, _) {
+        return LegalDocument(
+          title: 'Privacy Policy',
+          lede:
+              'What we keep about you, who can see it, and how to have it '
+              'changed or removed.',
+          lastUpdated: _lastUpdated,
+          clauses: _clauses,
+          overrideData: about.privacyPolicyData,
+        );
+      },
     );
   }
 }

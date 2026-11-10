@@ -33,9 +33,9 @@
      owner just gets a rollup, no writes happen from here. */
   function boot() {
     if (!HP.ONLINE) {
-      statsEl.innerHTML = "";
-      chartEl.innerHTML = "";
-      statusEl.innerHTML = "";
+      renderStats(0, 0, 0, 0);
+      renderChart([]);
+      renderStatus({ completed: 0, confirmed: 0, pending: 0, declined: 0 });
       recentEl.innerHTML = `<p class="modal-text">Connect Firebase to see live figures here.</p>`;
       return;
     }

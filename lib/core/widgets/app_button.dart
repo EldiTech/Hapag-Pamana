@@ -29,6 +29,7 @@ class AppButton extends StatelessWidget {
     this.variant = AppButtonVariant.primary,
     this.fullWidth = false,
     this.busy = false,
+    this.padding,
   });
 
   /// Convenience constructor for the solid primary CTA.
@@ -39,6 +40,7 @@ class AppButton extends StatelessWidget {
     this.icon,
     this.fullWidth = false,
     this.busy = false,
+    this.padding,
   }) : variant = AppButtonVariant.primary;
 
   /// Convenience constructor for the outlined secondary action.
@@ -49,6 +51,7 @@ class AppButton extends StatelessWidget {
     this.icon,
     this.fullWidth = false,
     this.busy = false,
+    this.padding,
   }) : variant = AppButtonVariant.secondary;
 
   final String label;
@@ -56,6 +59,7 @@ class AppButton extends StatelessWidget {
   final IconData? icon;
   final AppButtonVariant variant;
   final bool fullWidth;
+  final EdgeInsetsGeometry? padding;
 
   /// While true the label crossfades into a small spinner and taps are
   /// ignored; the theme's disabled colors signal the wait.
@@ -85,12 +89,19 @@ class AppButton extends StatelessWidget {
                 Icon(icon, size: 18),
                 const SizedBox(width: 8),
               ],
-              // Flexible + ellipsis: on a narrow screen (e.g. the wizard's
+              // Flexible + FittedBox: on a narrow screen (e.g. the wizard's
               // BACK + primary pair) a long label like "ACCOUNT CREATED"
-              // would otherwise overflow the button's Row and paint the
-              // yellow/black overflow stripes instead of just eliding.
+              // scales down smoothly instead of overflowing the button's Row
+              // or clipping characters with an ellipsis.
               Flexible(
-                child: Text(label, overflow: TextOverflow.ellipsis),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
             ],
           );
@@ -117,9 +128,20 @@ class AppButton extends StatelessWidget {
 
     final onTap = busy ? null : onPressed;
     final Widget button = switch (variant) {
-      AppButtonVariant.primary => ElevatedButton(onPressed: onTap, child: child),
-      AppButtonVariant.secondary =>
-        OutlinedButton(onPressed: onTap, child: child),
+      AppButtonVariant.primary => ElevatedButton(
+          style: padding != null
+              ? ElevatedButton.styleFrom(padding: padding)
+              : null,
+          onPressed: onTap,
+          child: child,
+        ),
+      AppButtonVariant.secondary => OutlinedButton(
+          style: padding != null
+              ? OutlinedButton.styleFrom(padding: padding)
+              : null,
+          onPressed: onTap,
+          child: child,
+        ),
     };
 
     if (!fullWidth) return button;

@@ -15,8 +15,43 @@
   const forgot = document.getElementById("forgot");
   const capsHint = document.getElementById("capsHint");
   const remember = document.getElementById("remember");
+  const themeBtn = document.getElementById("themeToggleLogin");
+  const themeIcon = document.getElementById("themeIconLogin");
   const label = submitBtn.querySelector(".label");
   const originalLabel = label.textContent;
+
+  const SVG_EYE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const SVG_EYE_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`;
+  const SVG_SUN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
+  const SVG_MOON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
+  // ── Theme sync with inner dashboards (hp_admin_theme) ────────────────────
+  const THEME_KEY = "hp_admin_theme";
+  function getActiveTheme() {
+    try {
+      const s = localStorage.getItem(THEME_KEY);
+      if (s === "dark" || s === "light") return s;
+    } catch (_) {}
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function applyTheme(t) {
+    const isDark = t === "dark";
+    document.documentElement.setAttribute("data-theme", t);
+    if (document.body) document.body.setAttribute("data-theme", t);
+    if (themeBtn) {
+      themeBtn.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
+      themeBtn.setAttribute("title", isDark ? "Switch to light mode" : "Switch to dark mode");
+    }
+    if (themeIcon) themeIcon.innerHTML = isDark ? SVG_SUN : SVG_MOON;
+  }
+  applyTheme(getActiveTheme());
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
+      const next = getActiveTheme() === "dark" ? "light" : "dark";
+      try { localStorage.setItem(THEME_KEY, next); } catch (_) {}
+      applyTheme(next);
+    });
+  }
 
   // Fallback when ROLE_HOMES is missing (older firebase-config.js).
   const MOD_PAGE = "Content%20Moderator/html/index.html";
@@ -60,6 +95,7 @@
     pwInput.type = show ? "text" : "password";
     reveal.setAttribute("aria-pressed", String(show));
     reveal.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    reveal.innerHTML = show ? SVG_EYE_OFF : SVG_EYE;
     pwInput.focus({ preventScroll: true });
   });
 

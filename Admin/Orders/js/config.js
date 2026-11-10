@@ -6,11 +6,6 @@ window.HP_DASHBOARD = {
   roles: window.ORDER_MANAGER_ROLES,
   verifiedKey: "hp_orders_verified",
   defaultRoleLabel: "Marketing Admin",
-  // Forecast nav icon — a rising trend line with an arrowhead, not part of
-  // the shared icon set (hp-core.js) since only this dashboard uses it.
-  icons: {
-    trend: ['<path d="M3 17l6-6 4 4 8-8"/><path d="M15 6h6v6"/>'],
-  },
   shell: {
     brandSub: "Order Ledger",
     eyebrow: "Order Management",

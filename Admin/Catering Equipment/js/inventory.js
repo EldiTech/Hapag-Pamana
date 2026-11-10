@@ -196,7 +196,7 @@
         <summary class="eq-dropdown-btn">
           <span class="eq-dd-badge">${variants.length} types</span>
           <span class="eq-dd-total">${totalQty} ${unit}</span>
-          <span class="eq-dd-arrow">▾</span>
+          <span class="ic eq-dd-arrow">${HP.icon("chevronDown")}</span>
         </summary>
         <div class="eq-dropdown-menu">
           <div class="eq-dropdown-head">

@@ -98,7 +98,7 @@
     app.innerHTML = `
       <aside class="sidebar" id="sidebar">
         <div class="side-brand">
-          <span class="side-logo"><img src="../../assets/HapagPamana-nav.png" width="36" height="36" decoding="async" alt="" /></span>
+          <span class="side-logo"><img src="../../assets/HapagPamana-nav.png" width="82" height="82" decoding="async" alt="" /></span>
           <span class="side-brand-text">
             <strong>HapagPamana</strong>
             <small>${HP.esc(CFG.brandSub || "Staff Portal")}</small>
@@ -163,6 +163,11 @@
     // Wiring shared by every page.
     document.getElementById("menuToggle").addEventListener("click", () => app.classList.toggle("nav-open"));
     document.getElementById("scrim").addEventListener("click", () => app.classList.remove("nav-open"));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && app.classList.contains("nav-open") && mRoot.hidden) {
+        app.classList.remove("nav-open");
+      }
+    });
     if (EXP && EXP.fn) document.getElementById("exportBtn").addEventListener("click", () => EXP.fn());
 
     const themeBtn = document.getElementById("themeToggle");

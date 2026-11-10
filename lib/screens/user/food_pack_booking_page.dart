@@ -697,10 +697,14 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
                         Expanded(
                           child: AppButton.secondary(
                             label: 'BACK',
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 14,
+                            ),
                             onPressed: _submitting ? null : _back,
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.md),
+                        const SizedBox(width: AppSpacing.sm),
                       ],
                       Expanded(
                         flex: 2,
@@ -711,6 +715,10 @@ class _FoodPackBookingPageState extends State<FoodPackBookingPage> {
                           icon: _step == _steps.length - 1
                               ? Icons.request_quote_outlined
                               : Icons.arrow_forward_rounded,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
                           busy: _submitting,
                           fullWidth: true,
                           onPressed: _next,

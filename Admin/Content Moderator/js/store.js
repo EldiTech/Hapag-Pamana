@@ -351,6 +351,347 @@
       tiktok: "https://www.tiktok.com/@fillathome",
     },
     footer: "FILL AT HOME · SINCE 2016",
+    termsOfService: {
+      lastUpdated: "4 August 2026",
+      lede: "The understanding between you and our kitchen when you order through this app.",
+      clauses: [
+        {
+          id: "tos_1",
+          heading: "The agreement",
+          paragraphs: [
+            "These terms are between you and Fill at Home Catering Services, the family kitchen behind Hapag Pamana. By using the app — browsing the menu, making an account or filing an order — you're agreeing to them.",
+            "They sit alongside our Privacy Policy, which covers what we keep about you.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_2",
+          heading: "Your account",
+          paragraphs: [
+            "Please give us details that are actually yours: we call the number on a booking to confirm it, and send quotations to the address you registered. One phone number belongs to one account.",
+            "Keep your password to yourself, and tell us straight away if you think someone else has it. What happens on your account is treated as done by you.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_3",
+          heading: "Placing an order",
+          paragraphs: [
+            "An order you file is a request, not yet a booking. It reaches us as Pending, we go through it, and we call you to confirm the details — the date is only held once we've confirmed it and the downpayment has landed.",
+            "Please tell us everything that matters in the notes: the headcount you actually expect, how we get into the venue, and anything about allergies or diets. A surprise on the day costs us both.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_4",
+          heading: "Prices and quotations",
+          paragraphs: [
+            "Package prices in the app are what we currently charge, and can change while an order is still Pending — an order carries the figures it was filed with, and if anything moves we tell you before you pay.",
+            "Some orders are priced by hand, food packs especially. Those file without an online payment and we send you a quotation; that quotation is what governs the order.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_5",
+          heading: "The downpayment",
+          paragraphs: [
+            "Half the order total is collected up front, and that's what holds your date in the kitchen's calendar. The balance is settled with the team on the day of the event.",
+            "The downpayment is taken on Xendit's secure checkout page. If a payment is interrupted you can pick it up again from Order tracking; until it clears, your order is filed but your date isn't held.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_6",
+          heading: "Changes and cancellations",
+          paragraphs: [
+            "Once an order is filed you can't edit it in the app — that's deliberate, because the kitchen plans and buys against what you sent. Call or message us and we'll change it with you.",
+            "If you need to cancel, tell us as early as you can. What happens to a downpayment depends on how near the day we are and what has already been bought and committed for your event, so we work it out with you directly rather than by a flat rule.",
+            "Very occasionally we have to decline or step back from an order — a date we simply can't staff, or something beyond us. If that happens after you've paid, you get your downpayment back.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_7",
+          heading: "Food, allergens and special diets",
+          paragraphs: [
+            "The allergen tags in the app come from our own kitchen and are there to help you choose. They are guidance, not a guarantee: we cook everything in one kitchen on shared equipment, so we cannot promise any dish is free of traces of another.",
+            "If an allergy is serious, set it under Settings → Dietary preference, write it in your booking notes, and call us as well. We would much rather talk it through than have you rely on a tag.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_8",
+          heading: "What the app can and can't do",
+          paragraphs: [
+            "The menu, the packages and the setups are ours to change: a dish comes off when it's out of season, and parts of the app can be closed for a while — the whole app included, when the kitchen needs to pause.",
+            "Gabay, the catering companion, is in preview. It doesn't place orders or quote prices, and nothing it eventually suggests is a commitment on our part.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_9",
+          heading: "Using it fairly",
+          paragraphs: [
+            "Please don't file orders you don't intend to take, use someone else's details, or try to get at parts of the app or other members' information that aren't yours.",
+            "We can suspend an account being used that way. A suspended account can still be talked about — get in touch and we'll go through it with you.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_10",
+          heading: "Our words and pictures",
+          paragraphs: [
+            "The story, the photographs, the menu and the recipes in this app are the family's. Enjoy them, share a link, tell your friends — but please don't reuse them commercially or pass them off as your own.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_11",
+          heading: "What we stand behind",
+          paragraphs: [
+            "We stand behind our food and our service. If something isn't right on the day, tell us then and there and we will do what we can to put it right.",
+            "Beyond that, we're a small kitchen: we can't take on losses beyond the value of the order itself, such as lost earnings or the cost of the rest of an event. Nothing here takes away the rights Philippine consumer law gives you.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_12",
+          heading: "Where this is settled",
+          paragraphs: [
+            "These terms are governed by the laws of the Republic of the Philippines, and anything we can't settle between us belongs to the courts of Metro Manila. We would always rather settle it over the phone.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "tos_13",
+          heading: "When these change",
+          paragraphs: [
+            "If we change these terms we'll update this page and the date at the top. An order already confirmed keeps the terms it was made under.",
+          ],
+          bullets: [],
+        },
+      ],
+    },
+    privacyPolicy: {
+      lastUpdated: "4 August 2026",
+      lede: "What we keep about you, who can see it, and how to have it changed or removed.",
+      clauses: [
+        {
+          id: "pp_1",
+          heading: "Who we are",
+          paragraphs: [
+            "Hapag Pamana is the customer app of Fill at Home Catering Services — the family kitchen whose story you can read under Settings → About. When this policy says \"we\", it means that family and the staff who work with us.",
+            "You can reach us any time at hello@fillathome.ph or on 0917 123 4567.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "pp_2",
+          heading: "What we keep",
+          paragraphs: [
+            "Only what we need to cook for you and keep your account working:",
+          ],
+          bullets: [
+            "Your account — the name, e-mail address and phone number you gave us when you signed up, and the date you joined. Your password is held by Google Firebase Authentication and never reaches us in a form we could read.",
+            "Your profile photo, if you set one. It is stored inside your own profile record, and removing it deletes it.",
+            "Your orders — the event date, venue, headcount, the dishes you chose, the address we deliver to, the times you gave us and any notes you wrote for the kitchen.",
+            "Your payments — how much was paid, when, the method used and the reference Xendit gives us. Card and e-wallet details are entered on Xendit's own checkout page and never pass through this app.",
+            "Your settings — the notification switches, your dietary preference and the allergens you asked us to avoid, and your chosen language.",
+          ],
+        },
+        {
+          id: "pp_3",
+          heading: "Why we keep it",
+          paragraphs: [
+            "Every item above earns its place:",
+          ],
+          bullets: [
+            "To cook, deliver and set up what you ordered.",
+            "To reach you about an order — we call the contact number on a booking to confirm the details, and send quotations to your e-mail address.",
+            "To keep one phone number to one account, so two accounts can't end up sharing a contact and crossing their orders.",
+            "To remember your preferences, so you don't have to explain how you eat with every booking.",
+            "To keep our own business records of what was ordered and paid.",
+          ],
+        },
+        {
+          id: "pp_4",
+          heading: "Who can see it",
+          paragraphs: [
+            "Our own team, through the staff dashboards, and only the part each role needs:",
+          ],
+          bullets: [
+            "Order managers see the orders you file, and move them along as we work through them.",
+            "The master chef sees confirmed orders, to plan the ingredients for your event.",
+            "Content moderators, who look after the menu, can see member profiles.",
+          ],
+        },
+        {
+          id: "pp_5",
+          heading: "Who we never share it with",
+          paragraphs: [
+            "We do not sell your information, and we do not hand it to advertisers or data brokers. Nobody outside the team above sees your orders except the services that carry them for us (next clause), and anyone the law obliges us to tell.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "pp_6",
+          heading: "The services that hold it for us",
+          paragraphs: [
+            "We don't run our own servers. Two companies hold this information on our behalf, under their own security and privacy terms:",
+          ],
+          bullets: [
+            "Google Firebase — your account, your profile, your orders and your settings live in Firebase Authentication and Cloud Firestore.",
+            "Xendit — takes your downpayment on its own secure page and tells us only that the payment cleared, for how much, and by what method.",
+          ],
+        },
+        {
+          id: "pp_7",
+          heading: "How long we keep it",
+          paragraphs: [
+            "Your account details stay with us for as long as your account is open. Orders and their payment records are kept as business records after the event, the way any caterer keeps its books.",
+            "Ask us to close your account and we will remove your profile; where we have to keep an order on record, we keep the order and not you — your name and contact details come off it.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "pp_8",
+          heading: "What you can change yourself",
+          paragraphs: [
+            "Much of it, right here in the app:",
+          ],
+          bullets: [
+            "Your profile photo — the Account tab; tap your picture.",
+            "Your notification, dietary and language settings — this Settings screen, at any time.",
+            "Your password — \"Forgot password?\" on the log-in screen sends you a reset link.",
+            "Your name, e-mail or phone number, and closing your account — message us and we'll do it for you. Your number is also our one-account safeguard, so it's moved by hand.",
+          ],
+        },
+        {
+          id: "pp_9",
+          heading: "Children",
+          paragraphs: [
+            "The app is meant for adults booking food for themselves, their families and their events. If you are under 18, please use it with a parent or guardian.",
+          ],
+          bullets: [],
+        },
+        {
+          id: "pp_10",
+          heading: "When this changes",
+          paragraphs: [
+            "If we change what we collect or who sees it, we will update this page and the date at the top of it. Nothing changes retroactively — a change here describes what we do from that date on.",
+          ],
+          bullets: [],
+        },
+      ],
+    },
+    faqGroups: [
+      {
+        id: "fg_1",
+        title: "BOOKING & ORDERS",
+        items: [
+          {
+            question: "How do I book catering?",
+            answer: "Open the Packages tab, choose the package you like and tap \"Book Us Now\". The wizard walks you through the date, the venue, your headcount and a dish for each course, then files the order. It reaches us as Pending right away, and we call your contact number to go through the details.",
+          },
+          {
+            question: "How do I order food packs or party trays?",
+            answer: "Also from the Packages tab — \"Book Us Now\" for food packs. It's a shorter form built around our written quotation: the occasion, when and where it's going, and a menu list with a pax count on every dish.",
+          },
+          {
+            question: "What do the order statuses mean?",
+            answer: "Pending — we have your order and are going through it.\nConfirmed — your date is locked in and the kitchen is planning for it.\nCompleted — the event is done, and maraming salamat.\nDeclined — we couldn't take that one on. Message us and we'll see what else we can arrange.",
+          },
+          {
+            question: "Where do I see the orders I've sent?",
+            answer: "Settings → Order tracking. Every order you've filed is there, newest first, with the open ones on top. It updates itself as we move an order along, so there's nothing to refresh.",
+          },
+          {
+            question: "Can I change or cancel an order I've already sent?",
+            answer: "Not from the app. Once an order is filed, its details are ours to change — that's what stops an event being edited out from under the kitchen halfway through the planning. Call or message us and we'll adjust it with you.",
+          },
+        ],
+      },
+      {
+        id: "fg_2",
+        title: "PAYING",
+        items: [
+          {
+            question: "How much do I pay up front?",
+            answer: "Half the order total holds your date. The balance is settled with the team on the day of the event.",
+          },
+          {
+            question: "How can I pay the downpayment?",
+            answer: "With GCash, Maya, GrabPay or a Visa / Mastercard, on Xendit's secure checkout page. Your card details never pass through this app — we only ever see that the payment cleared.",
+          },
+          {
+            question: "I closed the payment page before finishing. Is my order lost?",
+            answer: "No. Your order is filed before the payment, precisely so an interrupted checkout can't lose the form you filled in. Open Order tracking, tap the order and choose Pay — it hands you back the same checkout page, rather than starting a second one.",
+          },
+          {
+            question: "My order says you'll send a quotation. What does that mean?",
+            answer: "Some orders are priced by hand — a small delivery, or a spread that needs costing first. Those file without an online downpayment: we'll send you the quotation, then arrange the downpayment with you directly.",
+          },
+          {
+            question: "When is my booking actually confirmed?",
+            answer: "When we've been through the details and the downpayment has landed. The status in Order tracking turns to Confirmed the moment it does — you don't have to chase us for it.",
+          },
+        ],
+      },
+      {
+        id: "fg_3",
+        title: "THE MENU & ALLERGENS",
+        items: [
+          {
+            question: "Where do the allergen tags come from?",
+            answer: "Our own kitchen tags every dish. On the Menu, the allergen map shows how those tags run across the dishes you're looking at — warmer means both more common and higher-risk, so a peanut tag reads hotter than a soy one.",
+          },
+          {
+            question: "Can you cook around an allergy?",
+            answer: "Set the allergens in Settings → Dietary preference and we'll flag any dish on the Menu that carries one. Please also tell us in your booking notes and give us a call: we cook everything in one kitchen on shared equipment, so we can warn you, but we can't promise a dish is free of traces.",
+          },
+          {
+            question: "A dish I liked has disappeared from the Menu.",
+            answer: "The kitchen decides what's on show, so a dish comes off when it's out of season or resting for a while. It stays on your past orders, and you can always ask us about it.",
+          },
+        ],
+      },
+      {
+        id: "fg_4",
+        title: "YOUR ACCOUNT",
+        items: [
+          {
+            question: "How do I change my profile photo?",
+            answer: "Open the Account tab and tap your picture. You can choose one from your gallery, or remove the one that's there.",
+          },
+          {
+            question: "I've forgotten my password.",
+            answer: "On the log-in screen, tap \"Forgot password?\" and give us your email address — a reset link is on its way within a minute or two. Check your spam folder if it seems slow.",
+          },
+          {
+            question: "Can I change my email address or phone number?",
+            answer: "Not in the app yet. Your number is also how we keep two accounts from sharing one contact, so it's moved by hand — message us and we'll take care of it.",
+          },
+          {
+            question: "I can't sign in even though my password is right.",
+            answer: "An account can be suspended if something has gone wrong with it. Get in touch and we'll go through it with you.",
+          },
+          {
+            question: "What do you do with my information?",
+            answer: "Only what we need to cook for you and keep your account working. Settings → Privacy Policy lists exactly what we hold, who sees it, and how to have it changed or removed.",
+          },
+        ],
+      },
+      {
+        id: "fg_5",
+        title: "GABAY",
+        items: [
+          {
+            question: "What is Gabay?",
+            answer: "\"Gabay\" means guide — it's your catering companion, in the middle of the bottom bar. It's still in preview: the plan is meal and package ideas drawn from your past orders, matching a package to your budget and headcount, lighter swaps for a dish, and pointers on your event layout. Your two Settings switches — \"Gabay suggestions\" and \"Healthier suggestions first\" — are what it will follow when it opens up.",
+          },
+        ],
+      },
+    ],
   };
 
   const SEED = {
@@ -611,21 +952,49 @@
   const stripId = (o) => { const { id, ...rest } = o; return rest; };
   const docToObj = (d) => ({ id: d.id, ...d.data() });
 
+  async function getWithRetry(queryFn, retries = 2) {
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await queryFn();
+      } catch (e) {
+        lastErr = e;
+        if (e && e.code === "permission-denied") throw e;
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        }
+      }
+    }
+    throw lastErr;
+  }
+
   async function loadFromFirestore() {
-    const [cats, dishes, pkgs, setups, sett, algn, abt] = await Promise.all([
-      FB.db.collection(COLL.categories).get(),
-      FB.db.collection(COLL.dishes).get(),
-      FB.db.collection(COLL.packages).get(),
-      FB.db.collection(COLL.setups).get(),
-      SETTINGS_REF().get(),
+    // Stage 1: fetch lightweight metadata (~20 KB total) in parallel.
+    const [cats, sett, algn, abt] = await Promise.all([
+      getWithRetry(() => FB.db.collection(COLL.categories).get()),
+      getWithRetry(() => SETTINGS_REF().get()),
       ALLERGENS_REF().get().catch(() => ({ exists: false })),
       ABOUT_REF().get().catch(() => ({ exists: false })),
     ]);
+
+    // Stage 2: fetch media-heavy collections sequentially so 43 MB of inline
+    // base64 images never multiplex simultaneously and stall the WebChannel /
+    // HTTP long-polling stream. Prioritize the current page's collection first.
+    const mediaOrder = ["packages", "setups", "dishes"];
+    if (PAGE_IMG_KIND && mediaOrder.includes(PAGE_IMG_KIND)) {
+      mediaOrder.splice(mediaOrder.indexOf(PAGE_IMG_KIND), 1);
+      mediaOrder.unshift(PAGE_IMG_KIND);
+    }
+    const snaps = {};
+    for (const kind of mediaOrder) {
+      snaps[kind] = await getWithRetry(() => FB.db.collection(COLL[kind]).get());
+    }
+
     return {
       categories: cats.docs.map(docToObj),
-      dishes: dishes.docs.map(docToObj),
-      packages: pkgs.docs.map(docToObj),
-      setups: setups.docs.map(docToObj),
+      dishes: snaps.dishes.docs.map(docToObj),
+      packages: snaps.packages.docs.map(docToObj),
+      setups: snaps.setups.docs.map(docToObj),
       settings: sett.exists ? { ...structuredClone(SEED.settings), ...sett.data() } : structuredClone(SEED.settings),
       allergens: (algn && algn.exists && normalizeAllergens((algn.data() || {}).list))
         || structuredClone(DEFAULT_ALLERGENS),
@@ -695,8 +1064,11 @@
     delete data._allergensSeeded;
     adoptLoaded(data);
     hydratedImages.dishes = hydratedImages.packages = hydratedImages.setups = true;
-    await ensureSchema();
-    writeCache("all");
+    try { await ensureSchema(); }
+    catch (e) { console.warn("HapagPamana: schema check skipped —", e); }
+    cacheAt = Date.now();
+    dirtyImages.add("dishes").add("packages").add("setups");
+    writeCacheNow();
     scheduleProductIndex(); // keep the dish picker's index doc current
     return DB;
   }
@@ -1261,14 +1633,16 @@
          blocks the page: worst case boots exactly like the pre-cache code. */
       const t0 = performance.now();
       const ms = () => Math.round(performance.now() - t0) + "ms";
-      let settled = false, loading = false, fresh = false;
+      let settled = false, loading = false, fresh = false, isUnloading = false;
+      window.addEventListener("beforeunload", () => { isUnloading = true; });
+      window.addEventListener("pagehide", () => { isUnloading = true; });
       const settle = (extra) => {
         if (settled) return;
         settled = true;
         resolve(Object.assign({}, auth, extra));
       };
       const startLoad = () => {
-        if (loading || fresh) return;
+        if (loading || fresh || isUnloading) return;
         loading = true;
         load()
           .then(() => {
@@ -1277,10 +1651,12 @@
             if (settled) notifyRefresh(); else settle({});
           })
           .catch((e) => {
+            if (isUnloading) return;
             // Log the real cause so it's diagnosable from the console.
-            console.error("HapagPamana: couldn't load from Firestore —", e);
+            console.warn("HapagPamana: background refresh skipped —", e);
             if (settled) {
-              toast("Couldn't refresh from the database — showing the last-loaded content.", "warn");
+              // Page is already rendered from the IndexedDB cache; keep showing
+              // the cached copy quietly without interrupting the user.
               return;
             }
             // Honest empty state — never substitute fake sample content.
@@ -1300,6 +1676,22 @@
         cacheAt = hit.at || 0;
         console.info(`HapagPamana: painted from cache (${ms()}, age ${Math.round((Date.now() - cacheAt) / 1000)}s)`);
         settle({ cached: true });
+        if (PAGE_IMG_KIND && !hydratedImages[PAGE_IMG_KIND]) {
+          // Metadata was cached, but this page's image map hasn't been cached yet.
+          getWithRetry(() => FB.db.collection(COLL[PAGE_IMG_KIND]).get())
+            .then((snap) => {
+              const map = {};
+              snap.docs.forEach((d) => {
+                const data = d.data();
+                if (data && data.image) map[d.id] = data.image;
+              });
+              applyImgMap(DB[PAGE_IMG_KIND], map);
+              hydratedImages[PAGE_IMG_KIND] = true;
+              writeCache(PAGE_IMG_KIND);
+              notifyRefresh();
+            })
+            .catch((e) => console.warn(`HapagPamana: couldn't hydrate ${PAGE_IMG_KIND} images —`, e));
+        }
         if (Date.now() - cacheAt > CACHE_TTL) startLoad();
       });
       // Safety guard if IndexedDB is blocked by another tab's upgrade/transaction;

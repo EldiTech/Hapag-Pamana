@@ -2140,7 +2140,7 @@
         : "Nothing standing in a guest's way.";
 
     const m = r.metrics;
-    const icon = { high: "⚠", medium: "▲", low: "·" };
+    const icon = { high: HP.icon("alert"), medium: HP.icon("info"), low: HP.icon("check") };
     const metric = (label, value, cls) =>
       `<div class="ld-metric"><span>${HP.esc(label)}</span><b class="${cls || ""}">${HP.esc(String(value))}</b></div>`;
     const grade = (v) => (v >= 85 ? "is-good" : v >= 60 ? "is-warn" : "is-bad");
@@ -2171,7 +2171,7 @@
           ${r.findings.map((f) => `
             <div class="ld-walk-item sev-${f.severity}"${
               f.item && f.item.id ? ` data-focus="${HP.esc(f.item.id)}"` : ""}>
-              <span class="ld-walk-ic">${icon[f.severity]}</span>
+              <span class="ld-walk-ic ic">${icon[f.severity]}</span>
               <div class="ld-walk-body">
                 <strong>${HP.esc(f.title)}</strong>
                 <p>${HP.esc(f.detail)}</p>
@@ -2191,7 +2191,7 @@
     HP.openModal("Layout analysis", body,
       `<button class="btn btn-ghost" data-close>Close</button>
        ${r.findings.length ? `<button class="btn btn-ghost" id="ldWalkOptimise">Optimise layout</button>` : ""}
-       <button class="btn btn-primary" id="ldWalkSim">▶ Walk it</button>`);
+       <button class="btn btn-primary" id="ldWalkSim"><span class="ic">${HP.icon("play")}</span>Walk it</button>`);
     const modal = document.querySelector(".modal");
     modal.classList.add("modal--wide");
     HP.hydrateIcons(modal);
@@ -2854,6 +2854,7 @@
       strip.hidden = !cols.length;
     }
     btn.classList.toggle("is-themed", !!setupChoice);
+    btn.title = setupChoice ? `Theme: ${setupChoice}` : "Theme";
   }
 
   /* The picker. Each setup is its own photograph with the palette read out of
@@ -2936,7 +2937,7 @@
   function renderCams() {
     const shots = S.thumbnails();
     camsEl.innerHTML = S.views.map((name) => `
-      <button class="ld-cam ${name === S.view ? "active" : ""}" data-cam="${HP.esc(name)}">
+      <button class="ld-cam ${name === S.view ? "active" : ""}" data-cam="${HP.esc(name)}" title="${HP.esc(name)}">
         <span class="ld-cam-shot">${shots[name]
           ? `<img src="${shots[name]}" alt="${HP.esc(name)}" />`
           : `<span class="ic">${HP.icon("eye")}</span>`}</span>

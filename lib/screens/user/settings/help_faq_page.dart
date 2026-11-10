@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../brand.dart';
 import '../../../core/widgets/app_widgets.dart';
+import '../../../data/about_content.dart';
 import '../../../widgets.dart';
 import 'contact_us_page.dart';
 import 'settings_widgets.dart';
@@ -17,36 +18,72 @@ import 'settings_widgets.dart';
 class HelpFaqPage extends StatelessWidget {
   const HelpFaqPage({super.key});
 
+  static List<_FaqGroup> _resolveGroups(List<dynamic>? rawGroups) {
+    if (rawGroups == null || rawGroups.isEmpty) return _groups;
+    final List<_FaqGroup> parsed = [];
+    for (final rawGroup in rawGroups) {
+      if (rawGroup is! Map<String, dynamic>) continue;
+      final title = (rawGroup['title'] as String?)?.trim() ?? '';
+      final rawItems = rawGroup['items'];
+      final List<_Faq> items = [];
+      if (rawItems is List) {
+        for (final item in rawItems) {
+          if (item is Map<String, dynamic>) {
+            final q = (item['question'] as String?)?.trim() ?? '';
+            final a = (item['answer'] as String?)?.trim() ?? '';
+            if (q.isNotEmpty && a.isNotEmpty) {
+              items.add(_Faq(q, a));
+            }
+          }
+        }
+      }
+      if (title.isNotEmpty && items.isNotEmpty) {
+        parsed.add(_FaqGroup(title, items));
+      }
+    }
+    return parsed.isNotEmpty ? parsed : _groups;
+  }
+
   @override
   Widget build(BuildContext context) {
     Duration d(int ms) => Duration(milliseconds: ms);
 
-    return SettingsScaffold(
-      title: 'Help & FAQ',
-      children: [
-        FadeSlideIn(
-          child: const SettingsLede(
-            title: 'How can we help?',
-            body: 'Tap a question to open it. If yours isn\'t here, we\'re a '
-                'message away.',
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        for (final (i, group) in _groups.indexed) ...[
-          FadeSlideIn(
-            delay: d(60 + i * 60),
-            child: SettingsSection(
-              title: group.title,
-              rows: [for (final faq in group.items) _FaqTile(faq)],
+    return ValueListenableBuilder<AboutContent>(
+      valueListenable: AboutContentScope.notifier,
+      builder: (context, about, _) {
+        final groups = _resolveGroups(about.faqGroupsData);
+        return SettingsScaffold(
+          title: 'Help & FAQ',
+          children: [
+            FadeSlideIn(
+              child: const SettingsLede(
+                title: 'How can we help?',
+                body:
+                    'Tap a question to open it. If yours isn\'t here, we\'re a '
+                    'message away.',
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-        ],
-        FadeSlideIn(
-          delay: d(60 + _groups.length * 60),
-          child: const _StillStuckCard(),
-        ),
-      ],
+            const SizedBox(height: AppSpacing.xl),
+            for (final (i, group) in groups.indexed) ...[
+              FadeSlideIn(
+                delay: d(60 + i * 60),
+                child: SettingsSection(
+                  title: group.title,
+                  rows: [
+                    for (final (j, faq) in group.items.indexed)
+                      _FaqTile(faq, number: j + 1),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+            ],
+            FadeSlideIn(
+              delay: d(60 + groups.length * 60),
+              child: const _StillStuckCard(),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -210,9 +247,10 @@ const List<_FaqGroup> _groups = [
 /// One question, opening onto its answer. Collapsed by default so a group reads
 /// as a scannable list rather than a wall of prose.
 class _FaqTile extends StatefulWidget {
-  const _FaqTile(this.faq);
+  const _FaqTile(this.faq, {required this.number});
 
   final _Faq faq;
+  final int number;
 
   @override
   State<_FaqTile> createState() => _FaqTileState();
@@ -223,6 +261,8 @@ class _FaqTileState extends State<_FaqTile> {
 
   @override
   Widget build(BuildContext context) {
+    final badgeNumber = widget.number.toString().padLeft(2, '0');
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _open = !_open),
@@ -234,11 +274,39 @@ class _FaqTileState extends State<_FaqTile> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _open
+                        ? AppColors.brown
+                        : AppColors.creamEdge.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                    border: Border.all(
+                      color: _open
+                          ? AppColors.gold.withValues(alpha: 0.6)
+                          : AppColors.hairline,
+                    ),
+                  ),
+                  child: Text(
+                    badgeNumber,
+                    style: AppTextStyles.sans(
+                      size: 11,
+                      weight: FontWeight.w700,
+                      color: _open ? AppColors.cream : AppColors.brown,
+                      spacing: 0.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(
                     widget.faq.question,
                     style: AppTextStyles.sans(
-                      size: 14,
+                      size: 14.5,
                       weight: FontWeight.w600,
                       color: AppColors.brown,
                       height: 1.35,
@@ -266,8 +334,18 @@ class _FaqTileState extends State<_FaqTile> {
               alignment: Alignment.topCenter,
               child: _open
                   ? Padding(
-                      padding: const EdgeInsets.only(top: AppSpacing.sm),
-                      child: Text(widget.faq.answer, style: AppTextStyles.body),
+                      padding: const EdgeInsets.only(
+                        top: AppSpacing.sm + 2,
+                        left: 38,
+                      ),
+                      child: Text(
+                        widget.faq.answer,
+                        style: AppTextStyles.sans(
+                          size: 14,
+                          color: AppColors.brown,
+                          height: 1.6,
+                        ),
+                      ),
                     )
                   : const SizedBox(width: double.infinity),
             ),

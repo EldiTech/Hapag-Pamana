@@ -128,14 +128,22 @@ class _UserShellState extends State<UserShell> {
                 child: AppButton.secondary(
                   label: 'DISCARD',
                   icon: Icons.delete_outline_rounded,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 14,
+                  ),
                   onPressed: () => Navigator.of(dialogContext).pop(false),
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: AppButton.primary(
                   label: 'CONTINUE',
                   icon: Icons.arrow_forward_rounded,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 14,
+                  ),
                   onPressed: () => Navigator.of(dialogContext).pop(true),
                 ),
               ),
@@ -157,6 +165,7 @@ class _UserShellState extends State<UserShell> {
                 draft.value('pax').isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
               Container(
+                width: double.infinity,
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
                   color: AppColors.cream,
@@ -168,18 +177,24 @@ class _UserShellState extends State<UserShell> {
                   children: [
                     if (draft.eventDate.isNotEmpty)
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.event_outlined,
-                            size: 15,
-                            color: AppColors.goldDeep,
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2),
+                            child: Icon(
+                              Icons.event_outlined,
+                              size: 15,
+                              color: AppColors.goldDeep,
+                            ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            draft.eventDate,
-                            style: AppTextStyles.sans(
-                              size: 13,
-                              weight: FontWeight.w600,
+                          Expanded(
+                            child: Text(
+                              draft.eventDate,
+                              style: AppTextStyles.sans(
+                                size: 13,
+                                weight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -187,17 +202,21 @@ class _UserShellState extends State<UserShell> {
                     if (draft.value('venue').isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.place_outlined,
-                            size: 15,
-                            color: AppColors.goldDeep,
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2),
+                            child: Icon(
+                              Icons.place_outlined,
+                              size: 15,
+                              color: AppColors.goldDeep,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               draft.value('venue'),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: AppTextStyles.sans(
                                 size: 12,
@@ -218,11 +237,13 @@ class _UserShellState extends State<UserShell> {
                             color: AppColors.goldDeep,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            '${draft.value('pax')} pax',
-                            style: AppTextStyles.sans(
-                              size: 12,
-                              color: AppColors.brown,
+                          Expanded(
+                            child: Text(
+                              '${draft.value('pax')} pax',
+                              style: AppTextStyles.sans(
+                                size: 12,
+                                color: AppColors.brown,
+                              ),
                             ),
                           ),
                         ],

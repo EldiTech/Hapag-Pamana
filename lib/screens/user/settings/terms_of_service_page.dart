@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../data/about_content.dart';
 import 'legal_document.dart';
 
 /// "Terms of Service" — the deal between a member and the kitchen.
@@ -20,12 +21,19 @@ class TermsOfServicePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const LegalDocument(
-      title: 'Terms of Service',
-      lede: 'The understanding between you and our kitchen when you order '
-          'through this app.',
-      lastUpdated: _lastUpdated,
-      clauses: _clauses,
+    return ValueListenableBuilder<AboutContent>(
+      valueListenable: AboutContentScope.notifier,
+      builder: (context, about, _) {
+        return LegalDocument(
+          title: 'Terms of Service',
+          lede:
+              'The understanding between you and our kitchen when you order '
+              'through this app.',
+          lastUpdated: _lastUpdated,
+          clauses: _clauses,
+          overrideData: about.termsOfServiceData,
+        );
+      },
     );
   }
 }

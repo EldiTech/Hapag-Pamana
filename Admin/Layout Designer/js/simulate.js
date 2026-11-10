@@ -1733,7 +1733,7 @@ window.HPSim = (function () {
       <div class="hp-sim-hint" id="hpSimHint" hidden></div>
 
       <div class="hp-sim-compass" id="hpSimCompass" hidden>
-        <span class="hp-sim-compass-arrow">▲</span>
+        <span class="hp-sim-compass-arrow ic">${HP.icon("compass")}</span>
         <span class="hp-sim-compass-text"></span>
       </div>
 

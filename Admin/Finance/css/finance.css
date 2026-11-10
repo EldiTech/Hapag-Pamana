@@ -102,7 +102,7 @@
 .cost-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 .cost-table th, .cost-table td {
   text-align: left; padding: 7px 10px; vertical-align: top;
-  border-bottom: 1px dotted var(--gold-hair);
+  border-bottom: 1px solid var(--hair-soft);
 }
 .cost-table thead th {
   font-family: var(--engraved); font-size: 0.58rem; font-weight: 700;
@@ -246,7 +246,7 @@
 
 .slip-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
 .slip-table th, .slip-table td {
-  text-align: left; padding: 7px 10px; border-bottom: 1px dotted var(--gold-hair); vertical-align: top;
+  text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--hair-soft); vertical-align: top;
 }
 .slip-table thead th {
   font-family: var(--engraved); font-size: 0.58rem; font-weight: 700;
@@ -449,81 +449,3 @@
   .pc-hero-acts { justify-content: flex-start; }
   .pc-bal strong { font-size: 1.9rem; }
 }
-
-/* The receipt photo grid. The stock clerk's liquidation sheet renders the
-   same markup, but that rule lives in the stores' own stylesheet which this
-   dashboard doesn't load — so the grid is defined here too rather than
-   cross-linking another desk's CSS. Both must stay in step: a receipt should
-   look the same to the clerk who filed it and the officer receiving it. */
-.lq-thumbs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-  gap: 11px;
-}
-.lq-thumbs figure {
-  margin: 0;
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  border: 1px solid var(--hair-soft);
-  background: var(--paper-2);
-  box-shadow: var(--shadow-sm);
-}
-.lq-thumbs img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
-  cursor: zoom-in;
-  background: var(--vellum);
-}
-.lq-thumbs figcaption {
-  padding: 7px 9px;
-  font-family: var(--display);
-  font-size: 0.98rem;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-.lq-thumbs figcaption small {
-  display: block;
-  font-family: var(--text);
-  font-size: 0.74rem;
-  color: var(--ink-faint);
-}
-
-/* Form furniture shared with the stores' pantry dialogs (.pn-*). Same reason
-   as the receipt grid above: the markup is deliberately identical so the two
-   desks read alike, but each dashboard has to carry the rules it uses. */
-.pn-form .pn-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin: 12px 0;
-}
-.pn-onhand {
-  font-family: var(--display);
-  font-size: 1.02rem;
-  color: var(--ink-soft);
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--hair-soft);
-  margin-bottom: 12px;
-}
-.pn-onhand strong {
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-/* Live preview of what a movement would do to the balance. */
-.pn-preview {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--gold-hair);
-  border-radius: var(--r);
-  background: var(--paper-2);
-  font-family: var(--display);
-  font-size: 1.02rem;
-  color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
-  min-height: 42px;
-}
-.pn-preview strong { color: var(--ink); }
-.pn-preview .pn-delta { color: var(--ink-faint); font-size: 0.9rem; }
-.pn-preview .is-over { color: var(--danger); }

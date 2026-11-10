@@ -537,6 +537,7 @@ class _CategoryFilterButton extends StatelessWidget {
                   label: chosen.isEmpty
                       ? 'SHOW ALL CATEGORIES'
                       : 'KEEP ${chosen.length} CATEGOR${chosen.length == 1 ? 'Y' : 'IES'}',
+                  fullWidth: true,
                   onPressed: () {
                     Navigator.of(dialogContext).pop();
                     onSelect(chosen);

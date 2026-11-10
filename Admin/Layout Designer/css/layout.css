@@ -37,11 +37,17 @@
   border-color: var(--gold);
 }
 .ld-nav-tab.active {
-  background: linear-gradient(180deg, var(--gold-light), var(--gold));
-  border-color: var(--gold-deep);
-  color: #3a2710;
+  background-color: #503311;
+  border-color: #503311;
+  color: #F6EFDF;
 }
-.ld-nav-tab.active .ic svg { color: #3a2710; }
+.ld-nav-tab.active .ic svg { color: #AC834B; }
+html[data-theme="dark"] .ld-nav-tab.active {
+  background-color: #C89B5E;
+  border-color: #C89B5E;
+  color: #1C130B;
+}
+html[data-theme="dark"] .ld-nav-tab.active .ic svg { color: #1C130B; }
 
 /* ── Overview Section ─────────────────────────────────────────────────── */
 .ld-overview-view {
@@ -322,8 +328,7 @@
 .ld-stage {
   position: relative;
   padding: 20px;
-  background:
-    radial-gradient(120% 120% at 50% 0%, var(--paper-3), var(--paper-2) 70%);
+  background-color: var(--paper);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -356,7 +361,7 @@
 .ld-dim::before, .ld-dim::after {
   content: "";
   flex: 1;
-  background: linear-gradient(90deg, transparent, var(--gold-hair), transparent);
+  background-color: var(--gold-hair);
 }
 .ld-dim--x { top: 0; left: 22px; right: 0; height: 20px; }
 .ld-dim--x::before, .ld-dim--x::after { height: 1px; }
@@ -367,7 +372,7 @@
 }
 .ld-dim--y::before, .ld-dim--y::after {
   width: 1px;
-  background: linear-gradient(180deg, transparent, var(--gold-hair), transparent);
+  background-color: var(--gold-hair);
 }
 
 /* The floor itself — vellum ruled into a metre grid. */
@@ -562,8 +567,12 @@
 .ld-viewtab .ic svg { width: 15px; height: 15px; }
 .ld-viewtab:hover { color: var(--brown); background: var(--paper-2); }
 .ld-viewtab.active {
-  background: linear-gradient(180deg, var(--gold-light), var(--gold));
-  color: #3a2710;
+  background-color: #503311;
+  color: #F6EFDF;
+}
+html[data-theme="dark"] .ld-viewtab.active {
+  background-color: #C89B5E;
+  color: #1C130B;
 }
 .ld-viewtab:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -661,7 +670,9 @@
 }
 .ld-cam {
   flex: 0 0 auto;
-  width: 124px;
+  min-width: 124px;
+  width: auto;
+  max-width: 180px;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -855,7 +866,7 @@
   align-items: center;
   gap: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px dotted var(--gold-hair);
+  border-bottom: 1px solid var(--gold-hair2);
 }
 .ld-prop-swatch {
   width: 44px;
@@ -954,10 +965,10 @@
   width: 0;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--gold-deep), var(--gold-light));
+  background-color: var(--gold);
   transition: width 0.5s var(--ease);
 }
-.ld-tally-bar.is-short > span { background: linear-gradient(90deg, #7a4a12, var(--warn)); }
+.ld-tally-bar.is-short > span { background-color: var(--warn); }
 .ld-tally-note { margin: 0; font-size: 0.8rem; font-style: italic; color: var(--ink-faint); }
 .ld-tally-note.is-short { color: var(--warn); font-weight: 600; font-style: normal; }
 
@@ -997,9 +1008,14 @@
 }
 .ld-count:hover { border-color: var(--gold); background: var(--paper-2); color: var(--brown); }
 .ld-count.active {
-  background: linear-gradient(180deg, var(--gold-light), var(--gold));
-  border-color: var(--gold-deep);
-  color: #3a2710;
+  background-color: #503311;
+  border-color: #503311;
+  color: #F6EFDF;
+}
+html[data-theme="dark"] .ld-count.active {
+  background-color: #C89B5E;
+  border-color: #C89B5E;
+  color: #1C130B;
 }
 .ld-count small {
   display: block;
@@ -1106,7 +1122,8 @@ body.hp-sim-open .app { visibility: hidden; }
   justify-content: space-between;
   gap: 16px;
   padding: 14px 20px;
-  background: linear-gradient(180deg, rgba(20, 12, 5, 0.82), transparent);
+  background-color: rgba(20, 13, 7, 0.92);
+  border-bottom: 1px solid rgba(172, 131, 75, 0.28);
   pointer-events: none;
 }
 .hp-sim-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -1263,10 +1280,10 @@ body.hp-sim-open .app { visibility: hidden; }
   width: 268px;
   padding: 15px 17px;
   border-radius: var(--r-lg);
-  border: 1px solid rgba(220, 182, 97, 0.3);
-  border-left: 2px solid var(--gilt);
-  background: rgba(20, 12, 5, 0.86);
-  backdrop-filter: blur(3px);
+  border: 1px solid rgba(172, 131, 75, 0.38);
+  border-left: 2.5px solid var(--gilt);
+  background-color: #251A10;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
   animation: fadeIn 0.18s ease both;
   z-index: 4;
 }
@@ -1381,11 +1398,17 @@ body.hp-sim-open .app { visibility: hidden; }
   pointer-events: none;
 }
 .hp-sim-compass-arrow {
-  display: inline-block;
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   color: var(--gilt);
   transition: transform 0.12s linear;
+}
+.hp-sim-compass-arrow svg {
+  width: 15px;
+  height: 15px;
+  display: block;
 }
 .hp-sim-compass-text {
   font-family: var(--engraved);
@@ -1444,9 +1467,9 @@ body.hp-sim-open .app { visibility: hidden; }
   overflow-y: auto;
   padding: 15px 16px;
   border-radius: var(--r-lg);
-  border: 1px solid rgba(220, 182, 97, 0.3);
-  background: rgba(20, 12, 5, 0.93);
-  backdrop-filter: blur(4px);
+  border: 1px solid rgba(172, 131, 75, 0.38);
+  background-color: #251A10;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   animation: fadeIn 0.16s ease both;
 }
 .hp-sim-status-grid {
@@ -1557,7 +1580,8 @@ body.hp-sim-open .app { visibility: hidden; }
   justify-content: space-between;
   gap: 12px;
   padding: 14px 20px 18px;
-  background: linear-gradient(0deg, rgba(20, 12, 5, 0.86), transparent);
+  background-color: rgba(20, 13, 7, 0.92);
+  border-top: 1px solid rgba(172, 131, 75, 0.28);
 }
 /* The key legend, one binding a line in two columns — a reference to glance
    at, not a sentence to read across the bottom of the screen. */
@@ -1615,9 +1639,13 @@ body.hp-sim-open .app { visibility: hidden; }
 }
 .hp-sim-btn--sm { min-width: 0; padding: 5px 10px; font-size: 0.52rem; }
 .hp-sim-btn.is-exit {
-  background: linear-gradient(180deg, var(--gold-light), var(--gold));
-  border-color: var(--gold-deep);
-  color: #33220F;
+  background-color: #AC834B;
+  border-color: #AC834B;
+  color: #1C130B;
+}
+.hp-sim-btn.is-exit:hover {
+  background-color: #C89B5E;
+  border-color: #C89B5E;
 }
 
 /* The popovers behind Quality and Guide. Plain buttons rather than a native
@@ -1632,9 +1660,9 @@ body.hp-sim-open .app { visibility: hidden; }
   overflow-y: auto;
   padding: 7px;
   border-radius: var(--r-lg);
-  border: 1px solid rgba(220, 182, 97, 0.32);
-  background: rgba(20, 12, 5, 0.95);
-  backdrop-filter: blur(4px);
+  border: 1px solid rgba(172, 131, 75, 0.38);
+  background-color: #251A10;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1752,7 +1780,17 @@ body.hp-sim-open .app { visibility: hidden; }
 .ld-walk-item.sev-high   { border-left-color: var(--danger); }
 .ld-walk-item.sev-medium { border-left-color: var(--warn); }
 .ld-walk-item.sev-low    { border-left-color: var(--gold); }
-.ld-walk-ic { flex: none; font-size: 1.1rem; line-height: 1.3; }
+.ld-walk-ic {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+.ld-walk-ic svg { width: 18px; height: 18px; }
+.ld-walk-item.sev-high .ld-walk-ic   { color: var(--danger); }
+.ld-walk-item.sev-medium .ld-walk-ic { color: var(--warn); }
+.ld-walk-item.sev-low .ld-walk-ic    { color: var(--gold-deep); }
 .ld-walk-body { min-width: 0; flex: 1; }
 .ld-walk-body strong {
   display: block;
@@ -1852,7 +1890,7 @@ body.hp-sim-open .app { visibility: hidden; }
   gap: 8px;
 }
 .ld-theme-name {
-  max-width: 13ch;
+  max-width: 24ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1916,10 +1954,9 @@ body.hp-sim-open .app { visibility: hidden; }
 .ld-setup-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .ld-setup-text strong {
   font-size: 0.86rem;
+  line-height: 1.3;
   color: var(--ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 .ld-setup-text small { font-size: 0.74rem; color: var(--ink-soft); }
 .ld-setup.active .ld-setup-text strong { color: var(--gold-deep); }

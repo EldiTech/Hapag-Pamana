@@ -10,7 +10,7 @@
 .dispatch-lane { padding-left: 16px; border-left: 3px solid var(--gold-hair); }
 .dispatch-lane + .dispatch-lane { margin-top: 40px; }
 .dispatch-lane--food { border-left-color: var(--gold); }
-.dispatch-lane--equipment { border-left-color: #7a8c6e; }
+.dispatch-lane--equipment { border-left-color: var(--ok); }
 
 .panel-title {
   display: flex;
@@ -30,7 +30,7 @@
   font-size: 13px; line-height: 1; background: var(--vellum); border: 1px solid var(--gold-hair);
 }
 .panel-title--food .panel-title-ic { color: var(--gold-deep); border-color: var(--gold-hair); }
-.panel-title--equipment .panel-title-ic { color: #5c6e50; border-color: #b9c7ab; background: #eef2e9; }
+.panel-title--equipment .panel-title-ic { color: var(--ok); border-color: rgba(74, 107, 44, 0.34); background: rgba(74, 107, 44, 0.12); }
 .panel-sub {
   font-size: 0.82rem;
   color: var(--ink-soft);
